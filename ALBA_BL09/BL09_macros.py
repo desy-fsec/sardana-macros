@@ -2,7 +2,7 @@
     Macro for testing the Movable Masks in FE09
 """
 
-from macro import *
+from sardana.macroserver.macro import Macro,Type
 import time
 
 class scanMM(Macro):
