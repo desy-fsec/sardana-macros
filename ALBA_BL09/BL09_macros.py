@@ -2,18 +2,20 @@
     Macro for testing the Movable Masks in FE09
 """
 
+#from macro import *
 from sardana.macroserver.macro import Macro,Type
+
 import time
 
 class scanMM(Macro):
     hints = { 'allowsHooks':('post-move') } #needed for gui?
     
-    param_def = [ [ 'motor1', Type.Motor, None, 'Motor 1' ],
+    param_def = [ [ 'motor1', Type.Moveable, None, 'Motor 1' ],
                   [ 'startPos', Type.Float, None, 'startPos1' ],
                   [ 'endPos', Type.Float, None, 'endPos1' ],
                   [ 'nIntervals', Type.Integer, None, 'Number of intervals' ],
                   [ 'integrationTime', Type.Float, None, 'Integration time' ],
-                  [ 'motor2', Type.Motor, None, 'Motor 2' ],
+                  [ 'motor2', Type.Moveable, None, 'Motor 2' ],
                   [ 'fixedPos', Type.Float, None, 'Fixed Pos' ],
                   [ 'sleepTime', Type.Float, None, 'sleep time' ],
                 ]
@@ -33,4 +35,4 @@ class scanMM(Macro):
         #"""Run macro"""       
         myMacro, pars = self.createMacro("ascan",motor1,startPos,endPos,nIntervals,integrationTime)
         myMacro.hooks = [(self.myHook, ['post-move'])]
-        self.runMacro(myMacro)
+        self.runMacro(myMacro)acro)
