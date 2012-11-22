@@ -3,6 +3,7 @@
 """
 
 import PyTango
+import time
 import functools
 
 from sardana.macroserver.macro import Macro, Type
@@ -23,15 +24,21 @@ def catch_error(meth):
 
 
 class marccd_takebg(Macro):
-    """Take background images."""
+    """Take background images. (In fact are dark current images)"""
 
-    param_def =  [['dev',Type.String, None, 'Device name or alias']]
+    param_def =  [['dev',Type.String, None, 'Device name or alias'],
+                  ['path',Type.String, '/', 'Path to save background']]
 
     @catch_error
-    def run(self,dev):
-        marccd = PyTango.DeviceProxy(dev)
-        marccd.takeBackgroundFrame()
-
+    def run(self,dev,path):
+        marccd = PyTango.DeviceProxy(dev + "_custom")
+        if path == '/':
+            marccd.takeBackgroundFrame()
+        else:
+            lima = PyTango.DeviceProxy(dev)
+            marccd.saveBG()
+            prefix = "BG" + time.strftime('%Y%m%d%H%M%S',time.localtime(time.time()))
+            self.execMacro(['lima_take', dev, path, 0.5, 3, 1, prefix, "EDF"])
 
 
 class marccd_camstatus(Macro):
@@ -42,7 +49,7 @@ class marccd_camstatus(Macro):
 
     @catch_error
     def run(self,dev):
-        marccd = PyTango.DeviceProxy(dev)
+        marccd = PyTango.DeviceProxy(dev + "_custom")
         value = marccd.read_attribute('cam_state').value
         return value
 
@@ -63,7 +70,7 @@ Header list:
 
     @catch_error
     def run(self,dev,param):
-        marccd = PyTango.DeviceProxy(dev)
+        marccd = PyTango.DeviceProxy(dev + "_custom")
 
         Param = {'beam_x':            'header_beam_x',
                  'beam_y':            'header_beam_y',
@@ -98,7 +105,7 @@ class marccd_set_beam(Macro):
 
     @catch_error
     def run(self, dev, X, Y):
-        lima = PyTango.DeviceProxy(dev)
+        lima = PyTango.DeviceProxy(dev + "_custom")
         lima.write_attribute('source_beam_x', X)
         lima.write_attribute('source_beam_y', Y)
 
@@ -112,7 +119,7 @@ class marccd_set_distance(Macro):
 
     @catch_error
     def run(self, dev, D):
-        lima = PyTango.DeviceProxy(dev)
+        lima = PyTango.DeviceProxy(dev + "_custom")
         lima.write_attribute('source_distance', D)
 
 
@@ -125,7 +132,7 @@ class marccd_set_wavelength(Macro):
 
     @catch_error
     def run(self, dev, W):
-        lima = PyTango.DeviceProxy(dev)
+        lima = PyTango.DeviceProxy(dev + "_custom")
         lima.write_attribute('source_wavelength', W)
 
 
