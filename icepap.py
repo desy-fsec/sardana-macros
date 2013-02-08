@@ -6,7 +6,7 @@
 #import macro
 import pyIcePAP
 import time
-from macro import *
+from sardana.macroserver.macro import *
 from macro_utils.icepap import create_motor_info_dict, home, home_group, home_strict, home_group_strict
 
 
@@ -249,7 +249,18 @@ class ipap_homing(Macro):
             return home_strict(self, self.motorsInfoList)
         else: 
             return home(self, self.motorsInfoList)
-     
+
+from sardana.macroserver.macro import *
+
+@macro([["motor", Type.Motor, None, "motor to jog"],
+        ["velocity", Type.Integer, None, "velocity"]])
+
+def ipap_jog(self, motor, velocity):
+    poolObj = motor.getPoolObj()
+    ctrlName = motor.getControllerName()
+    axis = motor.getAxis()
+    poolObj.SendToController([ctrlName, "%d: JOG %d" % (axis, velocity)])
+
 #class ipap_homing(Macro):
     """Macro to do the homing procedure in more than one axis at the same time.
        Given a list of motors to do the home and the direction (in pool motor sense) in which you want
