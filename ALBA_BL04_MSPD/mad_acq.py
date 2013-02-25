@@ -44,13 +44,14 @@ class PrepareMaster(Macro):
         activeMntGrpName = self.getEnv("ActiveMntGrp")
         mntGrp = taurus.Device(activeMntGrpName)
         timerName = mntGrp.getAttribute("ElementList").read().value[0]
+        self.debug(timerName)
         timer = taurus.Device(timerName)
         timerChannelName = timer.getAttribute("channelDevName").read().value
         timerChannel = taurus.Device(timerChannelName)
         timerChannel.getAttribute("InitialDelayTime").write(4)
         timerChannel.getAttribute("SampleMode").write("Finite")
         timerChannel.getAttribute("SampleTimingType").write("Implicit")
-        #timerChannel.getAttribute("SampPerChan").write(long(1))
+        timerChannel.getHWObj().write_attribute("SampPerChan", long(1))
         timerChannel.getAttribute("IdleState").write("Low")        
         timerChannel.getAttribute("LowTime").write(0.0000001)        
 
