@@ -87,3 +87,64 @@ class regmagscan(Macro):
                     point_id += 1
                     yield step
             region_start = region_stop
+
+
+class ascanp(Macro):
+    """
+    ascan of energy with 2 different ID polarizations per energy.
+    It will perform a regular scan of ID and mono and will move the polarity to 2 different positions for each energy point
+    This is really a mesh, but since we still don't have the energy pseudo for controlling both ID and mono energy
+    we have to write this particular macro.
+    Please don't use in the future when the energy pseudo is available.
+    """
+
+    mono_name = 'energy_mono'
+    id_energy_name = 'ideu71_motor_energy'
+    id_polarization_name = 'ideu71_motor_polarization'
+
+    param_def = [
+        ['energy_start',  Type.Float,    None,  'energy1 to measure for each point'],
+        ['energy_end',    Type.Float,    None,  'energy2 to measure for each point (set to <=0 if not desired)'],
+        ['intervals',     Type.Float,    None,  'number of intervals'],
+        ['polarization1', Type.Float,    None,  'energy1 to measure for each point'],
+        ['polarization2', Type.Float,    None,  'energy2 to measure for each point (set to <=0 if not desired)'],
+        ['integ_time',    Type.Float,    None,  'integration time'],
+    ]
+
+    def prepare(self, energy_start, energy_end, intervals, polarization1, polarization2, integ_time, *regions, **opts):
+        self.name          = self.__class__.__name__
+        self.energy_start  = energy_start
+        self.energy_end    = energy_end
+        self.intervals = intervals
+        self.polarization1 = polarization1
+        self.polarization2 = polarization2
+        self.integ_time    = integ_time
+
+        motor_mono = self.getMoveable(self.mono_name)
+        motor_id_energy = self.getMoveable(self.id_energy_name)
+        motor_id_polarization = self.getMoveable(self.id_polarization_name)
+        moveables = [motor_mono, motor_id_energy, motor_id_polarization]
+
+        generator=self._generator
+        env=opts.get('env',{})
+        constrains=[]
+        self._gScan=SScan(self, generator, moveables, env, constrains)
+
+    def run(self,*args):
+        for step in self._gScan.step_scan():
+            yield step
+
+    def _generator(self):
+        step = {}
+        step['integ_time'] =  self.integ_time
+        polarizations = [self.polarization1, self.polarization2]
+
+        point_id = 0
+        positions = numpy.linspace(self.energy_start, self.energy_end, self.intervals+1)
+        point_id = 0
+        for position in positions:
+            for polarization in polarizations:
+                step['positions'] = [position, position, polarization]
+                step['point_id'] = point_id
+                point_id += 1
+                yield step
