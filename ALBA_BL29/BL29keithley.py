@@ -14,7 +14,8 @@ class k428(object):
 
     keithleys = {
         0 : 'BL29/CT/K428-0',
-        1 : 'BL29/CT/K428-1'
+        1 : 'BL29/CT/K428-1',
+        2 : 'BL29/CT/K428-2'
     }
 
     params_rw = {
