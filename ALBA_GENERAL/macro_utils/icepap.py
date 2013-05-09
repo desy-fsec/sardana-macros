@@ -1,3 +1,4 @@
+import time
 import PyTango 
 from sardana.macroserver.macro import *
 
