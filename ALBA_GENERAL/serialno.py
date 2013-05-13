@@ -1,5 +1,5 @@
-from macro import *
-from scan import *
+from sardana.macroserver.macro import *
+from sardana.macroserver.scan import *
 
 class set_serialno(Macro):
     

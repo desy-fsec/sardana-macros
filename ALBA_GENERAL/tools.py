@@ -1,6 +1,5 @@
-from macro import Macro, Type, Hookable
 import time
-
+from sardana.macroserver.macro import * 
 
 class repeat(Hookable, Macro):
     """This macro executes as many repetitions of it's body hook macros as specified by nr parameter.
