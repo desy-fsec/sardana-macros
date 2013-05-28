@@ -1693,3 +1693,169 @@ class mythen_take(Macro, MntGrpController):
         finally:
             parFile.close()
         return outFileName
+
+
+class mythen_getAngConv(Macro):
+    """Gets the constants used for angular convertion."""
+   
+    result_def =  [['fnOut', Type.String, "", '[Filename to print the result]']]
+    
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(['angconv'])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+                
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if 'angconv' in outLine:
+                    fnOut = outLine.split()[1]
+            if lenErrLine != 0:
+                self.error(errLine)
+
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        return fnOut
+    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
+
+
+class mythen_getBadChannels(Macro):
+    """Gets the bad channels."""
+   
+    result_def =  [['filename', Type.String, "", 'Filename to print the result']]
+    
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(['badchannels'])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+                
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if 'badchannels' in outLine:
+                    filename = outLine.split()[1]
+                else:
+                    self.outline(outLine)
+          
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        return filename
+    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
+
+class mythen_getGlobalOff(Macro):
+    """Gets the global offset used for angular conversion."""
+    
+    result_def =  [['globaloff', Type.Float, None, 'Global Offset']]
+    
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(['globaloff'])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        globaloff = None
+        
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if 'globaloff' in outLine:
+                    try:
+                        globaloff = float(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % 
+                                   (" ".self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)                
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if globaloff is None :
+            raise Exception("It was not able to retrieve the global offset.")
+        
+        return globaloff 
+    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
+
+class mythen_setGlobalOff(Macro):
+    """Gets the global offset used for angular conversion."""
+    
+   
+    param_def =  [['globaloff', Type.Float, 0, 'Global Offset']]
+    result_def =  [['globaloff', Type.Float, None, 'Global Offset']]
+    
+    def prepare(self, *args, **kwargs):
+        self.globaloff = args[0]
+        self.slsDetectorProgram = SlsDetectorPut(['globaloff', str(self.globaloff)])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        globaloff = None
+        
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if 'globaloff' in outLine:
+                    try:
+                        globaloff = float(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % 
+                                   (" ".self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)                
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if globaloff is None:
+            raise Exception("It was not able to retrieve the global offset.")
+        return globaloff 
+    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
