@@ -122,4 +122,4 @@ class mad_ascan(Macro):
         try:
             self.execMacro('ascan', *args)
         finally: 
-            self.execMacro("senv", "ActiveMntGrp", mntGrp)
+            self.execMacro("senv", "ActiveMntGrp", oldMntGrp)
