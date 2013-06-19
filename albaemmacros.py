@@ -1,4 +1,5 @@
-from sardana.macroserver.macro import *
+
+from sardana.macroserver.macro import Macro, Type
 #import sys
 #import pyIcePAP
 #import time
