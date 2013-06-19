@@ -1,7 +1,6 @@
 import time
 import PyTango
-
-from macro import Macro, Type
+from sardana.macroserver.macro import Macro, Type
 from macro_utils.icepap import *
             
 class dcm_homing_vert(Macro):
