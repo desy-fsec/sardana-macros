@@ -229,9 +229,7 @@ class ipap_homing(Macro):
 
     result_def = [
         ['homed',  Type.Boolean, None, 'Motors homed state']
-    ]
-    
-        
+    ]       
        
     def prepare(self, *args, **opts):
         self.group = args[0]
@@ -245,28 +243,17 @@ class ipap_homing(Macro):
         motorNames = [motorInfoDict['motor'].name for motorInfoDict in self.motorsInfoList] 
         self.getMotion(motorNames)
         
-   
         
     def run(self, *args, **opts):
 
-        
-        self.debug("""Enter to Run""")
-#        self.debug( type(*arg))
-#        self.motorInfoList
-
-
         if self.group and self.strict:
             return home_group_strict(self, self.motorsInfoList)
-            return False
         elif self.group:
             return home_group(self, self.motorsInfoList)
         elif self.strict:
             return home_strict(self, self.motorsInfoList)
         else: 
             return home(self, self.motorsInfoList)
-
-
-
 
 
 from sardana.macroserver.macro import *
