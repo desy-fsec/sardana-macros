@@ -4,7 +4,7 @@ import time
 
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
 from taurus.core.tango.sardana.pool import StopException
-from slsdetector import SlsDetectorGet, SlsDetectorPut, SlsDetectorAcquire, SlsDetectorProgram
+from macro_utils.slsdetector import SlsDetectorGet, SlsDetectorPut, SlsDetectorAcquire, SlsDetectorProgram
 from macroutils import MntGrpController
 
 
