@@ -24,55 +24,35 @@ TRIGGER_DESTINATION = "/Dev3/RTSI0"
 
 MNT_GRP = "mad"
 
-class PrepareGating(Macro):
+def PrepareGating():
+    dev = taurus.Device(TRIGGER_DEVICE)
+    dev.ConnectTerms([TRIGGER_SOURCE, TRIGGER_DESTINATION, "DoNotInvertPolarity"])
 
-    param_def = []
+def CleanupGating():
+    dev = taurus.Device(TRIGGER_DEVICE)
+    dev.DisconnectTerms([TRIGGER_SOURCE, TRIGGER_DESTINATION])
 
-    def run(self, *args, **kwargs):
-        dev = taurus.Device(TRIGGER_DEVICE)
-        dev.ConnectTerms([TRIGGER_SOURCE, TRIGGER_DESTINATION, "DoNotInvertPolarity"])
+def PrepareMaster():
+    timerChannel = taurus.Device(TRIGGER)
+    if timerChannel.State() != PyTango.DevState.STANDBY:
+        timerChannel.Stop()
+    timerChannel.getAttribute("InitialDelayTime").write(0)
+    timerChannel.getAttribute("SampleMode").write("Finite")
+    timerChannel.getAttribute("SampleTimingType").write("Implicit")
+    timerChannel.getHWObj().write_attribute("SampPerChan", long(1))
+    timerChannel.getAttribute("IdleState").write("Low")        
+    timerChannel.getAttribute("LowTime").write(0.0000001)        
 
-class CleanupGating(Macro):
+def PrepareSlaves():
+    for channelName in COUNTERS:
+        channel = taurus.Device(channelName)
+        if channel.State() != PyTango.DevState.STANDBY:
+            channel.Stop()
+        channel.getAttribute("PauseTriggerType").write("DigLvl")
+        channel.getAttribute("PauseTriggerWhen").write("Low")
+        channel.getAttribute("PauseTriggerSource").write(TRIGGER_DESTINATION)
 
-    param_def = []
-
-    def run(self, *args, **kwargs):
-        dev = taurus.Device(TRIGGER_DEVICE)
-        dev.DisconnectTerms([TRIGGER_SOURCE, TRIGGER_DESTINATION])
-
-class PrepareMaster(Macro):
-
-    param_def = []
-
-    def run(self, *args, **kwargs):
-        timerChannel = taurus.Device(TRIGGER)
-        if timerChannel.State() != PyTango.DevState.STANDBY:
-            timerChannel.Stop()
-        timerChannel.getAttribute("InitialDelayTime").write(0)
-        timerChannel.getAttribute("SampleMode").write("Finite")
-        timerChannel.getAttribute("SampleTimingType").write("Implicit")
-        timerChannel.getHWObj().write_attribute("SampPerChan", long(1))
-        timerChannel.getAttribute("IdleState").write("Low")        
-        timerChannel.getAttribute("LowTime").write(0.0000001)        
-
-class PrepareSlaves(Macro):
-    
-    param_def = []
-
-    def run(self, *args, **kwargs):
-        for channelName in COUNTERS:
-            channel = taurus.Device(channelName)
-            if channel.State() != PyTango.DevState.STANDBY:
-                channel.Stop()
-            channel.getAttribute("PauseTriggerType").write("DigLvl")
-            channel.getAttribute("PauseTriggerWhen").write("Low")
-            channel.getAttribute("PauseTriggerSource").write(TRIGGER_DESTINATION)
-
-class PrepareCountersForStepScanning(Macro):
-
-    param_def = []
-
-    def run(self, *args, **kwargs):
-        self.execMacro("PrepareMaster")
-        self.execMacro("PrepareSlaves")
-        self.execMacro("PrepareGating")
+def PrepareCountersForStepScanning():
+    PrepareMaster()
+    PrepareSlaves()
+    PrepareGating()
