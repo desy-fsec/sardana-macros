@@ -24,6 +24,13 @@ TRIGGER_DESTINATION = "/Dev3/RTSI0"
 
 MNT_GRP = "mad"
 
+
+
+def InitCounters():
+        for channelName in COUNTERS:
+            channel = taurus.Device(channelName)
+            channel.Init()    
+
 def PrepareGating():
     dev = taurus.Device(TRIGGER_DEVICE)
     dev.ConnectTerms([TRIGGER_SOURCE, TRIGGER_DESTINATION, "DoNotInvertPolarity"])
