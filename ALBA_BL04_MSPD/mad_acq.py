@@ -5,6 +5,20 @@ from macro_utils.mad26acq import COUNTERS, PrepareCountersForStepScanning
 
 MNT_GRP = "mad"
 
+class InitCounters(Macro):
+  
+    param_def = []
+    
+    def run(self, *args, **kwargs):
+        InitCounters() 
+
+class PrepareCountersForStepScanning(Macro):
+
+    param_def = []
+
+    def run(self, *args, **kwargs):
+        PrepareCountersForStepScanning()
+
 
 class mad_ct(Macro):
     
@@ -43,3 +57,5 @@ class mad_ascan(Macro):
             self.execMacro('ascan', *args)
         finally: 
             self.execMacro("senv", "ActiveMntGrp", oldMntGrp)
+
+
