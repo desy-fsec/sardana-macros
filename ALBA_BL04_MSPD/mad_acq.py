@@ -5,14 +5,6 @@ from macro_utils.mad26acq import COUNTERS, PrepareCountersForStepScanning
 
 MNT_GRP = "mad"
 
-class InitCounters(Macro):
-    
-    param_def = []
-    
-    def run(self, *args, **kwargs):
-        for channelName in COUNTERS:
-            channel = taurus.Device(channelName)
-            channel.Init()    
 
 class mad_ct(Macro):
     
