@@ -3,7 +3,7 @@ import time, math
 from sardana.macroserver.macro import Macro, Type
 from taurus.console.table import Table
 from trigger import PositionBase, Trigger
-from macroutils import SoftShutterController
+from macro_utils.macroutils import SoftShutterController
 
 class BaseExp:
 
