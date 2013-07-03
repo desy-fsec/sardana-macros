@@ -3,6 +3,7 @@ import PyTango, taurus
 from sardana.macroserver.macro import *
 from macro_utils.mad26acq import COUNTERS, 
 from macro_utils.mad26acq import PrepareCountersForStepScanning as PrepareCountersForStepScanningFunction
+from macro_utils.macroutils import SoftShutterControl
 
 MNT_GRP = "mad"
 
@@ -21,21 +22,34 @@ class PrepareCountersForStepScanning(Macro):
         PrepareCountersForStepScanningFunction()
 
 
-class mad_ct(Macro):
+class mad_ct(Macro, SoftShutterControl):
     
     param_def = [["time", Type.Float, 1.0, "Acq time"]]
 
+    def prepare(self):  
+        SoftShutterControl.init(self)  
+                 
     def run(self, *args, **kwargs):
         time = args[0]
         oldMntGrp = self.getEnv("ActiveMntGrp")
         self.setEnv("ActiveMntGrp", MNT_GRP)
         PrepareCountersForStepScanningFunction()
+            
         try:
-            self.execMacro("ct", time)
+            self._fsShutter = self.getEnv("_fsShutter")
+        except UnknownEnv, e:
+            self._fsShutter = 0
+            
+        try:
+            if self._fsShutter == 1:
+                SoftShutterControl.openShutter(self)
+                self.execMacro("ct", time)
         finally:
             self.setEnv("ActiveMntGrp", oldMntGrp)
+            if self._fsShutter == 1:
+                SoftShutterControl.closeShutter(self)
 
-class mad_ascan(Macro):
+class mad_ascan(Macro, SoftShutterControl):
     
     param_def = [ ['motor',      Type.Moveable,  None, 'Moveable to move'],
               ['start_pos',  Type.Float,   None, 'Scan start position'],
@@ -43,7 +57,11 @@ class mad_ascan(Macro):
               ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
               ['integ_time', Type.Float,   None, 'Integration time']
              ]
-
+    
+    def prepare(self):  
+        SoftShutterControl.init(self)       
+        
+         
     def run(self, *args, **kwargs):
         mot = args[0]
         StartPos =  args[1]
@@ -54,9 +72,19 @@ class mad_ascan(Macro):
         oldMntGrp = self.getEnv("ActiveMntGrp")
         self.setEnv("ActiveMntGrp", MNT_GRP)
         PrepareCountersForStepScanningFunction()
+        
         try:
-            self.execMacro('ascan', *args)
+            self._fsShutter = self.getEnv("_fsShutter")
+        except UnknownEnv, e:
+            self._fsShutter = 0
+        
+        try:
+            if self._fsShutter == 1:
+                SoftShutterControl.openShutter(self)
+                self.execMacro('ascan', *args)
         finally: 
             self.execMacro("senv", "ActiveMntGrp", oldMntGrp)
+            if self._fsShutter == 1:
+                SoftShutterControl.closeShutter(self)
 
 
