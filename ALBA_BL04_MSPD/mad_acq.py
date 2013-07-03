@@ -18,7 +18,7 @@ class PrepareCountersForStepScanning(Macro):
     param_def = []
 
     def run(self, *args, **kwargs):
-        PrepareCountersForStepScanning()
+        PrepareCountersForStepScanningFunction()
 
 
 class mad_ct(Macro):
@@ -29,7 +29,7 @@ class mad_ct(Macro):
         time = args[0]
         oldMntGrp = self.getEnv("ActiveMntGrp")
         self.setEnv("ActiveMntGrp", MNT_GRP)
-        PrepareCountersForStepScanning()
+        PrepareCountersForStepScanningFunction()
         try:
             self.execMacro("ct", time)
         finally:
@@ -53,7 +53,7 @@ class mad_ascan(Macro):
         args = (mot.name,StartPos,EndPos,Npts,intTim)
         oldMntGrp = self.getEnv("ActiveMntGrp")
         self.setEnv("ActiveMntGrp", MNT_GRP)
-        PrepareCountersForStepScanning()
+        PrepareCountersForStepScanningFunction()
         try:
             self.execMacro('ascan', *args)
         finally: 
