@@ -1,7 +1,8 @@
 import time
 import PyTango, taurus
 from sardana.macroserver.macro import *
-from macro_utils.mad26acq import COUNTERS, PrepareCountersForStepScanning
+from macro_utils.mad26acq import COUNTERS, 
+from macro_utils.mad26acq import PrepareCountersForStepScanning as PrepareCountersForStepScanningFunction
 
 MNT_GRP = "mad"
 
