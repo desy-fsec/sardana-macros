@@ -4,6 +4,8 @@
 Specific Alba BL29 XMCD end station util macros
 """
 
+__all__=['xmcd_4kpot_set_refill', 'xmcd_sample_temp_control']
+
 import PyTango
 import time
 
@@ -411,3 +413,56 @@ class xmcd_sample_temp_control(Macro):
             msg = 'Error while checking written parameter %s with %s value' % (param_name, str(param_value))
             self.output(msg)
             raise Exception(msg)
+
+
+# class xmcd_3D_mv(Macro):
+#     """
+#     Macro for moving the 3D magnetic field vector of the XMCD end station.
+# 
+#     The coordinate system is the one commonly used in physics (which is also the
+#     ISO standard). The beam direction is Y axis in positive sense. See:
+#     http://en.wikipedia.org/wiki/File:3D_Spherical.svg
+#     """
+# 
+#     timeout_millis = 6000
+# 
+#     attrs = ['B', 'Theta', 'Phi']
+# 
+#     ctrl_dev = 'XMCD/CT/VM'
+# 
+#     param_def = [
+#         [attrs[0], Type.Float, None, 'modulus'],
+#         [attrs[1], Type.Float, None, 'theta (0-180 degress)'],
+#         [attrs[2], Type.Float, None, 'phi (0-360 degress)'],
+#     ]
+# 
+#     def prepare(self, *args):
+#         """Check that VectorMagent device server is up an running"""
+#         if len(args) != len(self.attrs):
+#             raise Exception('Invalid number of parameters')
+#         try:
+#             self.dev = PyTango.DeviceProxy(self.ctrl_dev)
+#             if self.dev.state() != PyTango.DevState.ON:
+#                 msg = 'VectorMagnet device server is not ON. Please check!'
+#                 raise Exception(msg)
+#         except:
+#             msg = 'Unknown error accessing VectorMagnet device server. Please check!'
+#             self.error(msg)
+#             raise Exception(msg)
+# 
+#         for idx, attr in enumerate(self.attrs):
+#             attr_info = self.dev.attribute_query(attr)
+#             try:
+#                 min_value, max_value = [float(attr_info.min_value), float(attr_info.max_value)]
+#             except ValueError:
+#                 continue
+#             value = args[idx]
+#             if (value < min_value) or (value>max_value):
+#                 raise Exception('%s is out of limits' % attr)
+# 
+#     def run(self, *args):
+#         """Ramp vector to specified values"""
+#         #increase timeout, since this may take a long time
+#         self.dev.set_timeout_millis(self.timeout_millis)
+#         #ramp to target
+#         self.dev.command_inout('RampVector',args)

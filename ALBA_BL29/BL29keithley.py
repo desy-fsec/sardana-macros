@@ -4,6 +4,8 @@
 Specific Alba BL29 util macros for managing the Keithley 428
 """
 
+__all__=['k428get', 'k428set']
+
 import PyTango
 
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
