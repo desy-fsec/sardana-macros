@@ -1,6 +1,7 @@
+import time
+import os
 import Queue
 import PyTango
-import time
 
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
 from taurus.core.tango.sardana.pool import StopException
@@ -528,8 +529,9 @@ class mythen_setFlatFieldDir(Macro):
             self.slsDetectorProgram.kill()   
             
 class mythen_getFlatFieldFile(Macro):
-    """Gets name of the next output file."""
-    
+    """Gets name of the flat field correction file.
+       'none' - flat field correction is disabled"""
+          
     result_def =  [['flatFieldFile', Type.String, None, 'Name of the flat field file']]
     
     def prepare(self, *args, **kwargs):
@@ -568,7 +570,8 @@ class mythen_getFlatFieldFile(Macro):
             self.slsDetectorProgram.kill()
 
 class mythen_setFlatFieldFile(Macro):
-    """Sets name of the flat field file."""
+    """Sets name of the flat field correction file.
+       'none' - disables flat field correction"""
     
     param_def =  [['flatFieldFile', Type.String, None, 'New name of the flat field file']]
     result_def =  [['flatFieldFile', Type.String, None, 'Name of the flat field file']]
@@ -592,10 +595,14 @@ class mythen_setFlatFieldFile(Macro):
                 if "flatfield" in outLine:
                     #example of output: "fname NAConMoedgeRh"
                     flatFieldFile = outLine.split()[1]
-                else:
-                    self.output(outLine)
+#                else:
+#                    self.output(outLine)
             if lenErrLine != 0:
-                self.error(errLine)
+                if "flatfield" in errLine:
+                    #example of output: "fname NAConMoedgeRh"
+                    flatFieldFile = errLine.split()[1]
+#                else:
+#                    self.error(errLine)
             if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if flatFieldFile is None:
@@ -1752,8 +1759,51 @@ class mythen_getBadChannels(Macro):
             if lenOutLine != 0:
                 if 'badchannels' in outLine:
                     filename = outLine.split()[1]
+#                else:
+#                    self.output(outLine)
+          
+#            if lenErrLine != 0:
+#                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        return filename
+    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
+
+class mythen_setBadChannels(Macro):
+    """Gets the bad channels."""
+   
+    param_def  =  [['newFileName', Type.String, None, 'Bad channel file name']]
+    result_def =  [['ackFileName', Type.String, None, 'Acknowledged bad channel file name']]
+    
+    def prepare(self, *args, **kwargs):
+        self.badChannelFilename = args[0]
+        if self.badChannelFilename != 'none':
+            if not os.path.isfile(self.badChannelFilename):
+                raise Exception('File %s does not exist.' % self.badChannelFilename)
+        self.slsDetectorProgram = SlsDetectorPut(['badchannels', self.badChannelFilename])
+
+    def run(self, *args, **kwargs):
+        self.info('running')
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+                
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if 'badchannels' in outLine:
+                    filename = outLine.split()[1]
                 else:
-                    self.outline(outLine)
+                    self.output(outLine)
           
             if lenErrLine != 0:
                 self.error(errLine)
@@ -1852,6 +1902,42 @@ class mythen_setGlobalOff(Macro):
         if globaloff is None:
             raise Exception("It was not able to retrieve the global offset.")
         return globaloff 
+    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
+
+class mythen_setConfig(Macro):
+    """Sets configuration from file."""
+    
+    param_def  =  [['confFileName', Type.String, '/homelocal/opbl04/bl04mythen.conf', 'Configuration file name']]
+    
+    def prepare(self, *args, **kwargs):
+        confFileName = args[0]
+        if not os.path.isfile(confFileName):
+            raise Exception('File %s does not exist.' % confFileName)
+        self.slsDetectorProgram = SlsDetectorPut(["config", confFileName])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        settings = None
+        
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: "  + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
     
     def on_abort(self):
         if not self.slsDetectorProgram.isTerminated():
