@@ -70,7 +70,7 @@ class BaseExp:
         self.mntGrp = self.getObj(mntGrpName, type_class=Type.MeasurementGroup)
         cfg = self.mntGrp.getConfiguration()
         cfg.prepare()
-        self.mntGrp.setIntegrationTime(self.mntGrpAcqTime)
+        self.mntGrp.putIntegrationTime(self.mntGrpAcqTime)
         self.debug("BaseExp.prepareMntGrp() leaving...")
 
     def acquireDetector(self):
