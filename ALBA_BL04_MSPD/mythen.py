@@ -728,8 +728,23 @@ class mythen_getPositions(Macro):
 class mythen_acquire(Macro):
     """Acquires images with mythen detector. If positions are set it will go to positions and acquire one frame per position."""
     
-    result_def = [['OutFile', Type.String, None, 'Full path to the output file']]
-    
+    result_def = [['OutFile', Type.String, None, 'Full path to the output file'],
+                  ['Positions', Type.String, None, 'Positions where acquisition took place']]
+
+    POSITION_STR = 'Current position is'
+    MOTOR_NAME = 'pd_mc'
+
+    def obtainPositionFromLine(self, line):
+        position = None
+        if self.POSITION_STR in line:
+           str_parts = line.split(self.POSITION_STR)
+           position_str = str_parts[1]
+           try:
+               position = float(position_str)
+           except ValueError, e:
+               self.debug('Position present in the positions string line had an invalid literal.')
+        return position
+        
     def prepare(self, *args, **kwargs):
         #self.slsDetectorProgram = SlsDetectorAcquire([])       
         self.stdOutQueue = Queue.Queue()
@@ -737,12 +752,22 @@ class mythen_acquire(Macro):
         self.slsDetectorProgram = SlsDetectorProgram([], "sls_detector_acquire", self.stdOutQueue, self.stdErrQueue)
         
     def run(self, *args, **kwargs):
-        positions = self.execMacro('mythen_getPositions').getResult()
-        if positions == "[]":
+        positions_str = self.execMacro('mythen_getPositions').getResult()
+        positions = eval(positions_str)
+        positions_len = len(positions)
+        current_positions = []
+        
+        if positions_len == 0:
             self.motor=None
         else:
-            self.warning("Motor 'pd_mc' will move to %s" % repr(positions))
-            self.motor=self.getMotion(["pd_mc"])
+            #this call ensures us that the motor will get aborted 
+            #when macro gets aborted
+            self.getMotion([self.MOTOR_NAME])
+            motor = self.getMotor(self.MOTOR_NAME)
+            is_motor_powered = motor.read_attribute('poweron').value
+            if not is_motor_powered:
+                raise Exception('Motor: %s is powered off.' % self.MOTOR_NAME)
+            self.warning("Motor: %s will move to %s" % (self.MOTOR_NAME, repr(positions)))
         
         self.slsDetectorProgram.execute()
         
@@ -750,7 +775,8 @@ class mythen_acquire(Macro):
             self.checkPoint()
             try:
                 outLine = None
-                outLine = self.stdOutQueue.get(timeout=.1);self.debug( "outLine: " + outLine)
+                outLine = self.stdOutQueue.get(timeout=.1)
+                self.debug("outLine: " + outLine)
             except Queue.Empty, e:
                 pass
             except StopException, e:
@@ -761,27 +787,39 @@ class mythen_acquire(Macro):
             
             try:
                 errLine = None
-                errLine = self.stdErrQueue.get(timeout=.1);self.debug( "errLine: " + errLine)
+                errLine = self.stdErrQueue.get(timeout=.1)
+                self.debug("errLine: " + errLine)
             except Queue.Empty, e:
                 pass
             except StopException, e:
                 raise e
             except Exception, e:
-                self.error("Exception when reading from sls_detector_acquire standard output. Exiting...")
+                self.error("Exception when reading from sls_detector_acquire standard error. Exiting...")
                 raise e
                 
-            if outLine != None and len(outLine) != 0:
-                self.output(outLine)
-            if errLine != None and len(errLine) != 0:
-                self.error(errLine)
+            if outLine != None and len(outLine) != 0 and positions_len != 0:
+                position = self.obtainPositionFromLine(outLine)
+                if position != None:
+                    current_positions.append(position)
+            if errLine != None and len(errLine) != 0 and positions_len != 0:
+                position = self.obtainPositionFromLine(errLine)
+                if position != None:
+                    current_positions.append(position)
             if self.slsDetectorProgram.isTerminated():
                 self.debug("slsDetectorProgram has terminated...")
                 break
+
         outDir = self.execMacro("mythen_getOutDir").getResult()
         outFileName = self.execMacro("mythen_getOutFileName").getResult()
         outIndex = self.execMacro("mythen_getIndex").getResult()
-        outPath = outDir + "/" + outFileName + "_" + str(outIndex-1) + ".dat"        
-        return outPath
+        outPath = outDir + "/" + outFileName + "_" + str(outIndex-1) + ".dat"
+
+        if positions_len != len(current_positions):
+            self.warning('Number of the positions reported by' +
+                         ' sls_detector_acquire does not correspond to' + 
+                         ' number of the requested positions.') 
+        return_positions_str = repr(current_positions)
+        return (outPath, return_positions_str)
     
     def on_abort(self):
         self.output("on_abort() entering...")
@@ -1665,21 +1703,55 @@ class mythen_take(Macro, MntGrpController):
     
     result_def = [['OutFile', Type.String, None, 'Full path to the output file']]
     
+    MONITOR_CHANNEL = 'bl04/io/ibl0403-dev2-ctr0'
+    MONITOR_CHANNEL_GATE = '/Dev2/PFI38'        
+        
+    def _backupChannel(self, channel):
+        self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
+        self._pauseTriggerWhen = channel.read_attribute('PauseTriggerWhen').value
+        self._pauseTriggerSource = channel.read_attribute('PauseTriggerSource').value
+        self.debug('PauseTriggerType: %s' % self._pauseTriggerType)
+        self.debug('PauseTriggerWhen: %s' % self._pauseTriggerWhen)
+        self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)
+        
+    def _restoreChannel(self, channel):
+        channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
+        channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
+        channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
+        
+    def _configureChannel(self, channel):
+        channel.write_attribute("PauseTriggerType", "DigLvl")
+        channel.write_attribute("PauseTriggerWhen", "Low")
+        channel.write_attribute("PauseTriggerSource", self.MONITOR_CHANNEL_GATE)
+        
     def prepare(self, *args, **kwargs):
         MntGrpController.init(self, self)
-        #expTime = self.execMacro("mythen_getExpTime").getResult()
-        #positions = self.execMacro("mythen_getPositions").getResult()
-        #positions = eval(positions)
-        #nrOfPositions = len(positions)
-        ##self.output("nrOfPositions: %d" % nrOfPositions)
-        #if nrOfPositions > 0: 
-            #self.mntGrpAcqTime = expTime * nrOfPositions
-        #else:
-            #self.mntGrpAcqTime = expTime
-        #self.output("mntGrpAcqTime: %d" % self.mntGrpAcqTime)
-    
+        self.monitorChannel = PyTango.DeviceProxy(self.MONITOR_CHANNEL)
+	self.monitorChannel.Stop()
+        #preparing Mythen to generate gate while acquiring
+        self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
+        
     def run(self, *args, **kwargs):
-        outFileName = self.execMacro("mythen_acquire").getResult()
+        self._backupChannel(self.monitorChannel)
+        try:
+            self._configureChannel(self.monitorChannel)
+            self.monitorChannel.Start()
+            outFileName, positions = self.execMacro("mythen_acquire").getResult()
+            nrOfPositions = len(eval(positions))
+            if nrOfPositions == 0:
+                nrOfPositions = 1
+            monitorValue = self.monitorChannel.read_attribute('Count').value
+            monitorValuePerPosition = int(monitorValue / nrOfPositions)
+            self.info('MonitorValue: %f' % monitorValue)
+            self.info('MonitorValuePerPosition: %d' % monitorValuePerPosition)
+        except Exception, e:
+            self.error('Exception during acquisition')
+            self.warning(e)
+            raise e
+        finally:
+            self.monitorChannel.Stop()
+            self._restoreChannel(self.monitorChannel)
+
         self.info("Data stored: %s" % outFileName)
         self.mntGrpAcqTime = 0.1
         MntGrpController.prepareMntGrp(self)
@@ -1689,8 +1761,11 @@ class mythen_take(Macro, MntGrpController):
         parFileName = outFileName[:-3] + "par"
         try:
             parFile = open(parFileName,"w")
-            parFile.write("#")
+           # parFile.write("#")
+            parFile.write("# imon %d " % monitorValuePerPosition)
             parFile.write(results)
+            parFile.write('\nMonitor = %d' % monitorValuePerPosition)
+            parFile.write('\nIsPos = %s' % positions)
             extraHeader = self.execMacro("_mythpar").getResult()
             parFile.write(extraHeader)
             self.info("MntGrp data stored: %s" % parFileName)
