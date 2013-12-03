@@ -8,7 +8,15 @@ from taurus.core.tango.sardana.pool import StopException
 from macro_utils.slsdetector import SlsDetectorGet, SlsDetectorPut, SlsDetectorAcquire, SlsDetectorProgram
 from macroutils import MntGrpController
 
+def splitStringIntoLines(string, delimeter):
+    '''Splits string into lines.'''
 
+    splitted_lines = []
+    lines = string.split(delimeter)
+    for line in lines:
+        if len(line) != 0:
+            splitted_lines.append(line)
+    return splitted_lines
 
 class mythen_getThreshold(Macro):
     """Gets mythen threshold."""
@@ -734,7 +742,11 @@ class mythen_acquire(Macro):
     POSITION_STR = 'Current position is'
     MOTOR_NAME = 'pd_mc'
 
-    def obtainPositionFromLine(self, line):
+    FILTERS = ['Current position is', ' %']
+
+    def _obtainPositionFromLine(self, line):
+        '''parse output/error lines for existence of current positions'''
+
         position = None
         if self.POSITION_STR in line:
            str_parts = line.split(self.POSITION_STR)
@@ -744,6 +756,22 @@ class mythen_acquire(Macro):
            except ValueError, e:
                self.debug('Position present in the positions string line had an invalid literal.')
         return position
+ 
+    def _splitStringIntoLines(self, string):
+        '''split string into lines'''
+        lines = []
+        cr_splitted_strings = splitStringIntoLines(string, '\r')
+        for string in cr_splitted_strings:
+            nl_splitted_lines = splitStringIntoLines(string, '\n')
+            lines.extend(nl_splitted_lines)
+        return lines
+
+    def _isInfoLine(self, line):
+        '''filters output/error line for existence of interesting info'''        
+        for filter in self.FILTERS:
+            if filter in line:
+                return True
+        return False
         
     def prepare(self, *args, **kwargs):
         #self.slsDetectorProgram = SlsDetectorAcquire([])       
@@ -774,9 +802,8 @@ class mythen_acquire(Macro):
         while True:
             self.checkPoint()
             try:
-                outLine = None
-                outLine = self.stdOutQueue.get(timeout=.1)
-                self.debug("outLine: " + outLine)
+                output = None
+                output = self.stdOutQueue.get(timeout=.1)
             except Queue.Empty, e:
                 pass
             except StopException, e:
@@ -786,9 +813,8 @@ class mythen_acquire(Macro):
                 raise e
             
             try:
-                errLine = None
-                errLine = self.stdErrQueue.get(timeout=.1)
-                self.debug("errLine: " + errLine)
+                error = None
+                error = self.stdErrQueue.get(timeout=.1)
             except Queue.Empty, e:
                 pass
             except StopException, e:
@@ -797,14 +823,29 @@ class mythen_acquire(Macro):
                 self.error("Exception when reading from sls_detector_acquire standard error. Exiting...")
                 raise e
                 
-            if outLine != None and len(outLine) != 0 and positions_len != 0:
-                position = self.obtainPositionFromLine(outLine)
-                if position != None:
-                    current_positions.append(position)
-            if errLine != None and len(errLine) != 0 and positions_len != 0:
-                position = self.obtainPositionFromLine(errLine)
-                if position != None:
-                    current_positions.append(position)
+            if output != None:
+                lines = self._splitStringIntoLines(output)
+                for line in lines:
+                    self.debug('StdOut: %s' % line)
+                    # filtering output lines
+                    if self._isInfoLine(line):
+                        self.output(line.strip())
+                # obtaining current positions
+                if positions_len != 0:
+                    position = self._obtainPositionFromLine(output)
+                    if position != None:
+                        current_positions.append(position)
+            if error != None:
+                lines = self._splitStringIntoLines(error)
+                for line in lines:
+                    self.debug('StdErr: %s' % line)
+                    if self._isInfoLine(line):
+                        self.output(line.strip())
+                # obtaining current positions
+                if positions_len != 0:
+                    position = self._obtainPositionFromLine(error)
+                    if position != None:
+                        current_positions.append(position)
             if self.slsDetectorProgram.isTerminated():
                 self.debug("slsDetectorProgram has terminated...")
                 break
@@ -1723,7 +1764,24 @@ class mythen_take(Macro, MntGrpController):
         channel.write_attribute("PauseTriggerType", "DigLvl")
         channel.write_attribute("PauseTriggerWhen", "Low")
         channel.write_attribute("PauseTriggerSource", self.MONITOR_CHANNEL_GATE)
-        
+
+    def _count(self, count_time):
+        '''Executes a count of the measurement group. It returns results
+           or in case of exception None'''
+#        self.mntGrpAcqTime = count_time
+        MntGrpController.setAcqTime(self, count_time)
+        try: 
+            MntGrpController.prepareMntGrp(self)
+            MntGrpController.acquireMntGrp(self)
+        except Exception, e:
+            self.warning('Exception while using measurement group')
+            self.debug(e)
+            return None
+        finally:
+            MntGrpController.waitMntGrp(self)
+        results = MntGrpController.getMntGrpResults(self)
+        return results
+                
     def prepare(self, *args, **kwargs):
         MntGrpController.init(self, self)
         self.monitorChannel = PyTango.DeviceProxy(self.MONITOR_CHANNEL)
@@ -1753,22 +1811,32 @@ class mythen_take(Macro, MntGrpController):
             self._restoreChannel(self.monitorChannel)
 
         self.info("Data stored: %s" % outFileName)
-        self.mntGrpAcqTime = 0.1
-        MntGrpController.prepareMntGrp(self)
-        MntGrpController.acquireMntGrp(self)
-        MntGrpController.waitMntGrp(self)
-        results = MntGrpController.getMntGrpResults(self)
+        
+        mnt_grp_time = 0.1
+        mnt_grp_results = None
+        for i in range(3):
+            msg = 'Measurement group count of time: %s [s]' % mnt_grp_time
+            self.output(msg)
+            mnt_grp_results = self._count(mnt_grp_time)
+            if mnt_grp_results != None:
+                break
+        else:
+            msg = 'It was not able to count with the measurement within 3 attempts'
+            self.error(msg)
+            msg = 'Measurement group data will be skipped in the par file'
+            self.info(msg)
+                               
         parFileName = outFileName[:-3] + "par"
         try:
             parFile = open(parFileName,"w")
-           # parFile.write("#")
             parFile.write("# imon %d " % monitorValuePerPosition)
-            parFile.write(results)
+            if mnt_grp_results != None:
+                parFile.write(mnt_grp_results)
             parFile.write('\nMonitor = %d' % monitorValuePerPosition)
             parFile.write('\nIsPos = %s' % positions)
             extraHeader = self.execMacro("_mythpar").getResult()
             parFile.write(extraHeader)
-            self.info("MntGrp data stored: %s" % parFileName)
+            self.info("Metadata stored: %s" % parFileName)
         except Exception,e:
             self.error("Error while writing par file.")
             raise e

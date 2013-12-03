@@ -33,9 +33,14 @@ class MntGrpController:
     
     def init(self, macro):
         self.macro = macro
+        self.count_id = None
+
+    def setAcqTime(self, acq_time):
+        self.mntGrpAcqTime = acq_time
 
     def prepareMntGrp(self):
         self.macro.debug("MntGrpController.prepareMntGrp() entering...")
+        self.count_id = None
         mntGrpName = self.macro.getEnv('ActiveMntGrp')
         self.mntGrp = self.macro.getObj(mntGrpName, type_class=Type.MeasurementGroup)
         cfg = self.macro.mntGrp.getConfiguration()
@@ -45,12 +50,16 @@ class MntGrpController:
         
     def acquireMntGrp(self):
         self.macro.debug("MntGrpController.acquireMntGrp() entering...")
-        self.countId = self.mntGrp.start()
+        self.count_id = self.mntGrp.start()
         self.macro.debug("MntGrpController.acquireMntGrp() leaving...")
 
     def waitMntGrp(self):
         self.macro.debug("MntGrpController.waitMntGrp() entering...")
-        self.mntGrp.waitFinish(id=self.countId)
+        if self.count_id != None:
+            self.mntGrp.waitFinish(id=self.count_id)
+        else:
+            msg = "MntGrpController.waitMntGrp() trying to call wait with id = None"
+            self.macro.warning(msg)
         self.macro.debug("MntGrpController.waitMntGrp() leaving...")
 
     #old way to retrieve results, since table is formatted, it is not very useful
