@@ -351,7 +351,8 @@ def ipap_jog(self, motor, velocity):
 @macro([["motor", Type.Motor, None, "motor to reset"]])
 def ipap_reset_motor(self, motor):
     '''Resets a crate where the Icepap motor belongs to. This will send an 
-       autmatic notification to recipients declared in '%s' variable''' % ENV_TO
+       autmatic notification to recipients declared 
+       in '_IcepapEmailRecipients' variable'''
 
     motor_name = motor.getName()
     if not isIcepapMotor(self, motor):
@@ -400,7 +401,7 @@ def ipap_reset_motor(self, motor):
         ["crate_nr", Type.Integer, -1, "crate_nr"]])
 def ipap_reset(self, icepap_ctrl, crate_nr):
     """Resets Icepap. This will send an autmatic notification to recipients
-       declared in '%s' variable""" % ENV_TO
+       declared in '_IcepapEmailRecipients' variable"""
 
     if not isIcepapController(self, icepap_ctrl):
         self.error('Controller: %s is not an Icepap controller' % \
