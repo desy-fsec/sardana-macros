@@ -33,9 +33,14 @@ class MntGrpController:
     
     def init(self, macro):
         self.macro = macro
+        self.count_id = None
+
+    def setAcqTime(self, acq_time):
+        self.mntGrpAcqTime = acq_time
 
     def prepareMntGrp(self):
         self.macro.debug("MntGrpController.prepareMntGrp() entering...")
+        self.count_id = None
         mntGrpName = self.macro.getEnv('ActiveMntGrp')
         self.mntGrp = self.macro.getObj(mntGrpName, type_class=Type.MeasurementGroup)
         cfg = self.macro.mntGrp.getConfiguration()
@@ -45,12 +50,16 @@ class MntGrpController:
         
     def acquireMntGrp(self):
         self.macro.debug("MntGrpController.acquireMntGrp() entering...")
-        self.countId = self.mntGrp.start()
+        self.count_id = self.mntGrp.start()
         self.macro.debug("MntGrpController.acquireMntGrp() leaving...")
 
     def waitMntGrp(self):
         self.macro.debug("MntGrpController.waitMntGrp() entering...")
-        self.mntGrp.waitFinish(id=self.countId)
+        if self.count_id != None:
+            self.mntGrp.waitFinish(id=self.count_id)
+        else:
+            msg = "MntGrpController.waitMntGrp() trying to call wait with id = None"
+            self.macro.warning(msg)
         self.macro.debug("MntGrpController.waitMntGrp() leaving...")
 
     #old way to retrieve results, since table is formatted, it is not very useful
@@ -76,7 +85,7 @@ class MntGrpController:
         
         self.macro.debug("channels: " + repr(channels))
         self.macro.debug("values: " + repr(values))
-        results = [ch["name"] + " " + str(values[ch["full_"]]) for ch in channels]
+        results = [ch["name"] + " " + str(values[ch["full_name"]]) for ch in channels]
         resultsStr = " ".join(results)
         self.macro.debug("MntGrpController.getMntGrpResults() leaving...")
         return resultsStr
@@ -117,7 +126,8 @@ class FeController:
                 isClosed = True
         self.macro.debug("FeController.closeFe() returning %d ..." % isClosed)
         return isClosed
-    
+
+
 class MoveableController:
 
     def init(self, motor):
@@ -178,7 +188,7 @@ class MoveableController:
     def moveToPrestart(self):
         self.debug("MoveableController.moveToPrestart() entering...")
         self.debug("%s motor moving to the pre-start position: %f." % (self.motor.name, self.preStartPos))
-        #self.motor.move(self.preStartPos)
+        self.motor.move(self.preStartPos)
         self.debug("MoveableController.moveToPrestart() leaving...")
 
     def moveToPostend(self):
@@ -197,7 +207,7 @@ class MoveableController:
 
     def cleanup(self):
         self.debug("MoveableController.cleanup() entering...")
-        #self.motor.stop()
+        self.motor.stop()
         self.motor.write_attribute("velocity", self.old_vel)
         #icepap recalculated acceleration, overwritting it
         self.motor.write_attribute("acceleration", self.acc_time)
