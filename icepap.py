@@ -372,7 +372,17 @@ def ipap_reset_motor(self, motor):
     axis_nr = motor.getAxis()
     crate_nr = fromAxisToCrateNr(axis_nr)
     status = motor.read_attribute('StatusDetails').value
-    cmd = "RESET %d" % crate_nr
+    status_closeLoop = motor.read_attribute('StatusStopCode').value
+    alarm_msg_closeLoop = "Close loop error"
+    
+
+    # Implement verification about the StatusStopCode to decide which command to execute:
+    if alarm_msg_closeLoop in status_closeLoop:
+        cmd = "%d:ESYNC" % axis_nr
+        self.debug('Detected Close Loop error')
+    else:
+        cmd = "RESET %d" % crate_nr
+
     self.debug('Sending command: %s' % cmd)
     pool_obj.SendToController([ctrl_name, cmd])
     msg = 'Crate nr: %d of the Icepap host: %s ' % (crate_nr, icepap_host) + \
@@ -485,15 +495,17 @@ def _getPoolObj(pool_element):
     db = pool_element.get_device_db()
     db_proxy = PyTango.DeviceProxy((pool_element.get_device_db()).dev_name())
     info = db_proxy.DbGetDeviceInfo(pool_element.dev_name())
-    server_name = info[1][3] #array, the second element is a str list.
+    server_name_element = info[1][3] #array, the second element is a str list.
     pool_exported_list = db.get_device_exported_for_class('Pool').value_string
     count = 0
     for pool_exported in pool_exported_list:
-        if pool_exported.find(server_name) != -1:
+        info = db_proxy.DbGetDeviceInfo(pool_exported)
+        server_name_pool = info[1][3] #array, the second element is a str list.
+        if server_name_element == server_name_pool:
             count +=1
             pool_name = pool_exported
 
-    if count > 1:
+    if count != 1:
         raise Exception('There are more than one instance of the Pool')
     pool_proxy = PyTango.DeviceProxy(pool_name)
 
