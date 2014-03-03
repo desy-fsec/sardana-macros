@@ -40,4 +40,14 @@ class dwell(Macro):
     ]
     
     def run(self, dtime):
-        time.sleep(dtime)
+        while dtime> 0:
+            self.checkPoint()
+            
+            if dtime > 1:
+                time.sleep(1)
+                dtime = dtime - 1 
+            else:
+                time.sleep(dtime)
+                dtime = 0
+                
+                
