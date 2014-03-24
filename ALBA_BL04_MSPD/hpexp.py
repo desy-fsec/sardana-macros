@@ -155,29 +155,40 @@ class BaseExp:
                 headerLines.append(headerLineMotors)
                 headerLines.append(headerLinePositions)
         except Exception, e:
-            self.error("Problem while populating image header information.")
+            self.error("Problem while populating image header information in motor positions.")
             self.debug(e)
         finally:
             if f != None: f.close()
         #end 
+        
+        
+        try:
+            data = self.mntGrp.getValues()
+            headerCounters, headerValues = [], []
+            for ch_info in self.mntGrp.getChannelsInfo():
+                headerCounters.append(ch_info.label)
+                if ch_info.shape > [1]:
+                    value = ch_info.shape
+                else:
+                    value= data.get(ch_info.full_name)
+                    
+                if value is None:
+                    value = float('nan')
+                headerValues.append(value)
 
-        data = self.mntGrp.getValues()
-        headerCounters, headerValues = [], []
-        for ch_info in self.mntGrp.getChannelsInfo():
-            headerCounters.append(ch_info.label)
-            if ch_info.shape > [1]:
-                headerValues.append(ch_info.shape)
-            else:
-                headerValues.append(data.get(ch_info.full_name))
-
-        table = Table([headerValues], row_head_str=headerCounters, row_head_fmt='%*s',
-                      col_sep='  =  ')
-        for line in table.genOutput():
-            self.output(line)
-        headerLineCounters = "counter_mne = " + " ".join(headerCounters)
-        headerLineValues = "counter_pos = " + " ".join(["%.4e" % value for value in headerValues])
-        headerLines.append(headerLineCounters)
-        headerLines.append(headerLineValues)
+            table = Table([headerValues], row_head_str=headerCounters, row_head_fmt='%*s',
+                        col_sep='  =  ')
+            for line in table.genOutput():
+                self.output(line)
+            headerLineCounters = "counter_mne = " + " ".join(headerCounters)
+            headerLineValues = "counter_pos = " + " ".join(["%.4e" % value for value in headerValues])
+            headerLines.append(headerLineCounters)
+            headerLines.append(headerLineValues)
+        except Exception, e:
+            self.error("Problem while populating image header information in mntGrp Values.")
+            self.debug(e)
+            
+        
 
         header = "0;" + "|".join(headerLines)
         self.debug("BaseExp.populateHeader() setting lima header: %s" % header)
