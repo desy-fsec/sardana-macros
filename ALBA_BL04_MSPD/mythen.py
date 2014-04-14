@@ -742,7 +742,7 @@ class mythen_acquire(Macro):
     POSITION_STR = 'Current position is'
     MOTOR_NAME = 'pd_mc'
 
-    FILTERS = ['Current position is', ' %']
+    FILTERS = ['Current position is', ' %', 'ERROR:']
 
     def _obtainPositionFromLine(self, line):
         '''parse output/error lines for existence of current positions'''
@@ -840,7 +840,7 @@ class mythen_acquire(Macro):
                 for line in lines:
                     self.debug('StdErr: %s' % line)
                     if self._isInfoLine(line):
-                        self.output(line.strip())
+                        self.error(line.strip())    
                 # obtaining current positions
                 if positions_len != 0:
                     position = self._obtainPositionFromLine(error)
