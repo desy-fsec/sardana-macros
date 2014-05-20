@@ -7,6 +7,7 @@ from sardana.macroserver.macro import Macro, Type, ParamRepeat
 from taurus.core.tango.sardana.pool import StopException
 from macro_utils.slsdetector import SlsDetectorGet, SlsDetectorPut, SlsDetectorAcquire, SlsDetectorProgram
 from macro_utils.macroutils import MntGrpController, SoftShutterController, MoveableController
+from utils import count2pulseWidth, pulseWidth2count
 
 def splitStringIntoLines(string, delimeter):
     '''Splits string into lines.'''
@@ -1743,27 +1744,38 @@ class mythen_setSettings(Macro):
 class mythen_take(Macro, MntGrpController):
     
     result_def = [['OutFile', Type.String, None, 'Full path to the output file']]
-    
+    param_def = [['softscan', Type.Boolean, False,'It use in mythen_softscan'],
+                 ['startpos', Type.String, '', 'start position'],
+                 ['endpos' , Type.String, '', 'end position']]
+
     MONITOR_CHANNEL = 'bl04/io/ibl0403-dev2-ctr0'
     MONITOR_CHANNEL_GATE = '/Dev2/PFI38'        
         
     def _backupChannel(self, channel):
-        self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
+	self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
         self._pauseTriggerWhen = channel.read_attribute('PauseTriggerWhen').value
         self._pauseTriggerSource = channel.read_attribute('PauseTriggerSource').value
         self.debug('PauseTriggerType: %s' % self._pauseTriggerType)
         self.debug('PauseTriggerWhen: %s' % self._pauseTriggerWhen)
         self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)
         
+	positions = self.execMacro("mythen_getPositions").getResult()
+        spc = long(len(eval(positions)))
+	
+	if spc>1:
+		self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
+        
     def _restoreChannel(self, channel):
+        self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
         channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
         channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
         channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
         
     def _configureChannel(self, channel):
-        channel.write_attribute("PauseTriggerType", "DigLvl")
-        channel.write_attribute("PauseTriggerWhen", "Low")
-        channel.write_attribute("PauseTriggerSource", self.MONITOR_CHANNEL_GATE)
+        positions = self.execMacro("mythen_getPositions").getResult()
+        self.spc = long(len(eval(positions)))
+        if self.spc > 1:
+		channel.write_attribute("SampPerChan", self.spc)
 
     def _count(self, count_time):
         '''Executes a count of the measurement group. It returns results
@@ -1785,23 +1797,37 @@ class mythen_take(Macro, MntGrpController):
     def prepare(self, *args, **kwargs):
         MntGrpController.init(self, self)
         self.monitorChannel = PyTango.DeviceProxy(self.MONITOR_CHANNEL)
-	self.monitorChannel.Stop()
+        self.monitorChannel.Stop()
         #preparing Mythen to generate gate while acquiring
         self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
         
     def run(self, *args, **kwargs):
         self._backupChannel(self.monitorChannel)
+        softscan = args[0]
+        startpos = args[1]
+        endpos = args[2]
+
         try:
             self._configureChannel(self.monitorChannel)
+
             self.monitorChannel.Start()
             outFileName, positions = self.execMacro("mythen_acquire").getResult()
             nrOfPositions = len(eval(positions))
             if nrOfPositions == 0:
                 nrOfPositions = 1
-            monitorValue = self.monitorChannel.read_attribute('Count').value
-            monitorValuePerPosition = int(monitorValue / nrOfPositions)
-            self.info('MonitorValue: %f' % monitorValue)
-            self.info('MonitorValuePerPosition: %d' % monitorValuePerPosition)
+	    if nrOfPositions > 1:	
+	            monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
+		    monitorValueList = list(monitorValueList)
+
+	    else:
+                    monitorValue = self.monitorChannel.read_attribute('Count').value
+		    #monitorValueList = list(monitorValueList)
+            	    monitorValuePerPosition = int(monitorValue / nrOfPositions)
+                    monitorValueList = [monitorValuePerPosition for i in range(nrOfPositions)]
+            
+
+            self.info('MonitorValuePerPosition: %s' % monitorValueList)
+            #self.info('MonitorValuePerPosition: %d' % monitorValuePerPosition)
         except Exception, e:
             self.error('Exception during acquisition')
             self.warning(e)
@@ -1829,11 +1855,17 @@ class mythen_take(Macro, MntGrpController):
         parFileName = outFileName[:-3] + "par"
         try:
             parFile = open(parFileName,"w")
-            parFile.write("# imon %d " % monitorValuePerPosition)
-            if mnt_grp_results != None:
-                parFile.write(mnt_grp_results)
-            parFile.write('\nMonitor = %d' % monitorValuePerPosition)
-            parFile.write('\nIsPos = %s' % positions)
+            #parFile.write("# imon %d " % monitorValuePerPosition)
+            #if mnt_grp_results != None:
+            #    parFile.write(mnt_grp_results)
+            
+	    parFile.write('Monitor = %d' % monitorValueList[0])
+            parFile.write('\nIsMon = %s' % monitorValueList)
+            if not softscan:
+                parFile.write('\nIsPos = %s' % positions)
+            else:
+                parFile.write('\nMythenSoftScan Pos: %s, %s' %(startpos, endpos))
+
             extraHeader = self.execMacro("_mythpar").getResult()
             parFile.write(extraHeader)
             self.info("Metadata stored: %s" % parFileName)
@@ -1842,7 +1874,10 @@ class mythen_take(Macro, MntGrpController):
             raise e
         finally:
             parFile.close()
-        return outFileName
+        #return outFileName
+        monitors = monitorValueList
+        #return outFileName,nrOfPositions,positions,monitorValueList
+        return outFileName,nrOfPositions,positions,monitors
 
 
 class mythen_getAngConv(Macro):
@@ -2136,7 +2171,7 @@ class mythen_softscan(Macro, MoveableController, SoftShutterController): #, MntG
         
     def run(self, *args, **kwargs):
         self.debug("mythen_softscan. run entering...")
-        
+        count_time = args[3]
         try:
             self.moveToPrestart()
             self.openShutter()
@@ -2144,11 +2179,12 @@ class mythen_softscan(Macro, MoveableController, SoftShutterController): #, MntG
             #self.acquireMntGrp()
                        
             self.moveToPostend()
-            self.info("Waiting, movement and acquisition in progress...") 
-            self.execMacro("mythen_take %f" %self.acqTime) 
+            self.info("Waiting, movement and acquisition in progress...")
+            self.execMacro('mythen_setExpTime',count_time) 
+            self.execMacro("mythen_take True %f %f" %(self.start_pos, self.end_pos)) 
 
 
-	        #sleep_time = self.accTime
+	    #sleep_time = self.accTime
             #time.sleep(sleep_time)                
             #self.openShutter()                                 
             #outFileName = self.execMacro("mythen_acquire").getResult()
@@ -2162,9 +2198,10 @@ class mythen_softscan(Macro, MoveableController, SoftShutterController): #, MntG
 
             self.info("Cleanup...")   
             self.closeShutter() 
-            self.cleanup()
-            #todo 
-            # restore position backup change to 
+            # cleanup to False because we don't need that motor return 
+            # to start position
+            
+            self.cleanup(False)
 
     def on_abort(self):
         self.debug("mythen_softscan.on_abort() entering...")
