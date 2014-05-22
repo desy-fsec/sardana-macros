@@ -100,67 +100,15 @@ class BaseExp:
     def populateHeader(self):
         self.debug("BaseExp.populateHeader() entering...")               
         headerLines = []
-        headerLines.append("scan_type = %s %s" % (self.getName(),self.getParameters()))
-        headerBeamX = self.rayonixSpecific.read_attribute("header_beam_x").value
-        headerLines.append("beam_center_x = %.2f" % headerBeamX)
-        headerBeamY = self.rayonixSpecific.read_attribute("header_beam_y").value
-        headerLines.append("beam_center_y = %.2f" % headerBeamY)
-        headerDistance = self.rayonixSpecific.read_attribute("header_distance").value
-        headerLines.append("refined_distance = %.2f" % (headerDistance))
-        headerWavelength = self.rayonixSpecific.read_attribute("header_wavelength").value
-        headerLines.append("refined_wavelength = %.4f" % (headerWavelength))
-        headerIntegrationTime = self.rayonixSpecific.read_attribute("header_integration_time").value
-        headerLines.append("t_int = %.4f" % headerIntegrationTime)
-        headerReadoutTime = self.rayonixSpecific.read_attribute("header_readout_time").value
-        headerLines.append("t_read = %.4f" % headerReadoutTime)
-        headerPixelSizeX = self.rayonixSpecific.read_attribute("header_pixelsize_x").value
-        headerLines.append("pixel_size_x = %.2f" % headerPixelSizeX)
-        headerPixelSizeY = self.rayonixSpecific.read_attribute("header_pixelsize_y").value
-        headerLines.append("pixel_size_y = %.2f" % headerPixelSizeY)
-
-        dcmKev = PyTango.DeviceProxy("dcm_kev")
-        energy = dcmKev.read_attribute("position").value
-        wavelength = 12.39/energy
-        headerLines.append("exp_wavelength = %.4f" % wavelength)
-        hpDy = PyTango.DeviceProxy("hp_dy")
-        hpDyPos = hpDy.read_attribute("position").value
-        hpSyu = PyTango.DeviceProxy("hp_syu")
-        hpSyuPos = hpSyu.read_attribute("position").value
-        hpSyd = PyTango.DeviceProxy("hp_syd")
-        hpSydPos = hpSyd.read_attribute("position").value
-        distance =  hpDyPos - hpSyuPos - hpSydPos
-        headerLines.append("exp_distance = %.2f" % distance)
-        
-        
-        #temporary solution: file /beamlines/bl04/inhouse/ff/header.txt is a communication channels between scientist and controls
-        #at the end the list of motors will got fixed
-        f = None
-        try:
-            f = open("/beamlines/bl04/inhouse/ff/header.txt", "r")
-            motorLines = f.readlines()
-            for idx,line in enumerate(motorLines):
-                headerMotors, headerPositions = [], []
-                motorNames = line.split()
-                for motorName in motorNames:
-                    try:
-                        motor = PyTango.DeviceProxy(motorName)
-                        position = motor.read_attribute("Position").value
-                    except Exception, e:
-                        self.error("Unable to retrieve information about motor: %s postion" % motorName)
-                        continue
-                    headerMotors.append(motorName)
-                    headerPositions.append("%.4f" % position)
-                headerLineMotors = "motor_mne%d = " % idx + " ".join(headerMotors)
-                headerLinePositions = "motor_pos%d = " % idx + " ".join(headerPositions)                
-                headerLines.append(headerLineMotors)
-                headerLines.append(headerLinePositions)
-        except Exception, e:
-            self.error("Problem while populating image header information in motor positions.")
-            self.debug(e)
-        finally:
-            if f != None: f.close()
-        #end 
-               
+        #The next lines are to parse type Motor(tbl0401:10000/motor/eh_ipap_ctrl/23) to motor.name
+        #We convert to tuple-list-tuple
+        params = self.getParameters()
+        params = list(params)
+        if type(params[0]) != float:
+            params[0] = params[0].name
+        params = tuple(params)
+        headerLines.append("scan_type = %s %s" % (self.getName(),params))
+   
         try:
             data = self.mntGrp.getValues()
             headerCounters, headerValues = [], []
@@ -169,14 +117,14 @@ class BaseExp:
                 if ch_info.shape > [1]:
                     value = ch_info.shape
                 else:
-                    value= data.get(ch_info.full_name)
-                    
+                    value = data.get(ch_info.full_name)
+    
                 if value is None:
                     value = float('nan')
                 headerValues.append(value)
-
+                    
             table = Table([headerValues], row_head_str=headerCounters, row_head_fmt='%*s',
-                        col_sep='  =  ')
+                          col_sep='  =  ')
             for line in table.genOutput():
                 self.output(line)
             headerLineCounters = "counter_mne = " + " ".join(headerCounters)
@@ -184,9 +132,16 @@ class BaseExp:
             headerLines.append(headerLineCounters)
             headerLines.append(headerLineValues)
         except Exception, e:
-            self.error("Problem while populating image header information in mntGrp Values.")
-            self.debug(e)       
-
+            self.error("BaseExp.populateHeader() Problem in image header information in mntGrp Values.")
+        
+        
+        try:
+            userHeaderLines =self.execMacro("_marpar").getResult()
+            headerLines.append(userHeaderLines)
+        except Exception, e:
+            self.error("Error while populating header with _marpar macro result.")
+            self.debug(e)
+                
         header = "0;" + "|".join(headerLines)
         self.debug("BaseExp.populateHeader() setting lima header: %s" % header)
 
