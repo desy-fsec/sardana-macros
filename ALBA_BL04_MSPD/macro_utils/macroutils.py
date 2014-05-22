@@ -205,13 +205,15 @@ class MoveableController:
         self.motor.write_attribute("position", self.post_end_pos)
         self.debug("MoveableController.moveToPostend() leaving...")
 
-    def cleanup(self):
+    def cleanup(self, goBack=True):
         self.debug("MoveableController.cleanup() entering...")
         self.motor.stop()
         self.motor.write_attribute("velocity", self.old_vel)
         #icepap recalculated acceleration, overwritting it
         self.motor.write_attribute("acceleration", self.acc_time)
-        self.motor.move(self.current_pos)
-        self.info("Move %s back to initial position : %.4f" % 
+
+        if goBack==True:
+            self.motor.move(self.current_pos)
+            self.info("Move %s back to initial position : %.4f" % 
                   (self.motor.name, self.current_pos))
         self.debug("MoveableController.cleanup() leaving...")
