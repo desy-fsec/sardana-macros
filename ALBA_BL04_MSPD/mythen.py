@@ -743,7 +743,7 @@ class mythen_acquire(Macro):
     POSITION_STR = 'Current position is'
     MOTOR_NAME = 'pd_mc'
 
-    FILTERS = ['Current position is', ' %', 'ERROR:']
+    FILTERS = ['Current position is', ' %']
 
     def _obtainPositionFromLine(self, line):
         '''parse output/error lines for existence of current positions'''
@@ -841,7 +841,7 @@ class mythen_acquire(Macro):
                 for line in lines:
                     self.debug('StdErr: %s' % line)
                     if self._isInfoLine(line):
-                        self.error(line.strip())    
+                        self.output(line.strip())
                 # obtaining current positions
                 if positions_len != 0:
                     position = self._obtainPositionFromLine(error)
@@ -1749,33 +1749,48 @@ class mythen_take(Macro, MntGrpController):
                  ['endpos' , Type.String, '', 'end position']]
 
     MONITOR_CHANNEL = 'bl04/io/ibl0403-dev2-ctr0'
-    MONITOR_CHANNEL_GATE = '/Dev2/PFI38'        
+    MONITOR_CHANNEL_GATE = '/Dev2/PFI38'    
+    MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'    
         
     def _backupChannel(self, channel):
-	self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
+        DicProperties = channel.get_property('applicationType')
+        valueProperties = DicProperties["applicationType"]
+        value = list(valueProperties)[0]
+      
+        if value == "CIPulseWidthChan":
+            self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+
+        self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
         self._pauseTriggerWhen = channel.read_attribute('PauseTriggerWhen').value
         self._pauseTriggerSource = channel.read_attribute('PauseTriggerSource').value
         self.debug('PauseTriggerType: %s' % self._pauseTriggerType)
         self.debug('PauseTriggerWhen: %s' % self._pauseTriggerWhen)
-        self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)
-        
-	positions = self.execMacro("mythen_getPositions").getResult()
+        self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)        
+        positions = self.execMacro("mythen_getPositions").getResult()
         spc = long(len(eval(positions)))
 	
-	if spc>1:
-		self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
+        if spc>1:
+            self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
         
     def _restoreChannel(self, channel):
         self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
         channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
         channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
         channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
+        channel.Init()
         
     def _configureChannel(self, channel):
         positions = self.execMacro("mythen_getPositions").getResult()
         self.spc = long(len(eval(positions)))
         if self.spc > 1:
-		channel.write_attribute("SampPerChan", self.spc)
+            channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
+            channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
+            channel.write_attribute("SampPerChan", self.spc)
+            channel.write_attribute("SampleclockRate", 100.0)
+        else:
+            channel.write_attribute("PauseTriggerType", "DigLvl")
+            channel.write_attribute("PauseTriggerWhen", "Low")
+            channel.write_attribute("PauseTriggerSource", self.MONITOR_CHANNEL_GATE)
 
     def _count(self, count_time):
         '''Executes a count of the measurement group. It returns results
@@ -1815,15 +1830,15 @@ class mythen_take(Macro, MntGrpController):
             nrOfPositions = len(eval(positions))
             if nrOfPositions == 0:
                 nrOfPositions = 1
-	    if nrOfPositions > 1:	
-	            monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
-		    monitorValueList = list(monitorValueList)
+            if nrOfPositions > 1:
+                monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
+                monitorValueList = list(monitorValueList)
 
-	    else:
-                    monitorValue = self.monitorChannel.read_attribute('Count').value
-		    #monitorValueList = list(monitorValueList)
-            	    monitorValuePerPosition = int(monitorValue / nrOfPositions)
-                    monitorValueList = [monitorValuePerPosition for i in range(nrOfPositions)]
+            else:
+                monitorValue = self.monitorChannel.read_attribute('Count').value
+                #monitorValueList = list(monitorValueList)
+                monitorValuePerPosition = int(monitorValue / nrOfPositions)
+                monitorValueList = [monitorValuePerPosition for i in range(nrOfPositions)]
             
 
             self.info('MonitorValuePerPosition: %s' % monitorValueList)
@@ -1856,10 +1871,11 @@ class mythen_take(Macro, MntGrpController):
         try:
             parFile = open(parFileName,"w")
             #parFile.write("# imon %d " % monitorValuePerPosition)
-            #if mnt_grp_results != None:
-            #    parFile.write(mnt_grp_results)
+            parFile.write("# imon %d " % monitorValueList[0])
+            if mnt_grp_results != None:
+                parFile.write(mnt_grp_results)
             
-	    parFile.write('Monitor = %d' % monitorValueList[0])
+            parFile.write('\nMonitor = %d' % monitorValueList[0])
             parFile.write('\nIsMon = %s' % monitorValueList)
             if not softscan:
                 parFile.write('\nIsPos = %s' % positions)
@@ -2200,7 +2216,6 @@ class mythen_softscan(Macro, MoveableController, SoftShutterController): #, MntG
             self.closeShutter() 
             # cleanup to False because we don't need that motor return 
             # to start position
-            
             self.cleanup(False)
 
     def on_abort(self):
