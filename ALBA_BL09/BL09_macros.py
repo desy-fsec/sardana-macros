@@ -35,4 +35,4 @@ class scanMM(Macro):
         #"""Run macro"""       
         myMacro, pars = self.createMacro("ascan",motor1,startPos,endPos,nIntervals,integrationTime)
         myMacro.hooks = [(self.myHook, ['post-move'])]
-        self.runMacro(myMacro)acro)
+        self.runMacro(myMacro)

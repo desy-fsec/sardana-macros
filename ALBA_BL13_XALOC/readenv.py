@@ -14,7 +14,7 @@ class readenv(Macro):
         out = list(['Name', 'Value'])
         env = self.getAllDoorEnv()
         for k,v in env.iteritems():
-            self.info('%s %s\n' %(repr(k),repr(v))
+            self.info('%s %s\n' %(repr(k),repr(v)))
 #            str_val = repr(v)
 #            out.append([str(k), str_val])
 #        currentScanFile = str_val[str.index('ScanFile')]
