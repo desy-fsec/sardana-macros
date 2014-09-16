@@ -4,7 +4,7 @@
 Specific Alba BL29 util macros for managing the Keithley 428
 """
 
-__all__=['k428get', 'k428set']
+__all__=['k428']
 
 import PyTango
 
@@ -12,124 +12,119 @@ from sardana.macroserver.macro import Macro, Type, ParamRepeat
 from sardana.macroserver.scan import SScan
 
 
-class k428(object):
+class k428(Macro):
+    """
+    Macro for getting/setting Keithley K428 electrometers parameters
+    and/or running its commands.
+
+    For GETTING the parameters, specify the keithley name (or \"all\" to get
+    info from all the keithleys) followed by the \"get\" keyword followed by the
+    list of parameters you want to get or the special keyword \"all\"
+    if you want to get all the parameters.
+    For example:
+        k428 keithley_name get gain risetime
+        k428 all get all
+
+    For SETTING the parameters, specify the keithley name (or \"all\" to set
+    value(s) into all the keithleys) followed by the \"set\" keyword followed by
+    list of pairs consisting of a pair formed by param_name + param_value.
+    For example:
+        k428 keithley_name set Gain 9
+        k428 all set Gain 10 RiseTime 100
+
+    For RUNNING a command,  specify the keithley name (or \"all\" to run command
+    in all the keithleys) followed by the \"run\" keyword followed by the list
+    of commands you want to run (note that no parameters are necessary for commands).
+    For example:
+        k428 keithley_name AutoFilterOff
+        k428 all run PerformZeroCorrect AutoFilterOn
+
+    For INFO on which electrometer name corresponds to which physical electrometer
+    type the \"info\" keyword:
+        k428 info
+
+    Note that keywords, parameters names, command names and parameter values
+    are caseless.
+    """
 
     keithleys = {
-        0 : 'BL29/CT/K428-0',
-        1 : 'BL29/CT/K428-1',
-        2 : 'BL29/CT/K428-2'
+        'i1_sample_tey' : 'BL29/CT/K428-0',
+        'i2_KB_tey'     : 'BL29/CT/K428-1',
+        'i0_diode'      : 'BL29/CT/K428-2'
     }
-
-    params_rw = {
-        'gain'       : int,
-        'bypass'     : int,
-    }
-
-    params_ro = {
-        'overloaded' : int
-    }
-
-    @staticmethod
-    def check_keithley(keithley_id):
-        """"""
-        if keithley_id not in k428.keithleys.keys():
-            raise Exception('Invalid keithley_id %d' % keithley_id)
-
-        dev_name = k428.keithleys[keithley_id]
-        try:
-            dev = PyTango.DeviceProxy(dev_name)
-            dev.state()
-        except:
-            raise Exception('Keithley %d seems to be unreachable. Please check its tango device (%s) state' % (keithley_id, dev_name))
-
-        return dev
-
-    @staticmethod
-    def check_params(dev, param_names, check_rw=False):
-        """"""
-        valid_params = k428.params_rw
-        if not check_rw: #check that all param_names are writable
-            valid_params.update(k428.params_ro)
-
-        for param_name in param_names:
-            if param_name.lower() not in valid_params.keys():
-                return (False, param_name)
-        return (True,'')
-
-
-class k428set(Macro):
-    """
-    Keithley 428 parameters configuring macro.
-    """
 
     param_def = [
-        ['keithley_id', Type.Integer,  None, 'Keithley number'],
-        ['name_value',
-         ParamRepeat(['param_name',  Type.String, None, 'parameter name'],
-                     ['param_value', Type.String, None, 'parameter value']),
-         None, 'List of tuples: (param_name, param_value)']
+        ['keithley_name', Type.String, None, str(['all']+sorted(keithleys.keys()))],
+        ['operation', Type.String, None, 'Operation to perform [get/set/run/info]'],
+        ['param_list', ParamRepeat(['param',  Type.String, None, 'pair(s) of (parameter + value) or command(s)']), '', '']
     ]
 
-    def prepare(self, keithley_id, *pairs, **opts):
-        """Check that the Keithley is reachable"""
-        #check keithley
-        self.dev = k428.check_keithley(keithley_id)
+    
+    def prepare_keithleys(self,keithley_name):
+        """"""
+        if keithley_name.lower() == 'all':
+            ids = sorted(self.keithleys.keys())
+        elif keithley_name.lower() not in self.keithleys.keys():
+            raise Exception('Invalid keithley_name %s' % keithley_name)
+        else:
+            ids = [keithley_name.lower()]
 
-    def run(self, keithley_id, *pairs):
-        #check param_names
-        param_names = [pair[0] for pair in pairs]
-        param_values = [pair[1] for pair in pairs]
-        ok, param_wrong = k428.check_params(self.dev, param_names, check_rw=True)
-        if not ok:
-            self.output('parameter %s is not recognized or not writable' % param_wrong)
-            return False
+        self.devs = {}
+        for id in ids:
+            dev_name = self.keithleys[id]
+            try:
+                self.devs[id] = PyTango.DeviceProxy(dev_name)
+                self.devs[id].state()
+            except:
+                raise Exception('Keithley %d seems to be unreachable. Please check its tango device (%s) state' % (id, dev_name))
 
-        #write parameters and check they were correctly written
-        data = {}
-        for param_name, param_value in zip(param_names, param_values):
-            param_value = k428.params_rw[param_name](param_value)
-            self.dev.write_attribute(param_name, param_value)
-            param_value_rb = self.dev.read_attribute(param_name).value
-            if param_value != param_value_rb:
-                msg = 'parameter %s setvalue (%s) was not correctly set in instrument (readback %s)' % (param_name, str(param_value), str(param_value_rb))
-                self.output(msg)
-                return False
-            self.output('%s %s correctly set in instrument' % (param_name, str(param_value)))
-            data[param_name] = param_value
+    def prepare(self, keithley_id, operation, *param_list):
+        """Check that the Keithley(s) is(are) reachable"""
+        self.prepare_keithleys(keithley_id)
 
-        #@todo: remove this comment as soon as this call is supported
-        #self.setData(data)
-        return True
+    def run(self, keithley_id, operation, *param_list):
+        result = {}
+        for key in self.devs.keys():
+            dev = self.devs[key]
+            dev_result = {}
+            if operation.lower() == 'get':
+                if 'all' in [param.lower() for param in param_list]:
+                    param_list = dev.get_attribute_list()
+                for param in param_list:
+                    value = dev.read_attribute(param).value
+                    dev_result[param] = value
+                    self.output('Keithley %s %s: %s' % (str(key), param, str(value)))
+            elif operation.lower() == 'set':
+                params = list(param_list)
+                if (len(params) % 2) != 0:
+                    raise Exception('Invalid parameter list: %s' % str(param_list))
+                while len(params) > 1:
+                    value = params.pop()
+                    param = params.pop()
+                    dev.write_attribute(param,int(value)) #we are lucky that all writable attributes are DevLong
+                    self.output('Keithley %s %s %s correctly set' % (str(key), param, value))
+            elif operation.lower() == 'run':
+                for cmd in param_list: #we are lucky that all commands are paramless
+                    dev.command_inout(cmd)
+                    self.output('Command %s correctly run' % cmd)
+            elif operation.lower() == 'info':
+                dev_result = dev.name()
+                self.output('Keithley %s is attached to %s' % (str(key), str(dev_result)))
+            else:
+                raise Exception('Unknown operation: %s' % operation)
+            if len(param_list) > 1:
+                self.output('\n')
+            result[key] = dev_result
+
+        return result
 
 
-class k428get(Macro):
-    """
-    Keithley 428 parameters retrieving macro.
-    """
-
-    param_def = [
-        ['keithley_id', Type.Integer, None, 'Keithley number'],
-        ['param_names', ParamRepeat(['param_name',  Type.String, None, 'parameter name']), None, 'list of parameters names']
-    ]
-
-    def prepare(self, keithley_id, *param_names, **opts):
-        """Check that the Keithley is reachable"""
-        #check keithley
-        self.dev = k428.check_keithley(keithley_id)
-
-    def run(self, keithley_id, *param_names):
-        #check param_names
-        ok, param_wrong = k428.check_params(self.dev, param_names)
-        if not ok:
-            self.output('parameter %s is not recognized' % param_wrong)
-            return False
-
-        #get parameters and return
-        data = {}
-        for param_name in param_names:
-            data[param_name] = self.dev.read_attribute(param_name).value
-            self.output('%s: %s' % (param_name, str(data[param_name])))
-
-        #@todo: remove this comment as soon as this call is supported
-        #self.setData(data)
-        return True
+#class k428_test(Macro):
+    #"""Test results given by k428 macro"""
+    #def run(self):
+        #mac, _ = self.createMacro('k428','all', 'get', 'all')
+        #mac, _ = self.createMacro('k428','all', 'info')
+        #mac, _ = self.createMacro('k428','all', 'set', 'gain','10')
+        #mac, _ = self.createMacro('k428','all', 'run', 'autofilteron')
+        #result = self.runMacro(mac)
+        #self.output('%s\n\n\n%s' % (str(mac), str(result)))
