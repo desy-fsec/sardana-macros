@@ -5,18 +5,18 @@ from sardana.macroserver.macro import *
 
 
 PARAMS = ['RESC', 'CLCK', 'TPEA', 'GAIF', 'GAIN', 'RESL', 'TFLA', 'TPFA', 
-'PURE', 'RTDE', 'MCAS', 'MCAC', 'SOFF', 'AINP', 'INOF', 'GAIA', 'CUSP', 'PDMD', 
-'THSL', 'TLLD', 'THFA', 'DACO', 'DACF', 'RTDS', 'RTDT', 'BLRM', 'BLRD', 'BLRU', 
-'GATE', 'AUO1', 'PRET', 'PRER', 'PREC', 'PRCL', 'PRCH', 'HVSE', 'TECS', 'PAPS', 
-'SCOE', 'SCOT', 'SCOG', 'MCSL', 'MCSH', 'MCST', 'AUO2', 'TPMO', 'GPED', 'GPIN', 
-'GPME', 'GPGA', 'GPMC', 'MCAE', 'VOLU', 'CON1', 'CON2', 'BOOT', 'TPEA', 'GAIF', 
-'GAIN', 'RESL', 'TFLA', 'SOFF', 'INOF', 'CUSP', 'THSL', 'TLLD', 'THFA', 'DACO', 
-'DACF', 'RTDS', 'RTDT', 'BLRD', 'BLRU', 'AUO1', 'PRET', 'PRER', 'PREC', 'PRCL', 
-'PRCH', 'HVSE', 'TECS', 'MCSL', 'MCSH', 'MCST', 'AUO2', 'GPIN' ]
+        'PURE', 'RTDE', 'MCAS', 'MCAC', 'SOFF', 'AINP', 'INOF', 'GAIA', 'CUSP', 'PDMD', 
+        'THSL', 'TLLD', 'THFA', 'DACO', 'DACF', 'RTDS', 'RTDT', 'BLRM', 'BLRD', 'BLRU', 
+        'GATE', 'AUO1', 'PRET', 'PRER', 'PREC', 'PRCL', 'PRCH', 'HVSE', 'TECS', 'PAPS', 
+        'SCOE', 'SCOT', 'SCOG', 'MCSL', 'MCSH', 'MCST', 'AUO2', 'TPMO', 'GPED', 'GPIN', 
+        'GPME', 'GPGA', 'GPMC', 'MCAE', 'VOLU', 'CON1', 'CON2', 'BOOT', 'TPEA', 'GAIF', 
+        'GAIN', 'RESL', 'TFLA', 'SOFF', 'INOF', 'CUSP', 'THSL', 'TLLD', 'THFA', 'DACO', 
+        'DACF', 'RTDS', 'RTDT', 'BLRD', 'BLRU', 'AUO1', 'PRET', 'PRER', 'PREC', 'PRCL', 
+        'PRCH', 'HVSE', 'TECS', 'MCSL', 'MCSH', 'MCST', 'AUO2', 'GPIN' ]
 
 
 PARAMS_IN_DS = [['PRET','AcquisitionTime'],['AUO1','AuxOut1'],['CLCK','Clock']
-                , ['GAIA','CoarseGain'],['CON1','Con1'],['GAIAF','FineGain']
+                , ['GAIA','CoarseGain'],['CON1','Con1'],['GAIF','FineGain']
                 , ['TFLA','FlatTopWidth'], ['MCAC','MCAC'], ['TPEA','PeakingTime']
                 , ['PURE','PileupReject']]
 
