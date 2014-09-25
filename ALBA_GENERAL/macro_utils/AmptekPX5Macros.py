@@ -301,7 +301,7 @@ class amptekSaveConf(Macro):
 
              
              
-class setROInew(Macro):
+class setROI(Macro):
     """Macro to configure the AmptekPX5 Hardware SCAs"""
 
     param_def = [
