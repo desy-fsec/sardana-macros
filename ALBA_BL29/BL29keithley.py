@@ -9,7 +9,6 @@ __all__=['k428']
 import PyTango
 
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
-from sardana.macroserver.scan import SScan
 
 
 class k428(Macro):
@@ -17,57 +16,56 @@ class k428(Macro):
     Macro for getting/setting Keithley K428 electrometers parameters
     and/or running its commands.
 
-    For GETTING the parameters, specify the keithley name (or \"all\" to get
+    For GETTING the parameters, specify the keithley number (or \"all\" to get
     info from all the keithleys) followed by the \"get\" keyword followed by the
     list of parameters you want to get or the special keyword \"all\"
     if you want to get all the parameters.
     For example:
-        k428 keithley_name get gain risetime
+        k428 keithley_number get gain risetime
         k428 all get all
 
-    For SETTING the parameters, specify the keithley name (or \"all\" to set
+    For SETTING the parameters, specify the keithley number (or \"all\" to set
     value(s) into all the keithleys) followed by the \"set\" keyword followed by
     list of pairs consisting of a pair formed by param_name + param_value.
     For example:
-        k428 keithley_name set Gain 9
+        k428 keithley_number set Gain 9
         k428 all set Gain 10 RiseTime 100
 
-    For RUNNING a command,  specify the keithley name (or \"all\" to run command
+    For RUNNING a command,  specify the keithley number (or \"all\" to run command
     in all the keithleys) followed by the \"run\" keyword followed by the list
     of commands you want to run (note that no parameters are necessary for commands).
     For example:
-        k428 keithley_name AutoFilterOff
+        k428 keithley_number AutoFilterOff
         k428 all run PerformZeroCorrect AutoFilterOn
 
-    For INFO on which electrometer name corresponds to which physical electrometer
-    type the \"info\" keyword:
-        k428 info
+    For INFO on which electrometer number corresponds to which physical electrometer
+    type the keithley number (or \"all\") followed by the \"info\" keyword:
+        k428 all info
 
     Note that keywords, parameters names, command names and parameter values
     are caseless.
     """
 
     keithleys = {
-        'i1_sample_tey' : 'BL29/CT/K428-0',
-        'i2_KB_tey'     : 'BL29/CT/K428-1',
-        'i0_diode'      : 'BL29/CT/K428-2'
+        '1' : 'BL29/CT/K428-1',
+        '2' : 'BL29/CT/K428-2',
+        '3' : 'BL29/CT/K428-3',
     }
 
     param_def = [
-        ['keithley_name', Type.String, None, str(['all']+sorted(keithleys.keys()))],
+        ['keithley_number', Type.String, None, str(['all']+sorted(keithleys.keys()))],
         ['operation', Type.String, None, 'Operation to perform [get/set/run/info]'],
         ['param_list', ParamRepeat(['param',  Type.String, None, 'pair(s) of (parameter + value) or command(s)']), '', '']
     ]
 
-    
-    def prepare_keithleys(self,keithley_name):
+    def prepare_keithleys(self,keithley_id):
         """"""
-        if keithley_name.lower() == 'all':
+        if keithley_id.lower() == 'all':
             ids = sorted(self.keithleys.keys())
-        elif keithley_name.lower() not in self.keithleys.keys():
-            raise Exception('Invalid keithley_name %s' % keithley_name)
+        elif keithley_id.lower() not in self.keithleys.keys():
+            raise Exception('Invalid keithley_id %s. Valid ones are: %s' % (keithley_id, str(sorted(self.keithleys.keys()))))
         else:
-            ids = [keithley_name.lower()]
+            ids = [keithley_id.lower()]
 
         self.devs = {}
         for id in ids:
@@ -84,7 +82,7 @@ class k428(Macro):
 
     def run(self, keithley_id, operation, *param_list):
         result = {}
-        for key in self.devs.keys():
+        for key in sorted(self.devs.keys()):
             dev = self.devs[key]
             dev_result = {}
             if operation.lower() == 'get':
