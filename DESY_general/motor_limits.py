@@ -4,7 +4,7 @@
 
 from __future__ import print_function
 
-__all__ = ["hasy_set_lim"]
+__all__ = ["hasy_set_lim", "hasy_adjust_limits"]
 
 import PyTango
 from sardana.macroserver.macro import *
