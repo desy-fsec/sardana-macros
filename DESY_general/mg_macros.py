@@ -606,7 +606,7 @@ class change_mg(Macro):
         
         if options_list[0][0] == "None":
             self.output("Usage:")
-            self.output("test_mg -a <clearflag> -g <mgName> -t <timer> -e <extraTimer> -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>")
+            self.output("change_mg -a <clearflag> -g <mgName> -t <timer> -e <extraTimer> -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>")
             self.output("")
             self.output("All options except timer are optional")
             self.output("If not MG name is done, the active one is changed")
