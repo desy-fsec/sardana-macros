@@ -611,6 +611,7 @@ class change_mg(Macro):
             self.output("All options except timer are optional")
             self.output("If not MG name is done, the active one is changed")
             self.output("If not clearFlag (true or false) is given, the MG will be cleared and created with the given elements")
+            self.output("Elements in a list have to be given separated by ,: eg. -c exp_ct01,exp_ct02")
             return
             
        
