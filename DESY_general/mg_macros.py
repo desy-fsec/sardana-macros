@@ -22,24 +22,14 @@ class MgConf:
         #
         # the pool for the Mg
         #
-        try: 
+
+        try:
             self.poolMg = DeviceProxy( poolName)
-        except DevFailed, e:
+        except: 
             Except.print_exception( e)
             print("failed to get proxy to ", poolName)
             sys.exit(255)
 
-        poolNames = []
-        poolNames.append(poolName)
-
-        self.pools = []
-        for pool in poolNames:
-            try:
-                self.pools.append( DeviceProxy( pool))
-            except: 
-                Except.print_exception( e)
-                print("failed to get proxy to ", pool)
-                sys.exit(255)
         #
         # find the MG
         #
@@ -83,10 +73,10 @@ class MgConf:
         """
 
         #print "Teresa: findDeviceController ----------------------------------"
+    
         lst = []
-        for pool in self.pools:
-            if not pool.ExpChannelList is None:
-                lst += pool.ExpChannelList
+        if not self.poolMg.ExpChannelList is None:
+            lst = self.poolMg.ExpChannelList
         ctrl = None
         for elm in lst:
             chan = json.loads( elm)
@@ -121,9 +111,8 @@ class MgConf:
           input: exp_c01
           returns: expchan/hasylabvirtualcounterctrl/1
         """
-        lst = []
-        for pool in self.pools:
-            lst += pool.AcqChannelList
+    
+        lst = self.poolMg.AcqChannelList
         argout = None
         for elm in lst:
             chan = json.loads( elm)
@@ -135,6 +124,8 @@ class MgConf:
                 arr = chan['full_name'].split("/")
                 argout = "/".join(arr[0:-1])
         if argout is None:
+            print("Error with device")
+            print(device)
             raise Exception( 'MgUtils.findFullDeviceName', "failed to find  %s" % device)
         return argout
 
@@ -151,7 +142,6 @@ class MgConf:
         device: exp_t01
         """
         ctrl = self.findDeviceController( device)
-        
         if not self.hsh[ u'controllers'].has_key( ctrl):
             self.masterTimer = device
             self.hsh[ u'monitor'] = self.findFullDeviceName( device)
@@ -406,9 +396,8 @@ class MgConf:
         #
         # see whether the controller exists already
         #
-        lst = []
-        for pool in self.pools:
-            lst += pool.ControllerList
+    
+        lst = self.poolMg.ControllerList
         ctrlFullName = None
         for elm in lst:
             chan = json.loads( elm)
@@ -450,9 +439,7 @@ class MgConf:
         #
         # see whether the SCA device exists
         #
-        lst = []
-        for pool in self.pools:
-            lst += pool.ExpChannelList
+        lst = self.poolMg.ExpChannelList
         flag = False
         for elm in lst:
             chan = json.loads( elm)
@@ -480,9 +467,7 @@ class MgConf:
         #
         # see whether the controller exists already
         #
-        lst = []
-        for pool in self.pools:
-            lst += pool.ControllerList
+        lst = self.poolMg.ControllerList
         for elm in lst:
             chan = json.loads( elm)
             if ctrlAlias == chan['name']:
@@ -571,11 +556,16 @@ class create_delete_mg(Macro):
 
         self.output("Changing active MG")
 
-        pools = self.getPools()
-        pool = pools[0]
         
         mg_name = self.getEnv( 'ActiveMntGrp')
         
+        pools = self.getPools()
+        for tmp_pool in pools:
+            for mg in tmp_pool.MeasurementGroupList:
+                hsh = json.loads(mg)
+                if mg_name == hsh["name"]:
+                    pool = tmp_pool
+
         pool.DeleteElement(mg_name)
 
         args = []
@@ -619,14 +609,7 @@ class change_mg(Macro):
         for opt_par in options_list:
             opt_dict[opt_par[0]] = opt_par[1]
 
-        pools = self.getPools()
-        pool = pools[0]
 
-        lst = []
-        if not pool.ExpChannelList is None:
-            lst += pool.ExpChannelList
-
-            
         key = '-g'
         if key in opt_dict:
             mg_name = opt_dict[key]
@@ -637,21 +620,28 @@ class change_mg(Macro):
 
         if len(mntgrp_list) == 0:
             raise Exception('A measurement group with that name does not exists')
-        
-        mg_device = self.getMeasurementGroup(mg_name)
 
+        pools = self.getPools()
+        for tmp_pool in pools:
+            for mg in tmp_pool.MeasurementGroupList:
+                hsh = json.loads(mg)
+                if mg_name == hsh["name"]:
+                    pool = tmp_pool
+                    
         flagClear = True
         key = '-a'
         if key in opt_dict:
             if opt_dict[key] in ["True", "true"]:
                 flagClear = False
 
-
-        self.mg = PyTango.DeviceProxy( mg_name)
+        key = '-t'
+        if flagClear == True:
+            if key not in opt_dict:
+                raise Exception('A timer (-t timer_name) has to be given')
 
         mgConf = MgConf( pool.name(), mg_name, flagClear)
 
-        key = '-t'
+                
         if key in opt_dict:
             for elem in opt_dict[key].split(','):
                 mgConf.addTimer(elem)
