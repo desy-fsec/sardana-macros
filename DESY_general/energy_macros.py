@@ -82,7 +82,7 @@ class escan(Macro):
             diffrac_name = self.getEnv('DiffracDevice')
             self.diffrac = self.getDevice(diffrac_name)
             pseudo_motor_names = []
-            for motor in diffrac.hklpseudomotorlist:
+            for motor in self.diffrac.hklpseudomotorlist:
                 pseudo_motor_names.append(motor.split(' ')[0])
             
             h_device = self.getDevice(pseudo_motor_names[0])
