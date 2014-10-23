@@ -142,7 +142,7 @@ class ca(Macro, _diffrac):
 
         self.diffrac.write_attribute("computetrajectoriessim",hkl_values)
 
-        angles_list = self.diffrac.trajectorylist[i]
+        angles_list = self.diffrac.trajectorylist[0]
         self.output("Trajectory 0 (more trajectories by caa H K L)")
         self.output("")
 
