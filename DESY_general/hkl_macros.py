@@ -281,14 +281,16 @@ class wh(Macro, _diffrac):
         self.output("%s %7.5f" % ("Azimuth (Psi) = ",self.psidevice.Position))
         self.output("%s %7.5f" % ("Wavelength = ", self.diffrac.WaveLength))
         self.output("")
+        str_pos1 = "%7.5f" % self.getDevice(self.angle_device_names['delta']).Position
+        str_pos2 = "%7.5f" % self.getDevice(self.angle_device_names['th']).Position
+        str_pos3 = "%7.5f" % self.getDevice(self.angle_device_names['chi']).Position
+        str_pos4 = "%7.5f" % self.getDevice(self.angle_device_names['phi']).Position
+        str_pos5 = "%7.5f" % self.getDevice(self.angle_device_names['mu']).Position
+        str_pos6 = "%7.5f" % self.getDevice(self.angle_device_names['gamma']).Position
+        
         self.output("%10s %11s %12s %11s %10s %11s" %("Delta","Theta","Chi","Phi","Mu","Gamma"))
-        self.output("%s %7.5f %2s %7.5f %2s %7.5f %2s %7.5f %2s %7.5f %2s %7.5f" % 
-                    (" ",self.getDevice(self.angle_device_names['delta']).Position, 
-                     " ",self.getDevice(self.angle_device_names['th']).Position, 
-                     " ",self.getDevice(self.angle_device_names['chi']).Position, 
-                     " ",self.getDevice(self.angle_device_names['phi']).Position,
-                     " ",self.getDevice(self.angle_device_names['mu']).Position, 
-                     " ",self.getDevice(self.angle_device_names['gamma']).Position))
+        self.output("%10s %11s %12s %11s %10s %11s" % 
+                    (str_pos1, str_pos2, str_pos3, str_pos4, str_pos5, str_pos6))
 
 class diffrac_setmode(Macro, _diffrac):
     """Set operation mode.""" 
