@@ -150,11 +150,18 @@ class ca(Macro, _diffrac):
         self.output("%s %7.5f" % ("Wavelength = ", self.diffrac.WaveLength))
         self.output("")
 
-        self.output("%10s %11s %11s %11s %10s %11s" %
-                    ("Delta","Theta","Chi","Phi","Mu","Gamma"))
-        self.output("  %7.5f  %7.5f  %7.5f  %7.5f  %7.5f  %7.5f " % 
-                    (angles_list[5], angles_list[1], angles_list[2],
-                     angles_list[3], angles_list[0], angles_list[4]))
+        str_pos1 = "%7.5f" % angles_list[5]
+        str_pos2 = "%7.5f" % angles_list[1]
+        str_pos3 = "%7.5f" % angles_list[2]
+        str_pos4 = "%7.5f" % angles_list[3]
+        str_pos5 = "%7.5f" % angles_list[0] 
+        str_pos6 = "%7.5f" % angles_list[4] 
+
+        
+        self.output("%10s %11s %12s %11s %10s %11s" %("Delta","Theta","Chi","Phi","Mu","Gamma"))
+        self.output("%10s %11s %12s %11s %10s %11s" % 
+                    (str_pos1, str_pos2, str_pos3, str_pos4, str_pos5, str_pos6))
+
                            
 class caa(Macro, _diffrac):
     """Calculate motor positions for given H K L according to the current
@@ -190,13 +197,17 @@ class caa(Macro, _diffrac):
             self.output("Azimuth (Psi) = %7.5f" % (self.psidevice.Position))
             self.output("Wavelength =  %7.5f" % (self.diffrac.WaveLength))
             self.output("")
-            self.output("%10s %17s %18s %17s" %("Delta","Theta","Chi","Phi"))
-            self.output("%s %7.5f %8s %7.5f %8s %7.5f %8s %7.5f" % 
-                        (" ",angles_list[5], " ",angles_list[1], " ",angles_list[2],
-                         " ",angles_list[3]))
-            self.output("%10s %17s" %("Gamma","Mu"))
-            self.output("%s %7.5f %9s %7.5f " % 
-                        (" ",angles_list[4], " ",angles_list[0]))
+
+            str_pos1 = "%7.5f" % angles_list[5]
+            str_pos2 = "%7.5f" % angles_list[1]
+            str_pos3 = "%7.5f" % angles_list[2]
+            str_pos4 = "%7.5f" % angles_list[3]
+            str_pos5 = "%7.5f" % angles_list[0] 
+            str_pos6 = "%7.5f" % angles_list[4] 
+        
+            self.output("%10s %11s %12s %11s %10s %11s" %("Delta","Theta","Chi","Phi","Mu","Gamma"))
+            self.output("%10s %11s %12s %11s %10s %11s" % 
+                        (str_pos1, str_pos2, str_pos3, str_pos4, str_pos5, str_pos6))
 
 
 class pa(Macro, _diffrac):
@@ -281,6 +292,7 @@ class wh(Macro, _diffrac):
         self.output("%s %7.5f" % ("Azimuth (Psi) = ",self.psidevice.Position))
         self.output("%s %7.5f" % ("Wavelength = ", self.diffrac.WaveLength))
         self.output("")
+
         str_pos1 = "%7.5f" % self.getDevice(self.angle_device_names['delta']).Position
         str_pos2 = "%7.5f" % self.getDevice(self.angle_device_names['th']).Position
         str_pos3 = "%7.5f" % self.getDevice(self.angle_device_names['chi']).Position
