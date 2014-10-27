@@ -62,6 +62,12 @@ class _diffrac:
 
         self.prepared = True
 
+    def on_abort(self):
+        
+        for angle in self.angle_names:
+            angle_dev = self.getDevice(self.angle_device_names[angle])
+            angle_dev.Stop()
+
 class br(Macro, _diffrac):
     """The br macro is used to move the diffractometer to the reciprocal space 
     coordinates given by H, K and L. If a fourth parameter is given, the combination
