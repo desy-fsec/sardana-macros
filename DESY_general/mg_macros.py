@@ -598,9 +598,9 @@ class change_mg(Macro):
             self.output("Usage:")
             self.output("change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer> -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>")
             self.output("")
-            self.output("All options are optional (except timer if -a is True (add elements to MG)")
+            self.output("All options are optional (except timer if -a is False (clear and create MG)")
             self.output("If not MG name is done, the active one is changed")
-            self.output("If not addFlag (true or false) is given, the MG will be cleared and created with the given elements")
+            self.output("If not addFlag (true or false) is given, the MG will be cleared (addFlag False by default) and created with the given elements")
             self.output("Elements in a list have to be given separated by ,: eg. -c exp_ct01,exp_ct02")
             return
             
