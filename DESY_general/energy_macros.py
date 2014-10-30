@@ -60,22 +60,22 @@ class escan(Macro):
             return
 
         try:
-            energy_motor_name = self.getEnv('EnergyMotorName')
+            energy_device_name = self.getEnv('EnergyDevice')
         except:
-            energy_motor_name = "energy_motor"
+            energy_device_name = "energy_device"
 
-        energy_motor = self.getObj(energy_motor_name)
+        energy_device = self.getObj(energy_device_name)
 
         # set the motor to the initial position for having the right position at the first hook
 
         self.output("Moving energy to the start value ...")
-        self.execMacro("mv %s %f" % (energy_motor_name, start_energy))
+        self.execMacro("mv %s %f" % (energy_device_name, start_energy))
 
-        macro,pars = self.createMacro("ascan", energy_motor, start_energy, end_energy, nr_interv, integ_time)
+        macro,pars = self.createMacro("ascan", energy_device, start_energy, end_energy, nr_interv, integ_time)
 
         self.step = abs(end_energy - start_energy)/nr_interv
 
-        self.energy_motor = energy_motor
+        self.energy_device = energy_device
 
         if fixq == "fixq":
             self.lambda_to_e = 12398.424 # Amstrong * eV
