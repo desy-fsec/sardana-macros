@@ -395,7 +395,17 @@ class diffrac_setlat(Macro, _diffrac):
         self.diffrac.write_attribute("alpha", alpha)        
         self.diffrac.write_attribute("beta", beta)        
         self.diffrac.write_attribute("gamma", gamma)
-     
+               
+        reflections = self.diffrac.reflectionlist
+        if len(reflections) > 12:
+            self.output("Computing U with reflections 0 and 1")
+            values = []                 
+            values.append(0)        
+            values.append(1)
+            self.diffrac.write_attribute("ComputeU", values)
+        else:
+            self.warning("U can not be computed. Only one reflection")
+
 class or0(Macro, _diffrac):
     """Set primary orientation reflection.""" 
     
@@ -418,7 +428,16 @@ class or0(Macro, _diffrac):
         values.append(K)
         values.append(L)
         self.diffrac.write_attribute("AddReflectionWithIndex", values) 
-
+        
+        reflections = self.diffrac.reflectionlist
+        if len(reflections) > 12:
+            self.output("Computing U with reflections 0 and 1")
+            values = []                 
+            values.append(0)        
+            values.append(1)
+            self.diffrac.write_attribute("ComputeU", values)
+        else:
+            self.warning("U can not be computed. Only one reflection")
 
 class or1(Macro, _diffrac):
     """Set secondary orientation reflection.""" 
@@ -442,6 +461,16 @@ class or1(Macro, _diffrac):
         values.append(K)
         values.append(L)
         self.diffrac.write_attribute("AddReflectionWithIndex", values) 
+     
+        reflections = self.diffrac.reflectionlist
+        if len(reflections) > 12:
+            self.output("Computing U with reflections 0 and 1")
+            values = []                 
+            values.append(0)        
+            values.append(1)
+            self.diffrac.write_attribute("ComputeU", values)
+        else:
+            self.warning("U can not be computed. Only one reflection")
 
 class setor0(Macro, _diffrac):
     """Set primary orientation reflection. Alternative to or0""" 
@@ -463,7 +492,17 @@ class setor0(Macro, _diffrac):
         values.append(K)
         values.append(L)
         
-        self.diffrac.write_attribute("AddReflectionWithIndex", values)
+        self.diffrac.write_attribute("AddReflectionWithIndex", values)  
+   
+        reflections = self.diffrac.reflectionlist
+        if len(reflections) > 12:
+            self.output("Computing U with reflections 0 and 1")
+            values = []                 
+            values.append(0)        
+            values.append(1)
+            self.diffrac.write_attribute("ComputeU", values)
+        else:
+            self.warning("U can not be computed. Only one reflection")
 
 class setor1(Macro, _diffrac):
     """Set secondary orientation reflection. Alternative to or1""" 
@@ -485,7 +524,17 @@ class setor1(Macro, _diffrac):
         values.append(K)
         values.append(L)
         
-        self.diffrac.write_attribute("AddReflectionWithIndex", values)
+        self.diffrac.write_attribute("AddReflectionWithIndex", values)  
+   
+        reflections = self.diffrac.reflectionlist
+        if len(reflections) > 12:
+            self.output("Computing U with reflections 0 and 1")
+            values = []                 
+            values.append(0)        
+            values.append(1)
+            self.diffrac.write_attribute("ComputeU", values)
+        else:
+            self.warning("U can not be computed. Only one reflection")
 
 class setorn(Macro, _diffrac):
     """Set orientation reflection indicated by the index.""" 
@@ -514,6 +563,65 @@ class setorn(Macro, _diffrac):
         
         self.diffrac.write_attribute("AddReflectionWithIndex", values)
 
+class compute_u(Macro, _diffrac):
+    """ Compute U matrix with reflections 0 and 1 """
+       
+    def prepare(self):
+        _diffrac.prepare(self)
+    
+    def run(self):
+        if not self.prepared:
+            return
+   
+        reflections = self.diffrac.reflectionlist
+        if len(reflections) > 12:
+            self.output("Computing U with reflections 0 and 1")
+            values = []                 
+            values.append(0)        
+            values.append(1)
+            self.diffrac.write_attribute("ComputeU", values)
+        else:
+            self.warning("U can not be computed. Only one reflection")
+
+class add_reflection(Macro, _diffrac):
+    """ Add reflection at the botton of reflections list """
+           
+    param_def = [
+       ['H', Type.Float, None, "H value"],
+       ['K', Type.Float, None, "K value"],
+       ['L', Type.Float, None, "L value"],
+       ['affinement', Type.Float, -999., "Affinement"]
+    ]
+
+    def prepare(self, H, K, L, affinement):
+        _diffrac.prepare(self)
+    
+    def run(self, H, K, L, affinement):
+        if not self.prepared:
+            return
+     
+
+        values = []                         
+        values.append(H)        
+        values.append(K)
+        values.append(L)
+        if affinament != -999.:
+            values.append(affinement)
+        
+        self.diffrac.write_attribute("AddReflection", values)     
+        
+    
+class affine(Macro, _diffrac):
+    """Affine current crystal"""
+    
+    def prepare(self):
+        _diffrac.prepare(self)
+    
+    def run(self):
+        if not self.prepared:
+            return
+
+        self.diffrac.write_attribute("AffineCrystal", 0)
 
 class or_swap(Macro, _diffrac):
     """Swap values for primary and secondary vectors."""
