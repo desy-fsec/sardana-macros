@@ -62,7 +62,7 @@ class _diffrac:
 
         self.prepared = True
 
-    def on_abort(self):
+    def on_stop(self):
         
         for angle in self.angle_names:
             angle_dev = self.getDevice(self.angle_device_names[angle])
@@ -107,6 +107,10 @@ class br(Macro, _diffrac):
 
         self.execMacro('printmove')
 
+    def on_stop(self):
+        _diffrac.on_stop(self)
+        
+
 class ubr(Macro):
     """
         ubr H K L
@@ -126,6 +130,9 @@ class ubr(Macro):
             self.runMacro(br)
         else:
             self.output( "usage:  ubr H K L [Trajectory]")
+
+    def on_stop(self):
+        _diffrac.on_stop(self)
            
 class ca(Macro, _diffrac):
     """Calculate motor positions for given H K L according to the current
@@ -540,6 +547,9 @@ class hscan(Macro, _diffrac):
 
         self.runMacro(ascan)
 
+    def on_stop(self):
+        _diffrac.on_stop(self)
+
 class kscan(Macro, _diffrac):
     "Scan k axis"
 
@@ -558,7 +568,10 @@ class kscan(Macro, _diffrac):
         
         ascan, pars= self.createMacro("ascan", self.k_device, start_pos, final_pos, nr_interv, integ_time)
 
-        self.runMacro(ascan)     
+        self.runMacro(ascan) 
+
+    def on_stop(self):
+        _diffrac.on_stop(self)    
     
 class lscan(Macro, _diffrac):
     "Scan l axis"
@@ -579,6 +592,9 @@ class lscan(Macro, _diffrac):
         ascan, pars= self.createMacro("ascan", self.l_device, start_pos, final_pos, nr_interv, integ_time)
 
         self.runMacro(ascan) 
+
+    def on_stop(self):
+        _diffrac.on_stop(self)
 
     
 class hklscan(Macro, _diffrac):
