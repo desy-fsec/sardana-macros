@@ -563,6 +563,7 @@ class setorn(Macro, _diffrac):
         
         self.diffrac.write_attribute("AddReflectionWithIndex", values)
 
+
 class compute_u(Macro, _diffrac):
     """ Compute U matrix with reflections 0 and 1 """
        
@@ -634,6 +635,34 @@ class or_swap(Macro, _diffrac):
             return
 
         self.diffrac.write_attribute("SwapReflections01", 0)
+
+class newcrystal(Macro, _diffrac):
+    """ Create a new crystal (if it does not exist) and select it. """
+    
+    param_def = [
+        ['crystal_name',  Type.String,   None, 'Name of the crystal to add and select']
+        ]
+    def prepare(self, crystal_name):
+        _diffrac.prepare(self)
+    
+    def run(self, crystal_name):
+        if not self.prepared:
+            return
+
+        crystal_list = self.diffrac.crystallist
+
+        to_add = 1
+        for crystal in crystal_list:
+            if crystal_name == crystal:
+                to_add = 0
+        
+        if to_add:
+            self.diffrac.write_attribute("addcrystal", crystal_name)
+
+        self.diffrac.write_attribute("crystal", crystal_name) 
+
+        self.output("Crystal %s selected " % crystal_name)
+    
 
 class hscan(Macro, _diffrac):
     "Scan h axis"
