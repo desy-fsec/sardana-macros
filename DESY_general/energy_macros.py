@@ -4,7 +4,7 @@
 
 from __future__ import print_function
 
-__all__ = ["escan"]
+__all__ = ["escan", "me"]
 
 import os
 from sardana.macroserver.macro import *
@@ -35,7 +35,7 @@ class escan(Macro):
 
         wavelength = self.lambda_to_e/(self.energy_motor.Position + self.step)
         
-        self.diffrac.wavelength = wavelength
+        self.diffrac.write_attribute("wavelength", wavelength)
 
         macro,pars = self.createMacro("br", self.h_value, self.k_value, self.l_value)
 
@@ -55,16 +55,27 @@ class escan(Macro):
         
         if start_energy == -999:
             self.output("Usage:")
-            self.output("escan start_energy end_energy nr_interv integ_time [fixq]")
+            self.output("escan <start_energy> <end_energy> <nr_interv> <integ_time> [fixq]")
             self.output("Add fixq as argument if q has to be kept fixed during the movement")
             return
 
         try:
-            energy_device_name = self.getEnv('EnergyDevice')
+            energy_device = getObj("mnchrmtr")
+            energy_device_name = "mnchrmtr"
         except:
-            energy_device_name = "energy_device"
-
-        energy_device = self.getObj(energy_device_name)
+            self.warning("mnchrmtr device does not exist.")
+            self.warning("Trying to get the energy device name from the EnergyDevice environment variable")
+            try:
+                energy_device_name = self.getEnv('EnergyDevice')
+            except:
+                self.error("EnergyDevice not defined. Macro exiting")
+                return
+            try:
+                energy_device = getObj(energy_device_name)
+            except:
+                self.error("Unable to get energy device %s. Macro exitin" % energy_device_name)
+                return
+                
 
         # set the motor to the initial position for having the right position at the first hook
 
@@ -97,3 +108,64 @@ class escan(Macro):
 
         self.runMacro(macro)
 
+
+class me(Macro):
+    """Move energy. Diffractometer wavelength is set"""
+
+    
+    param_def = [ 
+        ['energy',  Type.Float,  -999, 'Energy to set']
+        ]
+
+    def run(self,  energy):
+
+        if energy == -999:
+            self.output("Usage:")
+            self.output("me <energy>")
+            self.output("Move energy. Diffractometer wavelength is set")
+            return
+
+        try:
+            energyfmb_device = getObj("mnchrmtr")
+            energyfmb_device_name = "mnchrmtr"
+        except:
+            self.warning("mnchrmtr device does not exist.")
+            self.warning("Trying to get the fmb device name from the EnergyFMB environment variable")
+            try:
+                energyfmb_device_name = self.getEnv('EnergyFMB')
+            except:
+                self.error("EnergyFMB not defined. Macro exiting")
+                return
+            try:
+                energyfmb_device = getObj(energyfmb_device_name)
+            except:
+                self.error("Unable to get fmb device %s. Macro exiting" % energyfmb_device_name)
+                return
+
+        try:
+            energy_device = getObj("mnchrmtr")
+            energy_device_name = "mnchrmtr"
+        except:
+            self.warning("mnchrmtr device does not exist.")
+            self.warning("Trying to get the energy device name from the EnergyDevice environment variable")
+            try:
+                energy_device_name = self.getEnv('EnergyDevice')
+            except:
+                self.error("EnergyDevice not defined. Macro exiting")
+                return
+            try:
+                energy_device = getObj(energy_device_name)
+            except:
+                self.error("Unable to get energy device %s. Macro exiting" % energy_device_name)
+                return
+
+        fmb_tango_device = DeviceProxy(energyfmb_device.TangoDevice)
+        fmb_tango_device.write_attribute("PseudoChannelCutMode", 0)
+
+        diffrac_name = self.getEnv('DiffracDevice')
+        diffrac_device = self.getDevice(diffrac_name)
+        lambda_to_e = 12398.424 # Amstrong * eV
+        wavelength = lambda_to_e/energy        
+        diffrac_device.write_attribute("wavelength", wavelength)
+
+        self.execMacro("mv", energy_device, energy)
