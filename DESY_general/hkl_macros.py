@@ -576,7 +576,7 @@ class compute_u(Macro, _diffrac):
             return
    
         reflections = self.diffrac.reflectionlist
-        if len(reflections) > 12:
+        if len(reflections) > 1:
             self.output("Computing U with reflections 0 and 1")
             values = []                 
             values.append(0)        
