@@ -398,7 +398,7 @@ class diffrac_setlat(Macro, _diffrac):
         self.diffrac.write_attribute("gamma", gamma)
                
         reflections = self.diffrac.reflectionlist
-        if len(reflections) > 12:
+        if len(reflections) > 1:
             self.output("Computing U with reflections 0 and 1")
             values = []                 
             values.append(0)        
@@ -431,7 +431,7 @@ class or0(Macro, _diffrac):
         self.diffrac.write_attribute("AddReflectionWithIndex", values) 
         
         reflections = self.diffrac.reflectionlist
-        if len(reflections) > 12:
+        if len(reflections) > 1:
             self.output("Computing U with reflections 0 and 1")
             values = []                 
             values.append(0)        
@@ -464,7 +464,7 @@ class or1(Macro, _diffrac):
         self.diffrac.write_attribute("AddReflectionWithIndex", values) 
      
         reflections = self.diffrac.reflectionlist
-        if len(reflections) > 12:
+        if len(reflections) > 1:
             self.output("Computing U with reflections 0 and 1")
             values = []                 
             values.append(0)        
@@ -496,7 +496,7 @@ class setor0(Macro, _diffrac):
         self.diffrac.write_attribute("AddReflectionWithIndex", values)  
    
         reflections = self.diffrac.reflectionlist
-        if len(reflections) > 12:
+        if len(reflections) > 1:
             self.output("Computing U with reflections 0 and 1")
             values = []                 
             values.append(0)        
@@ -528,7 +528,7 @@ class setor1(Macro, _diffrac):
         self.diffrac.write_attribute("AddReflectionWithIndex", values)  
    
         reflections = self.diffrac.reflectionlist
-        if len(reflections) > 12:
+        if len(reflections) > 1:
             self.output("Computing U with reflections 0 and 1")
             values = []                 
             values.append(0)        
