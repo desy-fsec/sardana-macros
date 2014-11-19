@@ -1,3 +1,4 @@
+
 """
     Macro library containning diffractometer related macros for the macros 
     server Tango device server as part of the Sardana project.
@@ -253,12 +254,12 @@ class pa(Macro, _diffrac):
                 if nb_ref < len(self.suffix): sf = self.suffix[nb_ref]
                 else: sf = self.suffix[3]
                 self.output("  %d%s Reflection (index %d): " % (nb_ref+1, sf, ref[0]))
-                self.output("  H K L : %10.4f %10.4f %10.4f" % ref[1], ref[2], ref[3])
-                self.output("  Affinement, Relevance : %d %d" % ref[4], ref[5])
+                self.output("  H K L : %10.4f %10.4f %10.4f" % (ref[1], ref[2], ref[3]))
+                self.output("  Affinement, Relevance : %d %d" % (ref[4], ref[5]))
                 if len(ref) > 10:
-                    self.output("mu theta chi phi gamma delta: %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f" % ref[6], ref[7], ref[8], ref[9], ref[10], ref[11])
+                    self.output("mu theta chi phi gamma delta: %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9], ref[10], ref[11]))
                 else:
-                    self.output("ommega chi phi theta: %10.4f %10.4f %10.4f %10.4f" % ref[6], ref[7], ref[8], ref[9])
+                    self.output("ommega chi phi theta: %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9]))
                 nb_ref = nb_ref + 1
                     
        
