@@ -318,7 +318,7 @@ class wh(Macro, _diffrac):
         self.output("%10s %11s %12s %11s %10s %11s" % 
                     (str_pos1, str_pos2, str_pos3, str_pos4, str_pos5, str_pos6))
 
-class diffrac_setmode(Macro, _diffrac):
+class setmode(Macro, _diffrac):
     """Set operation mode.""" 
     
     param_def = [
@@ -354,7 +354,7 @@ class diffrac_setmode(Macro, _diffrac):
             self.diffrac.write_attribute("enginemode",modes[new_mode - 1])           
             self.output("Now using %s mode" % modes[new_mode - 1])
 
-class diffrac_getmode(Macro, _diffrac):
+class getmode(Macro, _diffrac):
     """Get operation mode."""
     
     def prepare(self):
@@ -368,7 +368,7 @@ class diffrac_getmode(Macro, _diffrac):
 
 
 
-class diffrac_setlat(Macro, _diffrac):
+class setlat(Macro, _diffrac):
     """Set the crystal lattice parameters a, b, c, alpha, beta, gamma.
        for the currently active diffraction pseudo motor controller."""  
     
