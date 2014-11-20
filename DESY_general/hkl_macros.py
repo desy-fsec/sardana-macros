@@ -20,8 +20,11 @@ class _diffrac:
         dev_name = self.getEnv('DiffracDevice')
         self.diffrac = self.getDevice(dev_name)
 
-        dev_name = self.getEnv('Psi')
-        self.psidevice = self.getDevice(dev_name)
+        try:
+            dev_name = self.getEnv('Psi')
+            self.psidevice = self.getDevice(dev_name)
+        except:
+            pass
 
         motorlist = self.diffrac.motorlist
         
@@ -160,7 +163,11 @@ class ca(Macro, _diffrac):
         self.output("Trajectory 0 (more trajectories by caa H K L)")
         self.output("")
 
-        self.output("%s %7.5f" % ("Azimuth (Psi) = ",self.psidevice.Position))
+        try:
+            self.output("%s %7.5f" % ("Azimuth (Psi) = ",self.psidevice.Position))
+        except:
+            self.warning("Not able to read psi. Check if environment Psi is defined")
+
         self.output("%s %7.5f" % ("Wavelength = ", self.diffrac.WaveLength))
         self.output("")
 
@@ -207,8 +214,10 @@ class caa(Macro, _diffrac):
                         (self.h_device.position,self.k_device.position,
                          self.l_device.position))
 
-            
-            self.output("Azimuth (Psi) = %7.5f" % (self.psidevice.Position))
+            try:
+                self.output("Azimuth (Psi) = %7.5f" % (self.psidevice.Position))
+            except:
+                self.warning("Not able to read psi. Check if environment Psi is defined")
             self.output("Wavelength =  %7.5f" % (self.diffrac.WaveLength))
             self.output("")
 
@@ -302,8 +311,11 @@ class wh(Macro, _diffrac):
         else:
             self.output("%8s %9.5f %9.5f %9.5f " % 
                         ("Ref   = ",self.diffrac.psirefh,self.diffrac.psirefk,self.diffrac.psirefl))
-            
-        self.output("%s %7.5f" % ("Azimuth (Psi) = ",self.psidevice.Position))
+     
+        try:
+            self.output("%s %7.5f" % ("Azimuth (Psi) = ",self.psidevice.Position))
+        except:
+            self.warning("Not able to read psi. Check if environment Psi is defined")
         self.output("%s %7.5f" % ("Wavelength = ", self.diffrac.WaveLength))
         self.output("")
 
@@ -564,6 +576,26 @@ class setorn(Macro, _diffrac):
         
         self.diffrac.write_attribute("AddReflectionWithIndex", values)
 
+class setaz(Macro, _diffrac):
+    """ Set hkl values of the psi reference vector"""
+    
+    param_def = [
+        ['PsiH', Type.Float, None, "H value of psi reference vector"],
+        ['PsiK', Type.Float, None, "K value of psi reference vector"],
+        ['PsiL', Type.Float, None, "L value of psi reference vector"],
+        ]
+
+    def prepare(self, PsiH, PsiK, PsiL):
+        _diffrac.prepare(self)
+
+    def run(self, PsiH, PsiK, PsiL):
+        if not self.prepared:
+            return
+
+        self.diffrac.write_attribute("psirefh", PsiH)
+        self.diffrac.write_attribute("psirefk", PsiK)
+        self.diffrac.write_attribute("psirefl", PsiL)
+        
 
 class compute_u(Macro, _diffrac):
     """ Compute U matrix with reflections 0 and 1 """
