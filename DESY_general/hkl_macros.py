@@ -607,7 +607,7 @@ class add_reflection(Macro, _diffrac):
         values.append(H)        
         values.append(K)
         values.append(L)
-        if affinament != -999.:
+        if affinement != -999.:
             values.append(affinement)
         
         self.diffrac.write_attribute("AddReflection", values)     
