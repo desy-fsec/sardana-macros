@@ -898,6 +898,32 @@ class th2th(Macro):
             self.output( "Usage:   th2th tth_start_rel tth_stop_rel intervals time")
             
 
+class savecrystal(Macro,_diffrac):
+        
+    param_def = [
+        ['crystal_file',  Type.String,   "Not set", 'Name of the file (with complete path) for saving the crystal information']
+        ]
+
+    def prepare(self, crystal_file):
+        _diffrac.prepare(self)
+        
+    def run(self, crystal_file):
+        if not self.prepared:
+            return
+
+        if crystal_file == "Not set":
+            try:
+                crystal_file = self.getEnv('SaveCrystalFile')
+            except:
+                self.error("Not file name given as argument and not SaveCrystalFile environment defined")
+                self.error("Data not saved")
+                return
+                
+        self.output("Saving crystal data in %s file " % crystal_file)
+
+        self.diffrac.write_attribute("SaveCrystal", crystal_file)
+                
+
 class printmove(Macro,_diffrac):
 
 
