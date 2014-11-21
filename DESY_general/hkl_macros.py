@@ -5,6 +5,7 @@
     
 """
 import time
+import math
 
 from sardana.macroserver.macro import *
 
@@ -71,6 +72,45 @@ class _diffrac:
         for angle in self.angle_names:
             angle_dev = self.getDevice(self.angle_device_names[angle])
             angle_dev.Stop()
+
+    def check_collinearity(self,h0,k0,l0,h1,k1,l1):
+
+        print h0
+        cpx = k0*l1-l0*k1  
+        cpy = l0*h1-h0*l1  
+        cpz = h0*k1-k0*h1
+        cp_square = math.sqrt(cpx*cpx+cpy*cpy+cpz*cpz)
+
+        collinearity = False
+
+        if cp_square < 0.01:
+            collinearity = True
+
+        return collinearity
+
+    def get_hkl_ref0(self):
+
+        reflections = self.diffrac.reflectionlist
+        
+        hkl = []
+        if reflections != None:
+            for i in range(1,4):
+                hkl.append(reflections[0][i])
+        
+        return hkl
+
+    def get_hkl_ref1(self):
+
+        reflections = self.diffrac.reflectionlist
+        
+        hkl = []
+        if len(reflections) > 1:
+            for i in range(1,4):
+                hkl.append(reflections[1][i])
+        
+        return hkl
+        
+        
 
 class br(Macro, _diffrac):
     """The br macro is used to move the diffractometer to the reciprocal space 
@@ -435,6 +475,15 @@ class or0(Macro, _diffrac):
         if not self.prepared:
             return
 
+        # Check collinearity
+
+        hkl_ref1 = _diffrac.get_hkl_ref1(self)
+        if len(hkl_ref1) > 1:
+            check = _diffrac.check_collinearity(self, H, K, L, hkl_ref1[0], hkl_ref1[1], hkl_ref1[2])
+            if check:
+                self.warning("Can not orient: or0 %9.5f %9.5f %9.5f are parallel to or1" % (H, K, L))
+                return
+                             
         values = []                 
         values.append(0)        
         values.append(H)        
@@ -468,6 +517,15 @@ class or1(Macro, _diffrac):
         if not self.prepared:
             return
 
+        # Check collinearity
+
+        hkl_ref0 = _diffrac.get_hkl_ref0(self)
+        if len(hkl_ref0) > 1:
+            check = _diffrac.check_collinearity(self, hkl_ref0[0], hkl_ref0[1], hkl_ref0[2], H, K, L)
+            if check:
+                self.warning("Can not orient: or0 is parallel to or1 %9.5f %9.5f %9.5f" % (H, K, L))
+                return
+
         values = []                 
         values.append(1)        
         values.append(H)        
@@ -498,6 +556,16 @@ class setor0(Macro, _diffrac):
         H = self.h_device.position
         K = self.k_device.position
         L = self.l_device.position
+
+
+        # Check collinearity
+
+        hkl_ref1 = _diffrac.get_hkl_ref1(self)
+        if len(hkl_ref1) > 1:
+            check = _diffrac.check_collinearity(self, H, K, L, hkl_ref1[0], hkl_ref1[1], hkl_ref1[2])
+            if check:
+                self.warning("Can not orient: or0 %9.5f %9.5f %9.5f are parallel to or1" % (H, K, L))
+                return
 
         values = []                 
         values.append(0)        
@@ -530,6 +598,17 @@ class setor1(Macro, _diffrac):
         H = self.h_device.position
         K = self.k_device.position
         L = self.l_device.position
+
+
+
+        # Check collinearity
+
+        hkl_ref0 = _diffrac.get_hkl_ref0(self)
+        if len(hkl_ref0) > 1:
+            check = _diffrac.check_collinearity(self, hkl_ref0[0], hkl_ref0[1], hkl_ref0[2], H, K, L)
+            if check:
+                self.warning("Can not orient: or0 is parallel to or1 %9.5f %9.5f %9.5f" % (H, K, L))
+                return
 
         values = []                 
         values.append(1)        
