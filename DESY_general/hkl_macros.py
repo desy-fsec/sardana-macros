@@ -90,8 +90,12 @@ class _diffrac:
 
     def get_hkl_ref0(self):
 
-        reflections = self.diffrac.reflectionlist
-        
+        reflections = []
+        try:
+            reflections = self.diffrac.reflectionlist
+        except:
+            pass
+    
         hkl = []
         if reflections != None:
             for i in range(1,4):
@@ -101,12 +105,17 @@ class _diffrac:
 
     def get_hkl_ref1(self):
 
-        reflections = self.diffrac.reflectionlist
-        
+        reflections = []
+        try:
+            reflections = self.diffrac.reflectionlist
+        except:
+            pass
+
         hkl = []
-        if len(reflections) > 1:
-            for i in range(1,4):
-                hkl.append(reflections[1][i])
+        if reflections != None:
+            if len(reflections) > 1:
+                for i in range(1,4):
+                    hkl.append(reflections[1][i])
         
         return hkl
         
@@ -448,16 +457,8 @@ class setlat(Macro, _diffrac):
         self.diffrac.write_attribute("alpha", alpha)        
         self.diffrac.write_attribute("beta", beta)        
         self.diffrac.write_attribute("gamma", gamma)
-               
-        reflections = self.diffrac.reflectionlist
-        if len(reflections) > 1:
-            self.output("Computing U with reflections 0 and 1")
-            values = []                 
-            values.append(0)        
-            values.append(1)
-            self.diffrac.write_attribute("ComputeU", values)
-        else:
-            self.warning("U can not be computed. Only one reflection")
+  
+        self.execMacro('compute_u')
 
 class or0(Macro, _diffrac):
     """Set primary orientation reflection.""" 
@@ -490,16 +491,8 @@ class or0(Macro, _diffrac):
         values.append(K)
         values.append(L)
         self.diffrac.write_attribute("AddReflectionWithIndex", values) 
-        
-        reflections = self.diffrac.reflectionlist
-        if len(reflections) > 1:
-            self.output("Computing U with reflections 0 and 1")
-            values = []                 
-            values.append(0)        
-            values.append(1)
-            self.diffrac.write_attribute("ComputeU", values)
-        else:
-            self.warning("U can not be computed. Only one reflection")
+
+        self.execMacro('compute_u')
 
 class or1(Macro, _diffrac):
     """Set secondary orientation reflection.""" 
@@ -532,16 +525,8 @@ class or1(Macro, _diffrac):
         values.append(K)
         values.append(L)
         self.diffrac.write_attribute("AddReflectionWithIndex", values) 
-     
-        reflections = self.diffrac.reflectionlist
-        if len(reflections) > 1:
-            self.output("Computing U with reflections 0 and 1")
-            values = []                 
-            values.append(0)        
-            values.append(1)
-            self.diffrac.write_attribute("ComputeU", values)
-        else:
-            self.warning("U can not be computed. Only one reflection")
+ 
+        self.execMacro('compute_u')
 
 class setor0(Macro, _diffrac):
     """Set primary orientation reflection. Alternative to or0""" 
@@ -574,16 +559,8 @@ class setor0(Macro, _diffrac):
         values.append(L)
         
         self.diffrac.write_attribute("AddReflectionWithIndex", values)  
-   
-        reflections = self.diffrac.reflectionlist
-        if len(reflections) > 1:
-            self.output("Computing U with reflections 0 and 1")
-            values = []                 
-            values.append(0)        
-            values.append(1)
-            self.diffrac.write_attribute("ComputeU", values)
-        else:
-            self.warning("U can not be computed. Only one reflection")
+
+        self.execMacro('compute_u')
 
 class setor1(Macro, _diffrac):
     """Set secondary orientation reflection. Alternative to or1""" 
@@ -617,16 +594,8 @@ class setor1(Macro, _diffrac):
         values.append(L)
         
         self.diffrac.write_attribute("AddReflectionWithIndex", values)  
-   
-        reflections = self.diffrac.reflectionlist
-        if len(reflections) > 1:
-            self.output("Computing U with reflections 0 and 1")
-            values = []                 
-            values.append(0)        
-            values.append(1)
-            self.diffrac.write_attribute("ComputeU", values)
-        else:
-            self.warning("U can not be computed. Only one reflection")
+ 
+        self.execMacro('compute_u')
 
 class setorn(Macro, _diffrac):
     """Set orientation reflection indicated by the index.""" 
@@ -693,6 +662,7 @@ class compute_u(Macro, _diffrac):
             values.append(0)        
             values.append(1)
             self.diffrac.write_attribute("ComputeU", values)
+            self.execMacro('savecrystal')
         else:
             self.warning("U can not be computed. Only one reflection")
 
