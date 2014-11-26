@@ -656,15 +656,18 @@ class compute_u(Macro, _diffrac):
             return
    
         reflections = self.diffrac.reflectionlist
-        if len(reflections) > 1:
-            self.output("Computing U with reflections 0 and 1")
-            values = []                 
-            values.append(0)        
-            values.append(1)
-            self.diffrac.write_attribute("ComputeU", values)
-            self.execMacro('savecrystal')
+        if reflections != None:
+            if len(reflections) > 1:
+                self.output("Computing U with reflections 0 and 1")
+                values = []                 
+                values.append(0)        
+                values.append(1)
+                self.diffrac.write_attribute("ComputeU", values)
+                self.execMacro('savecrystal')
+            else:
+                self.warning("U can not be computed. Only one reflection")
         else:
-            self.warning("U can not be computed. Only one reflection")
+            self.warning("U can not be computed. No reflection")
 
 class add_reflection(Macro, _diffrac):
     """ Add reflection at the botton of reflections list """
