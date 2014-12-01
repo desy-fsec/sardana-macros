@@ -85,14 +85,15 @@ class wmesh(Macro):
         self.debug("dwell time   = %s [s]" % (tdwell))
 
         self.execMacro("dwell", tdwell)
+        self.ts_post_acq = dt.datetime.now()
 
 
     def _setHooks(self):
 
-        hook_start = (self._hook_start_chrono, ["post-acq"])
+ #       hook_start = (self._hook_start_chrono, ["post-acq"])
         hook_stop = (self._hook_stop_chrono, ["pre-acq"])
 
-        self.hooks.append(hook_start)
+#        self.hooks.append(hook_start)
         self.hooks.append(hook_stop)
 
 
