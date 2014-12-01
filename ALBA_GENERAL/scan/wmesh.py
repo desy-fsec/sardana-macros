@@ -30,7 +30,7 @@ class wmesh(Macro):
     """2d grid scan  .
     The wmesh scan adds a dwell function as a pre-acq hook. This hook waits
     a certain waiting time at each mesh point. This waiting time is corrected
-    by the time expended between the post and pre acquisition stages. If this
+    by the time expended between the pre-acquisition stages. If this
     expended time (et) is larger than the requested waiting time, the macro skips
     the dwell and raises a warning message.
     """
@@ -46,7 +46,7 @@ class wmesh(Macro):
        ['m2_nr_interv',Type.Integer, None, 'Number of scan intervals'],
        ['integ_time',  Type.Float,   None, 'Integration time'],
        ['bidirectional',   Type.Boolean, False, 'Save time by scanning s-shaped'],
-       ['waiting_time',Type.Float, None, 'Waiting time beetween post-acq and pre-acq hookplaces']
+       ['waiting_time',Type.Float, None, 'Waiting time between consecutive pre-acq hookplaces']
     ]
 
     def __init__(self, *args, **kwargs ):
@@ -55,12 +55,6 @@ class wmesh(Macro):
         self.wt = 0
         self.ts_pre_acq = dt.datetime.now()
         self.ts_post_acq = self.ts_pre_acq
-
-    
-    def _hook_start_chrono(self):
-
-        self.debug("post-acq hook: _hook_start_chrono")
-        self.ts_post_acq = dt.datetime.now()
 
 
     def _hook_stop_chrono(self):
@@ -73,7 +67,6 @@ class wmesh(Macro):
         #delta = (self.ts_pre_acq - self.ts_post_acq).total_seconds() #Only python 2.7
         delta = self.ts_pre_acq - self.ts_post_acq
         et = delta.microseconds/float(10**6) + (delta.seconds + delta.days*24*3600)
-        self.debug("Elapsed time = %s [s]" % (et))
         tdwell = self.wt - et
 
         if tdwell < 0:
@@ -90,10 +83,7 @@ class wmesh(Macro):
 
     def _setHooks(self):
 
- #       hook_start = (self._hook_start_chrono, ["post-acq"])
         hook_stop = (self._hook_stop_chrono, ["pre-acq"])
-
-#        self.hooks.append(hook_start)
         self.hooks.append(hook_stop)
 
 
