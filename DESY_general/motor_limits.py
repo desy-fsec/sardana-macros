@@ -25,8 +25,11 @@ class hasy_set_lim(Macro):
 
         name = motor.getName()
         motor_device = PyTango.DeviceProxy(name)
-        motor_device.UnitLimitMax = high
-        motor_device.UnitLimitMin = low
+        try:
+            motor_device.UnitLimitMax = high
+            motor_device.UnitLimitMin = low
+        except:
+            self.info("UnitLimitMin/UnitLimitMax has not be written. They probably only readable (ex. many VmExecutors)") 
 
 class hasy_adjust_limits(Macro):
     """Sets Pool motor limits to the values in the Tango Device"""
