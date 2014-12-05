@@ -1,5 +1,3 @@
-#!/bin/env python
-
 """Change motor limits for Hasy motors"""
 
 from __future__ import print_function

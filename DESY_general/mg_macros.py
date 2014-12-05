@@ -1,5 +1,3 @@
-#!/bin/env python
-
 """Change active mg"""
 
 from __future__ import print_function

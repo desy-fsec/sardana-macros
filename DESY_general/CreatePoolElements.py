@@ -1,5 +1,3 @@
-#!/bin/env python
-
 """Macros for creating Pool elements"""
 
 from __future__ import print_function

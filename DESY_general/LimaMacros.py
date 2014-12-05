@@ -1,5 +1,3 @@
-#!/bin/env python
-
 """Macros for interacting with Lima devices"""
 
 from __future__ import print_function

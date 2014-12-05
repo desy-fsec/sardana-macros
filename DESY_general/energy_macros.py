@@ -1,5 +1,3 @@
-#!/bin/env python
-
 """Energy scan """
 
 from __future__ import print_function
