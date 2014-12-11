@@ -1,10 +1,8 @@
-#!/bin/env python
-
 """Change motor limits for Hasy motors"""
 
 from __future__ import print_function
 
-__all__ = ["hasy_set_lim"]
+__all__ = ["hasy_set_lim", "hasy_adjust_limits"]
 
 import PyTango
 from sardana.macroserver.macro import *
@@ -19,14 +17,22 @@ class hasy_set_lim(Macro):
     ]
 
     def run(self, motor, low, high):
-        
-        set_lim, pars= self.createMacro("set_lim", motor, low, high)
-        self.runMacro(set_lim)
+       
+        limits_changed = 1
 
         name = motor.getName()
         motor_device = PyTango.DeviceProxy(name)
-        motor_device.UnitLimitMax = high
-        motor_device.UnitLimitMin = low
+        try:
+            motor_device.UnitLimitMax = high
+            motor_device.UnitLimitMin = low
+        except:
+            limits_changed = 0
+            self.info("UnitLimitMin/UnitLimitMax has not be written. They probably only readable (ex. many VmExecutors)")
+            self.info("Limits not changed") 
+  
+        if limits_changed == 1:
+            set_lim, pars= self.createMacro("set_lim", motor, low, high)
+            self.runMacro(set_lim)
 
 class hasy_adjust_limits(Macro):
     """Sets Pool motor limits to the values in the Tango Device"""
@@ -47,10 +53,63 @@ class hasy_adjust_limits(Macro):
                 high = motor_device.UnitLimitMax
                 low  = motor_device.UnitLimitMin
 
-                set_lim, pars= self.createMacro("set_lim", motor, low, high)
-                self.runMacro(set_lim)
+                # do not set attribute configuration limits if UnitLimitMax/~Min can not be written
+                adjust_limits = 1
+                try:
+                    motor_device.UnitLimitMax = high
+                    motor_device.UnitLimitMin = low
+                except:
+                    adjust_limits = 0
+                    self.info("Limits for motor %s not adjusted. UnitLimitMax/~Min only readable" % name) 
+                if adjust_limits == 1:
+                    set_lim, pars= self.createMacro("set_lim", motor, low, high)
+                    self.runMacro(set_lim)
             except:
-                pass
+                self.warning("Limits for motor %s not adjusted. Error reading UnitLimitMax/~Min" % name) 
             
 
-        
+  
+class hasy_wm(Macro):
+    """Show motor position and limits (UnitLimitMin/~Max)""" 
+    
+    param_def = [
+        ['motor', Type.Moveable, None, 'Motor name'],
+    ]    
+
+       
+    def run(self, motor):
+
+        show_ctrlaxis = self.getViewOption(ViewOption.ShowCtrlAxis)
+        pos_format = self.getViewOption(ViewOption.PosFormat)
+    
+        name = motor.getName()
+        motor_device = PyTango.DeviceProxy(name)
+        try:
+            high = motor_device.UnitLimitMax
+            low  = motor_device.UnitLimitMin
+            pos  = motor_device.Position
+            self.output("") 
+            if show_ctrlaxis:
+                axis_nb = getattr(motor, "axis")
+                ctrl_name = self.getController(motor.controller).name
+                ca_name = " (" + ctrl_name + "." + str(axis_nb) + ")"
+                name = name + ca_name
+            self.output("    %s     " % name)
+            self.output("")
+            if pos_format != -1:
+                fmt = '%c.%df' % ('%',pos_format)
+                lowstr = fmt % low
+                self.output("UnitLimitMin: %s " % lowstr)
+                posstr = fmt % pos
+                self.output("Current     : %s " % posstr)
+                highstr = fmt % high
+                self.output("UnitLimitMax: %s " % highstr)
+            else:
+                self.output("UnitLimitMin: %f " % low)
+                self.output("Current     : %f " % pos)
+                self.output("UnitLimitMax: %f " % high)
+                    
+        except PyTango.DevFailed, e:
+            Except.print_exception( e)
+            self.warning("Not able to read motor position or limits")
+                

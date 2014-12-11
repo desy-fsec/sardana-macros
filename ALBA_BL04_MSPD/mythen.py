@@ -4,7 +4,7 @@ import Queue
 import PyTango
 
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
-from taurus.core.tango.sardana.pool import StopException
+from sardana.taurus.core.tango.sardana.pool import StopException
 from macro_utils.slsdetector import SlsDetectorGet, SlsDetectorPut, SlsDetectorAcquire, SlsDetectorProgram
 from macro_utils.macroutils import MntGrpController, SoftShutterController, MoveableController
 from utils import count2pulseWidth, pulseWidth2count

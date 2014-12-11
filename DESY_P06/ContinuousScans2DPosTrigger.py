@@ -93,7 +93,7 @@ class c2dscan_zebra_xia_postrigger(Macro):
         if old_slewrate == 0.:
             old_slewrate = 1.
 
-        scan_slewrate = abs((final_pos - start_pos)/motor_device.Step_per_unit)/(trigger_interval * (nb_triggers - 1))
+        scan_slewrate = abs((final_pos - start_pos)/motor_device.Conversion)/(trigger_interval * (nb_triggers - 1))
         
         if scan_slewrate > 0:
             motor_device.Velocity = float(scan_slewrate) 

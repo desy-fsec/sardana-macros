@@ -359,7 +359,8 @@ def maia_scan(self,
         # actually do the scan
         self.runMacro(macro)
 
-    except:
+    except Exception,e:
+        self.output(e)
         # FIXME how do I do this?
         self.warning("Exception, scan aborted")
         self.warning("At point ")

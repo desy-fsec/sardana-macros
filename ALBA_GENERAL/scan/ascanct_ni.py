@@ -35,11 +35,14 @@ class ascanct_ni(Macro):
         
         self.debug('Executing NI660X post configure hooks') 
         dev_triggers = self.getEnv('TriggerDevice')
+        if type(dev_triggers) == str:
+            dev_triggers = [dev_triggers]
+        
         for dev_trigger in dev_triggers:
             dev = PyTango.DeviceProxy(dev_trigger)
             self.triggers = dev.read_attribute('SampPerChan').value
             dev.write_attribute('SampPerChan',self.triggers+1)
-        
+            
         counters =self.getEnv('NiCTDevice')
         for counter in counters:
             dev = PyTango.DeviceProxy(counter)
@@ -60,15 +63,22 @@ class ascanct_ni(Macro):
                 continue
         new_hook = (self._postConfigureHook, ['post-configuration'])
         self.hooks.append(new_hook)
-       
+     
+    def prepare(self,*args):
+        self.ascanct_macro, _ = self.createMacro("ascanct",*args)
+        self.extraRecorder = self.ascanct_macro.extraRecorder
+    
+    
     def run(self,*args):
+        
+        #Commented to adapt to ascanct
         self._setHooks()
-        ascanct_macro, _ = self.createMacro("ascanct",*args)
-        ascanct_macro.hooks = self.hooks
-        self.runMacro(ascanct_macro)
+        self.ascanct_macro.hooks = self.hooks
+        self.runMacro(self.ascanct_macro)
         
         counters =self.getEnv('NiCTDevice')
         for counter in counters:
             dev = PyTango.DeviceProxy(counter)
-            dev.write_attribute('nrOfTriggers',self.triggers+1)
+            dev.write_attribute('nrOfTriggers',self.triggers)
             dev.write_attribute('extraTrigger', False)
+        

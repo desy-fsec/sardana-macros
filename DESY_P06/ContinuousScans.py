@@ -81,7 +81,7 @@ class cscan_zebra_xia(Macro):
 
         old_slewrate = motor_device.Velocity
 
-        scan_slewrate = abs((final_pos - start_pos)/motor_device.Step_per_unit)/(trigger_interval * (nb_triggers - 1))
+        scan_slewrate = abs((final_pos - start_pos)/motor_device.Conversion)/(trigger_interval * (nb_triggers - 1))
 
         motor_device.Velocity = scan_slewrate 
 
