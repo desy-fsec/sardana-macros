@@ -8,7 +8,7 @@ class XBPMspectra(Macro):
     Macro to execute a sequence of scans to calibrate the XBPM of the beamlines
     """
     
-    param_def = [['firstValue', Type.Float, None, 'Value'],
+    param_def = [['firstValue', Type.Float, 0, 'Value'],
                 ]
     
     def prepare(self, *args):
