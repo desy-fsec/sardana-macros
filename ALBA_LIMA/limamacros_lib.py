@@ -210,7 +210,7 @@ class lima_write_image(Macro):
  
 
 
-class(Macro):
+class lima_getconfig(Macro):
     """Returns the desired parameter value
 Parameter list:
     FileDir       FileFormat    ExposureTime    TriggerMode
