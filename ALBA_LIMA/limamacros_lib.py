@@ -10,17 +10,19 @@ import functools
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
 
 
-
 def catch_error(meth):
     @functools.wraps(meth)
     def _catch_error(self, *args, **kws):
         try:
             return meth(self, *args, **kws)
         except Exception, e:
-            self.error("Could not comunicate with %s. " +
-                       "Check if device server is exported.\n" % args[0])
             self.debug(e)
-            raise e
+            try:  
+                self.error("Macro %s failed with argument %s" %(meth.__name__ , " ".join(args)))
+            except Exception, e:
+                self.error("Error processing  _catch_error, args[0].")
+            finally:
+                raise e
     return _catch_error
 
 
@@ -55,9 +57,14 @@ class lima_saving(Macro):
     @catch_error
     def run(self,dev,basedir,prefix,fileformat,auto):
         lima = PyTango.DeviceProxy(dev)
+        lima.set_timeout_millis(30000)
+
+
         if auto:
+            self.debug('Writing saving_mode to AUTO_FRAME')
             lima.write_attribute('saving_mode', 'AUTO_FRAME')
         else:
+            self.debug('Writing saving_mode to MANUAL')
             lima.write_attribute('saving_mode', 'MANUAL')
             
         if not os.path.exists(basedir):
@@ -67,8 +74,11 @@ class lima_saving(Macro):
                 if e.errno != errno.EEXIST:
                     raise
 
+        self.debug('Writing saving_directory to %s' % basedir)
         lima.write_attribute('saving_directory', basedir)
+        self.debug('Writing saving_prefix to %s' % prefix)
         lima.write_attribute('saving_prefix', prefix)
+        self.debug('Writing saving_format to %s' % fileformat)
         lima.write_attribute('saving_format', fileformat)
 
 
@@ -88,6 +98,7 @@ Trigger modes are:
     @catch_error
     def run(self,dev,Texp,Tlat,NF,Trig):
         lima = PyTango.DeviceProxy(dev)
+        lima.set_timeout_millis(30000)
 
         TrigList = ['INTERNAL_TRIGGER'
                     ,'EXTERNAL_TRIGGER'
@@ -153,7 +164,8 @@ Example:
 """
 
     param_def =  [['dev',Type.String, None, 'Device name or alias'],
-                  ['header', Type.String, None, 'Header definition syntax: key1=value1|key2=value2|key3=value3 ...']]
+                  ['header', Type.String, None, 
+                   'Header definition syntax: key1=value1|key2=value2|key3=value3 ...']]
 
     @catch_error
     def run(self,dev,header):
@@ -170,7 +182,8 @@ Example:
 
     param_def =  [['dev',Type.String, None, 'Device name or alias'],
                   ['header_list',
-                   ParamRepeat(['header', Type.String, None, 'Header definition syntax: IMAGE_ID;key1=value1|key2=value2|key3=value3 ...']), 
+                   ParamRepeat(['header', Type.String, None, 
+                   'Header definition syntax: IMAGE_ID;key1=value1|key2=value2|key3=value3 ...']),
                    None, 'List of header definitions']
                   ]
 
@@ -197,11 +210,11 @@ class lima_write_image(Macro):
  
 
 
-class lima_getconfig(Macro):
+class(Macro):
     """Returns the desired parameter value
 Parameter list:
-    directory    format       expo_time       trigger
-    prefix       nb_frames    latency_time    next_image"""
+    FileDir       FileFormat    ExposureTime    TriggerMode
+    FilePrefix    NbFrames      LatencyTime     NextNumber     SavingMode"""
 
     param_def =  [['dev',Type.String, None, 'Device name or alias'],
                   ['paramIn',Type.String, None, 'Parameter name.']]
@@ -211,14 +224,15 @@ Parameter list:
     def run(self,dev,param):
         lima = PyTango.DeviceProxy(dev)
 
-        Param = {'directory': 'saving_directory',
-                 'prefix': 'saving_prefix',
-                 'format': 'saving_format',
-                 'nb_frames': 'acq_nb_frames',
-                 'expo_time': 'acq_expo_time',
-                 'latency_time': 'latency_time',
-                 'trigger':'acq_trigger_mode',
-                 'next_image':'saving_next_number'}
+        Param = {'FileDir': 'saving_directory',
+                 'FilePrefix': 'saving_prefix',
+                 'FileFormat': 'saving_format',
+                 'NbFrames': 'acq_nb_frames',
+                 'ExposureTime': 'acq_expo_time',
+                 'LatencyTime': 'latency_time',
+                 'TriggerMode':'acq_trigger_mode',
+                 'NextNumber':'saving_next_number',
+                 'SavingMode':'saving_mode'}
 
         value = lima.read_attribute(Param[param]).value
         return str(value)
@@ -233,8 +247,8 @@ class lima_printconfig(Macro):
     @catch_error
     def run(self,dev):
 
-        Param = ['directory', 'prefix', 'format', 'nb_frames', 
-                 'expo_time', 'latency_time', 'trigger']
+        Param = ['FileDir', 'FilePrefix', 'FileFormat', 'NbFrames', 
+                 'ExposureTime', 'LatencyTime', 'TriggerMode', 'SavingMode']
 
         for par in Param:            
             result = self.execMacro(['lima_getconfig',dev,par])
@@ -268,6 +282,25 @@ class lima_lastimage(Macro):
         lima = PyTango.DeviceProxy(dev)
         value = lima.read_attribute("saving_next_number").value - 1 
         return value 
+     
+
+class lima_nextimagefile(Macro):
+    """Returns file name for next image to be saved"""
+    
+    param_def =  [['dev',Type.String, None, 'Device name or alias']]
+    result_def = [['lastImage',Type.String, None, 
+                   'Filename for next image to be saved']]
+
+    @catch_error
+    def run(self,dev):
+        lima = PyTango.DeviceProxy(dev)
+        value = lima.read_attribute("saving_next_number").value
+        dir = lima.read_attribute("saving_directory").value
+        prefix = lima.read_attribute("saving_prefix").value
+        id = str("%04d" % value)
+        suffix = lima.read_attribute("saving_suffix").value
+        filename = dir + prefix + id + suffix
+        return filename
      
 
 
@@ -344,6 +377,36 @@ class lima_get_bin(Macro):
         value = lima.read_attribute('image_bin').value
 
         return "%s %s" % (str(value[0]),str(value[1]))
+
+
+
+class lima_set_first_image(Macro):
+    """Set image number of first image"""
+
+    param_def =  [['dev',Type.String, None, 'Device name or alias'],
+                  ['first_image',Type.Integer, None, 
+                   'Image number for first image']]
+
+    @catch_error
+    def run(self, dev, first):
+        lima = PyTango.DeviceProxy(dev)
+        lima.write_attribute('saving_next_number', first)
+       
+
+
+class lima_get_first_image(Macro):
+    """Get get image number of first image"""
+
+    param_def =  [['dev',Type.String, None, 'Device name or alias']]
+    result_def = [['first_image',Type.Integer, None, 
+                   'Image number for first image']]
+
+    @catch_error
+    def run(self,dev):
+        lima = PyTango.DeviceProxy(dev)
+        value = lima.read_attribute('saving_next_number').value
+
+        return value
 
 
 
