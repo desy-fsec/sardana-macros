@@ -33,7 +33,7 @@ import array
 import PyTango
 
 class mca_desy_start(Macro):
-    """Starts an mca"""
+    """Starts a mca"""
     
     param_def = [
        ['mca', Type.ExpChannel, None, 'mca']
@@ -45,5 +45,20 @@ class mca_desy_start(Macro):
         tango_proxy = PyTango.DeviceProxy(tango_device_name)
         tango_proxy.Start()
         o = "Starting " +  name
+        self.output(o)
+
+class mca_desy_clear(Macro):
+    """Clears a mca"""
+    
+    param_def = [
+       ['mca', Type.ExpChannel, None, 'mca']
+    ]
+    
+    def run(self, mca):
+        name = mca.getName()
+        tango_device_name = mca.TangoDevice
+        tango_proxy = PyTango.DeviceProxy(tango_device_name)
+        tango_proxy.Clear()
+        o = "Clearing " +  name
         self.output(o)
 
