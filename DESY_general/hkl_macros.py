@@ -412,9 +412,11 @@ class setmode(Macro, _diffrac):
                 imode = imode + 1
             return
         else:
-            self.diffrac.write_attribute("enginemode",modes[new_mode - 1])           
+            self.diffrac.write_attribute("enginemode",modes[new_mode - 1])
             self.output("Now using %s mode" % modes[new_mode - 1])
-
+                       
+            self.execMacro('savecrystal')
+            
 class getmode(Macro, _diffrac):
     """Get operation mode."""
     
@@ -643,7 +645,8 @@ class setaz(Macro, _diffrac):
         self.diffrac.write_attribute("psirefh", PsiH)
         self.diffrac.write_attribute("psirefk", PsiK)
         self.diffrac.write_attribute("psirefl", PsiL)
-        
+
+        self.execMacro('savecrystal')
 
 class compute_u(Macro, _diffrac):
     """ Compute U matrix with reflections 0 and 1 """
