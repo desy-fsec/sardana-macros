@@ -66,8 +66,10 @@ class ascanct_ni(Macro):
      
     def prepare(self,*args):
         self.ascanct_macro, _ = self.createMacro("ascanct",*args)
-        self.extraRecorder = self.ascanct_macro.extraRecorder
-    
+        try:
+            self.extraRecorder = self.ascanct_macro.extraRecorder
+        except:
+            self.extraRecorder = None
     
     def run(self,*args):
         
