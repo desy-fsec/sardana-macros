@@ -58,7 +58,7 @@ class escan(Macro):
             return
 
         try:
-            energy_device = getObj("mnchrmtr")
+            energy_device = self.getObj("mnchrmtr")
             energy_device_name = "mnchrmtr"
         except:
             self.warning("mnchrmtr device does not exist.")
@@ -69,7 +69,7 @@ class escan(Macro):
                 self.error("EnergyDevice not defined. Macro exiting")
                 return
             try:
-                energy_device = getObj(energy_device_name)
+                energy_device = self.getObj(energy_device_name)
             except:
                 self.error("Unable to get energy device %s. Macro exitin" % energy_device_name)
                 return
@@ -124,7 +124,7 @@ class me(Macro):
             return
 
         try:
-            energyfmb_device = getObj("mnchrmtr")
+            energyfmb_device = self.getObj("mnchrmtr")
             energyfmb_device_name = "mnchrmtr"
         except:
             self.warning("mnchrmtr device does not exist.")
@@ -135,13 +135,13 @@ class me(Macro):
                 self.error("EnergyFMB not defined. Macro exiting")
                 return
             try:
-                energyfmb_device = getObj(energyfmb_device_name)
+                energyfmb_device = self.getObj(energyfmb_device_name)
             except:
                 self.error("Unable to get fmb device %s. Macro exiting" % energyfmb_device_name)
                 return
 
         try:
-            energy_device = getObj("mnchrmtr")
+            energy_device = self.getObj("mnchrmtr")
             energy_device_name = "mnchrmtr"
         except:
             self.warning("mnchrmtr device does not exist.")
@@ -152,7 +152,7 @@ class me(Macro):
                 self.error("EnergyDevice not defined. Macro exiting")
                 return
             try:
-                energy_device = getObj(energy_device_name)
+                energy_device = self.getObj(energy_device_name)
             except:
                 self.error("Unable to get energy device %s. Macro exiting" % energy_device_name)
                 return
