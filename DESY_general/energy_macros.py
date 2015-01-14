@@ -158,7 +158,10 @@ class me(Macro):
                 return
 
         fmb_tango_device = DeviceProxy(energyfmb_device.TangoDevice)
-        fmb_tango_device.write_attribute("PseudoChannelCutMode", 0)
+        try:
+            fmb_tango_device.write_attribute("PseudoChannelCutMode", 0)
+        except:
+            pass
 
         diffrac_name = self.getEnv('DiffracDevice')
         diffrac_device = self.getDevice(diffrac_name)
