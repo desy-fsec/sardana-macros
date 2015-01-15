@@ -352,6 +352,11 @@ class wh(Macro, _diffrac):
             return
        
         self.output("")
+        self.output("Engine: %s" % self.diffrac.engine)
+        self.output("")
+        self.output("Mode: %s" % self.diffrac.enginemode)
+        
+        self.output("")
         self.output("%s %s %3s %9.5f %9.5f %9.5f " %
                     ("H","K","L = ",self.h_device.position,self.k_device.position,self.l_device.position))
 
@@ -361,10 +366,42 @@ class wh(Macro, _diffrac):
             self.output("%8s %9.5f %9.5f %9.5f " % 
                         ("Ref   = ",self.diffrac.psirefh,self.diffrac.psirefk,self.diffrac.psirefl))
      
+            psirefh_in = self.diffrac.psirefh    
+            psirefk_in = self.diffrac.psirefk    
+            psirefl_in = self.diffrac.psirefl
+            engine_restore = self.diffrac.engine
+            mode_restore   = self.diffrac.enginemode
+     
+            self.diffrac.write_attribute("engine", "psi")
+     
+            psirefh_psi = self.diffrac.psirefh
+            psirefk_psi = self.diffrac.psirefk
+            psirefl_psi = self.diffrac.psirefl
+        
+            self.diffrac.write_attribute("engine", engine_restore)
+            self.diffrac.write_attribute("enginemode", mode_restore)
+
+            if psirefh_in != psirefh_psi or psirefk_in != psirefk_psi or psirefl_in != psirefl_psi:
+                self.warning("Psiref vector missmatch. Calculated value corresponds to:")
+                self.warning("%8s %9.5f %9.5f %9.5f " % 
+                            ("Ref   = ",psirefh_psi,psirefk_psi,psirefl_psi))
+                self.warning("Use setaz for setting it consistently")
+            
         try:
-            self.output("%s %7.5f" % ("Azimuth (Psi) = ",self.psidevice.Position))
+            self.output("%s %7.5f" % ("Azimuth (Psi - calculated) = ",self.psidevice.Position))
         except:
             self.warning("Not able to read psi. Check if environment Psi is defined")
+
+
+        parameter_names = self.diffrac.modeparametersnames
+
+        i = 0
+        for par in parameter_names:
+            if par == "psi":
+                parameter_values = self.diffrac.modeparametersvalues
+                self.info("%s %7.5f" % ("Azimuth (Psi - set) = ",parameter_values[i]))
+            i = i + 1   
+
         self.output("%s %7.5f" % ("Wavelength = ", self.diffrac.WaveLength))
         self.output("")
 
@@ -378,6 +415,48 @@ class wh(Macro, _diffrac):
         self.output("%10s %11s %12s %11s %10s %11s" %("Delta","Theta","Chi","Phi","Mu","Gamma"))
         self.output("%10s %11s %12s %11s %10s %11s" % 
                     (str_pos1, str_pos2, str_pos3, str_pos4, str_pos5, str_pos6))
+
+
+class freeze(Macro, _diffrac):
+    """ Set psi value for psi constant modes """
+    
+    param_def = [
+       ['parameter', Type.String, None, "Parameter to freeze"],
+       ['value',     Type.Float,  None, "Value to be frozen"]
+    ]    
+   
+    def prepare(self, parameter, value):
+        _diffrac.prepare(self)
+        
+    def run(self, parameter, value):
+        if not self.prepared:
+            return   
+        
+        if parameter == "psi":
+            engine_restore = self.diffrac.engine
+            mode_restore   = self.diffrac.enginemode
+            
+            if mode_restore != "psi_constant_vertical" and mode_restore != "psi_constant_horizontal":
+                self.warning("Psi frozen to set value. But current mode is not set to psi_constant_vertical or psi_constant_horizontal ")
+            
+            
+            self.diffrac.write_attribute("engine", "hkl")
+            self.diffrac.write_attribute("enginemode", "psi_constant_vertical")
+            parameter_values = self.diffrac.modeparametersvalues
+            parameter_values[3] = value
+            self.diffrac.write_attribute("modeparametersvalues", parameter_values)
+            self.diffrac.write_attribute("enginemode", "psi_constant_horizontal")
+            parameter_values = self.diffrac.modeparametersvalues
+            parameter_values[3] = value
+            self.diffrac.write_attribute("modeparametersvalues", parameter_values)
+            
+            self.diffrac.write_attribute("engine", engine_restore)
+            self.diffrac.write_attribute("enginemode", mode_restore)
+            
+
+        else:
+            self.warning("Only implemented for parameter psi. Nothing done")
+
 
 class setmode(Macro, _diffrac):
     """Set operation mode.""" 
@@ -642,10 +721,26 @@ class setaz(Macro, _diffrac):
         if not self.prepared:
             return
 
+        engine_restore = self.diffrac.engine
+        mode_restore   = self.diffrac.enginemode
+
+        self.diffrac.write_attribute("engine", "hkl")
+        self.diffrac.write_attribute("enginemode", "psi_constant_vertical")
         self.diffrac.write_attribute("psirefh", PsiH)
         self.diffrac.write_attribute("psirefk", PsiK)
         self.diffrac.write_attribute("psirefl", PsiL)
-
+        self.diffrac.write_attribute("enginemode", "psi_constant_horizontal")
+        self.diffrac.write_attribute("psirefh", PsiH)
+        self.diffrac.write_attribute("psirefk", PsiK)
+        self.diffrac.write_attribute("psirefl", PsiL)
+        self.diffrac.write_attribute("engine", "psi")
+        self.diffrac.write_attribute("psirefh", PsiH)
+        self.diffrac.write_attribute("psirefk", PsiK)
+        self.diffrac.write_attribute("psirefl", PsiL)
+        
+        self.diffrac.write_attribute("engine", engine_restore)
+        self.diffrac.write_attribute("enginemode", mode_restore)
+        
         self.execMacro('savecrystal')
 
 class compute_u(Macro, _diffrac):
