@@ -51,3 +51,26 @@ class timescan(Macro):
             self.output( "Usage:   timescan start stop intervals time")
             
 
+
+class scan_loop(Macro):
+
+ 
+    param_def = [
+       ['motor',      Type.Moveable,   None, 'Moveable to move'],
+       ['start_pos',  Type.Float,   None, 'Scan start position'],
+       ['final_pos',  Type.Float,   None, 'Scan final position'],
+       ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
+       ['integ_time', Type.Float,   None, 'Integration time'],
+       ['nb_loops',   Type.Integer, -1, 'Nb of loops (optional)']
+    ]
+
+
+    def run(self, motor, start_pos, final_pos, nr_interv, integ_time, nb_loops):
+
+        if nb_loops > 0:
+            for i in range(0, nb_loops):
+              self.execMacro('ascan', motor.getName(), start_pos, final_pos, nr_interv, integ_time)
+        else:
+            while 1:
+                self.execMacro('ascan', motor.getName(), start_pos, final_pos, nr_interv, integ_time)
+
