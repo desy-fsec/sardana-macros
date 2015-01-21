@@ -34,6 +34,7 @@ class XBPMspectra(Macro):
             self.scan_itime = dev.read_attribute('ScanIntTime').value
             self.scan_file = dev.read_attribute('ScanFile').value
             self.scan_dir = dev.read_attribute('ScanDir').value
+            self.bck_id_gap = None
             
         except Exception, e:
             msg = ''
@@ -56,8 +57,11 @@ class XBPMspectra(Macro):
                 self.bck_id_phase = 0 
     
     def _loadIDConfig(self):
-        self._moveID(self.bck_id_gap, self.bck_id_phase)
-    
+        if not self.bck_id_gap:
+            self._moveID(self.bck_id_gap, self.bck_id_phase)
+        else:
+            self.error('bck_id_gap is None. The saveIDConfig did not work')
+                
     def _moveID(self, scan_value, phase_value):
         if self.mag_field:
             #Implement the way to save the value in BL04
@@ -94,7 +98,7 @@ class XBPMspectra(Macro):
                         self.execMacro('mv %s 0 %s 0' % (self.xbpm_h,
                                                          self.xbpm_v))
         except Exception, e:
-            print 'Error with the scan ', e
+            self.error('Error with the scan %s' % str(e))
             
         finally:
             self.setEnv('ScanFile', bck_scan_file)
