@@ -395,12 +395,13 @@ class wh(Macro, _diffrac):
 
         parameter_names = self.diffrac.modeparametersnames
 
-        i = 0
-        for par in parameter_names:
-            if par == "psi":
-                parameter_values = self.diffrac.modeparametersvalues
-                self.info("%s %7.5f" % ("Azimuth (Psi - set) = ",parameter_values[i]))
-            i = i + 1   
+        if parameter_names != None:
+            i = 0
+            for par in parameter_names:
+                if par == "psi":
+                    parameter_values = self.diffrac.modeparametersvalues
+                    self.info("%s %7.5f" % ("Azimuth (Psi - set) = ",parameter_values[i]))
+                i = i + 1   
 
         self.output("%s %7.5f" % ("Wavelength = ", self.diffrac.WaveLength))
         self.output("")
