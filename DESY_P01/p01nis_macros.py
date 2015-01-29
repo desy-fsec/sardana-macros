@@ -189,7 +189,7 @@ class nislong(_nisscan):
                             
                     
 
-class create_nis_mgs(Macro):
+class nis_create_mgs(Macro):
     """Create measurement groups for nis scans """
     
     param_def = [
