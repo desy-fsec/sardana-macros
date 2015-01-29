@@ -49,11 +49,9 @@ class fileObj:
         return
 
     def _makeFileName( self):
-
-        #
-        # 
-        # the file name is constructed from ScanDir, ScanFile and ScanID
-        #
+        '''
+        constructs the file name using ScanDir, ScanFile and ScanID
+        '''
         temp = "%05d" % int(self.ms.getEnv( "ScanID"))
         #
         # sometimes ScanFile is a one-element list instead of an array
@@ -141,16 +139,18 @@ class fileObj:
         '''
         for col in self.columns:
             if col.name == counterName:
-                if mode == "peak":
+                if mode.lower() == "peak":
                     return self.posMaxPeak( col)
                 else:
                     self.ms.output( "posMax: Failed to identify mode %s" % mode)
                     return (None, None)
 
     def posMaxPeak( self, col):
+        '''
+        returns the x and y of the peak
+        '''
         maxX = None
         maxY = None
-        self.ms.output( "analysing column %s" % ( col.name))
         for i in range( len( col.y)):
             #self.ms.output( "ckecking %d %g %g" % ( i, col.x[i], col.y[i]))
             if maxY is None or col.y[i] > maxY:
@@ -168,10 +168,14 @@ class mvsa(Macro):
       SignalCounter              -> counter name"""
     param_def = [
         ['mode', Type.String, "peak", 'CEN: enter of mass, PEAK: maximum, STEP: cms of positive derivative'],
+        ['confirm', Type.String, "false", 'true: move motor without confirmation'],
         ]
     interactive = True
 
-    def run(self, mode):
+    def run(self, mode, confirm):
+        #
+        # a contains the complete file
+        #
         a = fileObj( self)
         counterName = self.getEnv( "SignalCounter")
         (maxX, maxY) = a.posMax( counterName, mode)
@@ -180,14 +184,29 @@ class mvsa(Macro):
             return
         
         motorName = self.getEnv( "ScanHistory")[-1]['title'].split()[1] 
-        motorProxy = PyTango.DeviceProxy( motorName)
-        answer = self.input( "Move %s from %g to %g (%s Signal: %g) :" % 
-                             (motorName, motorProxy.Position, maxX, counterName, maxY))
-        if answer == "yes":
+        if motorName is None:
+            self.output( "mvsa: failed to find the scan motor")
+            return
+
+        try:
+            motorProxy = PyTango.DeviceProxy( motorName)
+        except:
+            self.output( "mvsa: failed to create a proxy to the scan motor")
+            return
+
+        if confirm.lower() == "true":
             motorProxy.write_attribute( "Position", maxX)
             while motorProxy.State() == PyTango.DevState.MOVING:
                 time.sleep( 0.1)
-            self.output( "Motor %s now at %g" % (motorName, motorProxy.Position))
+            self.output( "Moved %s to %g" % (motorName, motorProxy.Position))
         else:
-            self.output( "%s not moved" % motorName)
+            answer = self.input( "Move %s from %g to %g (%s Signal: %g) [yes/no]:" % 
+                                 (motorName, motorProxy.Position, maxX, counterName, maxY))
+            if answer == "yes":
+                motorProxy.write_attribute( "Position", maxX)
+                while motorProxy.State() == PyTango.DevState.MOVING:
+                    time.sleep( 0.1)
+                self.output( "Move %s to %g" % (motorName, motorProxy.Position))
+            else:
+                self.output( "%s not moved" % motorName)
 
