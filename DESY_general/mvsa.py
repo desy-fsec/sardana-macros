@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # 
-# file name: /home/pXXuser/sardanaMacros/environment_class.py
-"""this module contains some demo code"""
-
-__all__ = ["environment_class"]
-
+# some change
 from sardana.macroserver.macro import *
 from sardana.macroserver.macro import macro
 from optparse import OptionParser
