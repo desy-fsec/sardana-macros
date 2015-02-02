@@ -968,7 +968,143 @@ class th2th(Macro):
                               nr_interv, integ_time )
         else:
             self.output( "Usage:   th2th tth_start_rel tth_stop_rel intervals time")
+
+
+count_scan = 1
+
+class HookPars:
+    pass
+
+def hook_pre_move(self, hook_pars):
+    global count_scan
+
+    self.execMacro('freeze', 'psi', hook_pars.psi_save + count_scan*hook_pars.angle_interv)
+
+    count_scan = count_scan + 1
+
+class luppsi(Macro, _diffrac):
+    """psi scan:
+    
+    Relative scan psi angle    
+    """ 
+
+    param_def = [
+       ['rel_start_angle',  Type.Float,   -999, 'Relative start scan angle'],
+       ['rel_final_angle',  Type.Float,   -999, 'Relative final scan angle'],
+       ['nr_interv',  Type.Integer, -999, 'Number of scan intervals'],
+       ['integ_time', Type.Float,   -999, 'Integration time']
+       ]    
+
+    def prepare(self, H, K, L, AnglesIndex):
+        _diffrac.prepare(self)
+
+    def run(self,rel_start_angle,rel_final_angle,nr_interv,integ_time):
+        if not self.prepared:
+            return
+        
+        global count_scan 
+        count_scan = 1
+
+        if ((integ_time != -999)):   
+            self.diffrac.write_attribute("engine", "hkl") 
+            self.diffrac.write_attribute("enginemode", "psi_constant_vertical")
+            h = self.h_device.position
+            k = self.k_device.position
+            l = self.l_device.position
             
+            self.execMacro('setaz', h, k, l)
+
+            psi_positions = []
+            
+            psi_save = self.psidevice.Position
+
+            angle_interv = abs(rel_final_angle - rel_start_angle)/nr_interv
+            
+            # Construct scan macro
+
+
+            self.output(self.psidevice.alias())
+            psi_motor  = self.getMotor(self.psidevice.alias())
+            self.output(psi_motor)
+   
+            macro,pars = self.createMacro('dscan %s %f %f %d %f ' % 
+                                          (self.psidevice.alias(), rel_start_angle, rel_final_angle, nr_interv, integ_time))
+
+
+            # Parameters for scan hook function
+
+            hook_pars = HookPars()
+            hook_pars.psi_save = psi_save
+            hook_pars.angle_interv = angle_interv
+            f = lambda : hook_pre_move(self, hook_pars)
+            macro.hooks = [
+                (f, ["pre-move"]),
+                ]
+
+            # Start the scan
+
+            self.runMacro(macro)
+
+            
+            # Return to start position
+
+            self.info("Return to start position " + str(psi_save))
+            self.execMacro('freeze', 'psi', psi_save)
+            self.psidevice.write_attribute("Position", psi_save)
+                
+        else:
+            self.output( "Usage:  luppsi rel_startangle  rel_stopangle n_intervals time")
+
+
+class luppsi_debug(Macro, _diffrac):
+    """psi scan:
+    
+    Relative scan psi angle    
+    """ 
+
+    param_def = [
+       ['rel_start_angle',  Type.Float,   -999, 'Relative start scan angle'],
+       ['rel_final_angle',  Type.Float,   -999, 'Relative final scan angle'],
+       ['nr_interv',  Type.Integer, -999, 'Number of scan intervals'],
+       ['integ_time', Type.Float,   -999, 'Integration time']
+       ]    
+  
+
+    def prepare(self, H, K, L, AnglesIndex):
+        _diffrac.prepare(self)
+
+    
+    def run(self,rel_start_angle,rel_final_angle,nr_interv,integ_time):
+        if not self.prepared:
+            return
+        
+        if ((integ_time != -999)):   
+            self.diffrac.write_attribute("engine", "hkl") 
+            self.diffrac.write_attribute("enginemode", "psi_constant_vertical")
+            h = self.h_device.position
+            k = self.k_device.position
+            l = self.l_device.position
+            
+            psi_positions = []
+            
+            psi_save = self.psidevice.Position
+
+            angle_interv = abs(rel_final_angle - rel_start_angle)/nr_interv
+
+            for i in range(0,nr_interv+1):
+                self.info("Moving psi to " + str(psi_save + (i+1)*angle_interv))
+                self.execMacro('freeze', 'psi', psi_save + (i+1)*angle_interv)
+                self.execMacro('br', h, k, l)
+            
+            # Return to start position
+            
+            self.info("Return to start position " + str(psi_save))
+            self.execMacro('freeze', 'psi', psi_save)
+            self.execMacro('br', h, k, l)
+                
+        else:
+            self.output( "Usage:  luppsi_debug rel_startangle  rel_stopangle n_intervals time")
+                      
 
 class savecrystal(Macro,_diffrac):
         
