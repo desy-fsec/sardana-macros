@@ -8,6 +8,7 @@ from sardana.taurus.core.tango.sardana.pool import StopException
 from macro_utils.slsdetector import SlsDetectorGet, SlsDetectorPut, SlsDetectorAcquire, SlsDetectorProgram
 from macro_utils.macroutils import MntGrpController, SoftShutterController, MoveableController
 from utils import count2pulseWidth, pulseWidth2count
+from sardana.macroserver.msexception import UnknownEnv
 
 def splitStringIntoLines(string, delimeter):
     '''Splits string into lines.'''
@@ -786,13 +787,15 @@ class mythen_acquire(Macro):
         positions_len = len(positions)
         current_positions = []
         
-        if positions_len == 0:
-            self.motor=None
-        else:
+        self.getMotion([self.MOTOR_NAME])
+        motor = self.getMotor(self.MOTOR_NAME)
+        if positions_len != 0:
+            #self.motor=None
+        #else:
             #this call ensures us that the motor will get aborted 
             #when macro gets aborted
-            self.getMotion([self.MOTOR_NAME])
-            motor = self.getMotor(self.MOTOR_NAME)
+            #self.getMotion([self.MOTOR_NAME])
+            #motor = self.getMotor(self.MOTOR_NAME)
             is_motor_powered = motor.read_attribute('poweron').value
             if not is_motor_powered:
                 raise Exception('Motor: %s is powered off.' % self.MOTOR_NAME)
@@ -860,6 +863,9 @@ class mythen_acquire(Macro):
             self.warning('Number of the positions reported by' +
                          ' sls_detector_acquire does not correspond to' + 
                          ' number of the requested positions.') 
+        if len(current_positions) == 0 :
+           current_positions.append(motor.position)
+           self.warning(current_positions)
         return_positions_str = repr(current_positions)
         return (outPath, return_positions_str)
     
@@ -1748,16 +1754,18 @@ class mythen_take(Macro, MntGrpController):
                  ['startpos', Type.String, '', 'start position'],
                  ['endpos' , Type.String, '', 'end position']]
 
-    MONITOR_CHANNEL = 'bl04/io/ibl0403-dev2-ctr0'
-    MONITOR_CHANNEL_GATE = '/Dev2/PFI38'    
-    MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'    
+    MONITOR_CHANNEL = 'bl04/io/ibl0403-dev2-ctr0' #i14
+    MONITOR_CHANNEL_GATE = '/Dev2/PFI38'    #i14 Gate
+    MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'  #i14 Source  
         
     def _backupChannel(self, channel):
         DicProperties = channel.get_property('applicationType')
         valueProperties = DicProperties["applicationType"]
         value = list(valueProperties)[0]
-      
+
+	self.info(value)      
         if value == "CIPulseWidthChan":
+            self.info("Entering in value == CIPulseWidthChan") 	    
             self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
 
         self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
@@ -1767,17 +1775,19 @@ class mythen_take(Macro, MntGrpController):
         self.debug('PauseTriggerWhen: %s' % self._pauseTriggerWhen)
         self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)        
         positions = self.execMacro("mythen_getPositions").getResult()
-        spc = long(len(eval(positions)))
+        self.spc = long(len(eval(positions)))
 	
-        if spc>1:
+        if self.spc>1:
+
             self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
         
     def _restoreChannel(self, channel):
-        self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+        if self.spc>1:
+		self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
         channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
         channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
         channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
-        channel.Init()
+        #channel.Init()
         
     def _configureChannel(self, channel):
         positions = self.execMacro("mythen_getPositions").getResult()
@@ -1812,19 +1822,25 @@ class mythen_take(Macro, MntGrpController):
     def prepare(self, *args, **kwargs):
         MntGrpController.init(self, self)
         self.monitorChannel = PyTango.DeviceProxy(self.MONITOR_CHANNEL)
+        #self.monitorChannel.set_timeout_millis(10000)
         self.monitorChannel.Stop()
         #preparing Mythen to generate gate while acquiring
         self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
         
     def run(self, *args, **kwargs):
-        self._backupChannel(self.monitorChannel)
+        try:
+            mode_safe = self.getEnv('MythenTakeCountingModeSafe')
+        except UnknownEnv, e:
+            mode_safe = True
+        if mode_safe:
+            self._backupChannel(self.monitorChannel)
         softscan = args[0]
         startpos = args[1]
         endpos = args[2]
 
-        try:
-            self._configureChannel(self.monitorChannel)
+        self._configureChannel(self.monitorChannel)
 
+        try:
             self.monitorChannel.Start()
             outFileName, positions = self.execMacro("mythen_acquire").getResult()
             nrOfPositions = len(eval(positions))
@@ -1849,7 +1865,8 @@ class mythen_take(Macro, MntGrpController):
             raise e
         finally:
             self.monitorChannel.Stop()
-            self._restoreChannel(self.monitorChannel)
+            if mode_safe:
+                self._restoreChannel(self.monitorChannel)
 
         self.info("Data stored: %s" % outFileName)
         
@@ -1983,7 +2000,6 @@ class mythen_setBadChannels(Macro):
         self.slsDetectorProgram = SlsDetectorPut(['badchannels', self.badChannelFilename])
 
     def run(self, *args, **kwargs):
-        self.info('running')
         self.slsDetectorProgram.execute()
         output = self.slsDetectorProgram.getStdOut()
         error = self.slsDetectorProgram.getStdErr()
