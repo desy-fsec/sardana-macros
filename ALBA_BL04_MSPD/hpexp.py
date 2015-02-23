@@ -285,9 +285,9 @@ class mar_scan(Macro, BaseScan):
                 [ 'end_pos', Type.Float, None, 'End position'],
                 [ 'time', Type.Float, None, 'Count time']]
 
-    POS_CTR_NAME = "bl04/io/ibl0403-dev1-ctr3"
-    BLADE_3_NAME = "bl04/io/ibl0403-dev1-ctr0"
-    BLADE_4_NAME = "bl04/io/ibl0403-dev1-ctr1"
+    POS_CTR_NAME = "bl04/io/ibl0403-dev1-ctr4" # hp_som position in NI660X
+    BLADE_3_NAME = "bl04/io/ibl0403-dev3-ctr0" # FastShuttler blade 1
+    BLADE_4_NAME = "bl04/io/ibl0403-dev3-ctr1" # FastShuttler blade 2
 
     def init(self):
         self.debug("mar_scan.init() entering...")
