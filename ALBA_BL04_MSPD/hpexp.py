@@ -45,11 +45,8 @@ class BaseExp:
         self.debug("BaseExp.checkDiode() entering...")        
         hpi_status = self.hpDiode.read_attribute('value').value
         if hpi_status == 0:
-            self.warning("Diode might be in!!!")
-            self.error("Press Ctrl+C within 3 secs if you want to abort.")
-            for i in range(60): 
-                time.sleep(0.05)
-                self.pausePoint()
+            self.warning("Diode is in, so move it out!!!")
+            self.hpDiode.write_attribute('value', 1)
         self.debug("BaseExp.checkDiode() leaving...")
 
     def prepareDetector(self):
@@ -59,14 +56,19 @@ class BaseExp:
         latency = 2.5
         self.execMacro(['lima_prepare', 'rayonix', self.marAcqTime, latency])
         #taking the real file information
-        self.marDir = self.execMacro(['lima_getconfig','rayonix', 'directory']).getResult()
-        self.marFile = self.execMacro(['lima_getconfig','rayonix', 'prefix']).getResult()
+        self.marDir = self.execMacro(['lima_getconfig','rayonix', 'FileDir']).getResult()
+        self.marFile = self.execMacro(['lima_getconfig','rayonix', 'FilePrefix']).getResult()
         self.fileNumber = self.execMacro(['lima_lastimage','rayonix']).getResult()
         self.debug("BaseExp.prepareDetector() leaving...")
 
     def prepareMntGrp(self):
         self.debug("BaseExp.prepareMntGrp() entering...")
-        mntGrpName = self.getEnv('ActiveMntGrp')
+        
+        #Modified to use a Specific MntGrp
+        #mntGrpName = self.getEnv('ActiveMntGrp')
+
+        mntGrpName = self.getEnv('MarMntGrp')
+        self.debug("BaseExp.prepareMntGrp() Using MntGrp... %s" % mntGrpName)
         self.mntGrp = self.getObj(mntGrpName, type_class=Type.MeasurementGroup)
         cfg = self.mntGrp.getConfiguration()
         cfg.prepare()
@@ -276,12 +278,16 @@ class BaseScan(BaseExp):
 
 class mar_scan(Macro, BaseScan):
 
-    MAR_EXTRA_ACQ_TIME = 0.1
+    MAR_EXTRA_ACQ_TIME = 0.8
 
     param_def = [[ 'motor', Type.Motor, None, 'Motor to scan'],
                 [ 'start_pos', Type.Float, None, 'Start position'],
                 [ 'end_pos', Type.Float, None, 'End position'],
                 [ 'time', Type.Float, None, 'Count time']]
+
+    POS_CTR_NAME = "bl04/io/ibl0403-dev1-ctr3"
+    BLADE_3_NAME = "bl04/io/ibl0403-dev1-ctr0"
+    BLADE_4_NAME = "bl04/io/ibl0403-dev1-ctr1"
 
     def init(self):
         self.debug("mar_scan.init() entering...")
@@ -305,8 +311,7 @@ class mar_scan(Macro, BaseScan):
         if self.motor.name == "hp_som":
             resolution = 3.81373708097e-05
             #resolution = 2.5e-03 #indexer
-            posCtrName = "bl04/io/ibl0403-dev1-ctr3"
-        self.posBase = PositionBase(posCtrName, resolution)
+        self.posBase = PositionBase(self.POS_CTR_NAME, resolution)
         #accDist = abs(self.accDist) #acc distance sign is irrelevant
         accEnc = abs(self.accDist) / resolution #encoder pulses in acceleration space
         accSpaceBase = math.ceil(accEnc/4) #counter position is X1 not X4 decoded!
@@ -332,7 +337,7 @@ class mar_scan(Macro, BaseScan):
         blade3_high = 0.0
         blade3_low = abs(self.move)+abs(self.accDist)/4
         self.debug("mar_scan.prepareShutter(): blade3: idle = %s; delay = %f; high = %f; low = %f" % (blade3_idle,blade3_delay,blade3_high,blade3_low))
-        self.blade3 = Trigger("bl04/io/ibl0403-dev1-ctr0", self.posBase)
+        self.blade3 = Trigger(self.BLADE_3_NAME, self.posBase)
         self.blade3.setIdleState(blade3_idle)
         self.blade3.setDelay(blade3_delay)
         self.blade3.setHigh(blade3_high)
@@ -343,7 +348,7 @@ class mar_scan(Macro, BaseScan):
         blade4_high = 0.0
         blade4_low = abs(self.accDist) / 2
         self.debug("mar_scan.prepareShutter(): blade4: idle = %s; delay = %f; high = %f; low = %f" % (blade4_idle,blade4_delay,blade4_high,blade4_low))
-        self.blade4 = Trigger("bl04/io/ibl0403-dev1-ctr1", self.posBase)
+        self.blade4 = Trigger(self.BLADE_4_NAME, self.posBase)
         self.blade4.setIdleState(blade4_idle)
         self.blade4.setDelay(blade4_delay)
         self.blade4.setHigh(blade4_high)
