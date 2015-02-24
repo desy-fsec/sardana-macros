@@ -2,12 +2,16 @@ import time
 import os
 import Queue
 import PyTango
+import taurus
+#import ff_mythen
+from trigger import Trigger, TimeBase
+from taurus.core.util import SafeEvaluator
+
 
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
 from sardana.taurus.core.tango.sardana.pool import StopException
-from macro_utils.slsdetector import SlsDetectorGet, SlsDetectorPut, SlsDetectorAcquire, SlsDetectorProgram
+from macro_utils.slsdetector import SlsDetectorGet, SlsDetectorPut, SlsDetectorAcquire, SlsDetectorProgram, MythenReadoutTime
 from macro_utils.macroutils import MntGrpController, SoftShutterController, MoveableController
-from utils import count2pulseWidth, pulseWidth2count
 from sardana.macroserver.msexception import UnknownEnv
 
 def splitStringIntoLines(string, delimeter):
@@ -2239,5 +2243,340 @@ class mythen_softscan(Macro, MoveableController, SoftShutterController): #, MntG
         self.info("on_abort() entering...")
         self.closeShutter()
         self.cleanup()
-        
+ 
+       
             
+#this module is for testing purposes
+
+def mythenAcquire(macro):
+#    macro.execMacro("mythen_acquire")
+    slsDetectorProgram = SlsDetectorAcquire([])
+    slsDetectorProgram.execute()
+    output = slsDetectorProgram.getStdOut()
+    error = slsDetectorProgram.getStdErr()
+        
+    while True:
+        outLine = output.readline();macro.debug( "outLine: " + outLine)
+        errLine = error.readline();macro.debug("errLine: "  + errLine)
+        lenOutLine = len(outLine)
+        lenErrLine = len(errLine)
+        if lenOutLine != 0:
+            macro.output(outLine)
+        if lenErrLine != 0:
+            macro.error(errLine)
+        if slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+            break
+            
+def selectPulseResolution(expTime, readTime):
+    highTimes = [25e-9, 100e-9, 20e-6] #[25ns, 100ns, 20us]; [80MHz, 20MHz, 100kHz]
+    maxLowTimes = [53.687091162499996, 214.74836464999998, 42949.67294]
+    
+    period = expTime + readTime
+    
+    for ht, mlt in zip(highTimes, maxLowTimes):
+        lt = period - ht
+        if lt < mlt:
+            return ht, lt
+    raise Exception("Too high exposure time. Max is 42949 seconds.")
+    
+    
+class mythen_timeResolved(Macro, MntGrpController):
+    
+
+    param_def = [['time', Type.Float, None, 'Total experiment time'],
+                 ['expTime', Type.Float, None, 'Exposure time per frame']]
+                 
+    MYTHEN_TRIG_DEVICE = ['bl04/io/ibl0403-dev2-ctr1', 'CICountEdgesChan',
+                          'MythenTrigger']
+    EXT_TRIG_DEVICE = ['bl04/io/ibl0403-dev2-ctr2', 'COPulseChanTime',
+                       'ExternalTrigger']
+    MASTER_TRIG_DEVICE = ['bl04/io/ibl0403-dev2-ctr4', 'COPulseChanTime',
+                       'MasterTrigger']
+    
+    
+    def _configNi(self, *args, **kwargs):
+        #prepare ni application type
+        self.execMacro('ni_app_change %s ' % ' '.join(self.MYTHEN_TRIG_DEVICE))
+        self.execMacro('ni_app_change %s ' % ' '.join(self.EXT_TRIG_DEVICE))
+        self.execMacro('ni_app_change %s ' % ' '.join(self.MASTER_TRIG_DEVICE))
+ 
+
+        MntGrpController.init(self, self)
+        experimentTime = args[0]
+        self.exposureTime = args[1]
+        
+        
+        #checking if multiple positions are configured
+        #if yes, exiting 
+        positionsStr = self.execMacro("mythen_getPositions").getResult()
+        positions = SafeEvaluator().eval(positionsStr)
+        self.debug("Positions: %s" % repr(positions))
+        if len(positions) > 0:
+            raise Exception("Time resolved experiment is not possible with multiple positions.")
+        
+        #calculating nr of frames which mythen will be able to gather 
+        #during the experiment time
+        dr = self.execMacro("mythen_getDr").getResult()        
+        self.debug("dr: %d" % dr)
+        mrt = MythenReadoutTime()
+        self.readoutTime = mrt[dr]
+        self.debug("readoutTime: %f" % self.readoutTime)
+        timePerFrame = self.exposureTime + self.readoutTime
+        self.nrOfFrames = int(math.floor(experimentTime / timePerFrame))
+        self.debug("nrOfFrames: %d" % self.nrOfFrames)
+        
+        #calculating trigger pulse characteristics
+        ht, lt = selectPulseResolution(self.exposureTime, self.readoutTime)
+                
+        #configuring mythen detector
+        self.execMacro("mythen_setTiming", 'trigger')
+        self.execMacro("mythen_setExtSignal", 2, "trigger_in_rising_edge")
+        self.execMacro("mythen_setNrOfTriggers", 1)
+        self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)
+        self.execMacro("mythen_setExpTime", self.exposureTime)
+        self.execMacro('mythen_setPositions')
+        self.firstIndex = self.execMacro("mythen_getIndex").getResult()        
+        self.debug('FirstIndex = %d' %self.firstIndex)
+               
+        #configuring mythen trigger
+        self.mythenTrigger = taurus.Device(self.MYTHEN_TRIG_DEVICE[0])
+        self.mythenTrigger.write_attribute("IdleState","Low")
+        self.mythenTrigger.write_attribute("SampleTimingType", "Implicit")
+        #("SampPerChan", long(self.nrOfFrames)) is not necessary only need 1 trigger
+        self.mythenTrigger.write_attribute("SampPerChan", long(self.nrOfFrames))
+        #self.mythenTrigger.write_attribute("SampPerChan", long(1))
+        self.mythenTrigger.write_attribute("InitialDelayTime",0) #sec (obligatory delay is 2 ticks)
+        self.mythenTrigger.write_attribute("HighTime", ht) #sec
+        self.mythenTrigger.write_attribute("LowTime", lt) #sec
+        self.mythenTrigger.write_attribute("StartTriggerSource", "/Dev1/PFI12")
+        self.mythenTrigger.write_attribute("StartTriggerType", "DigEdge")
+        
+        #configuring external trigger
+        self.externalTrigger = taurus.Device(self.EXT_TRIG_DEVICE[0])
+        self.externalTrigger.write_attribute("IdleState","Low")
+        self.externalTrigger.write_attribute("SampleTimingType", "Implicit")
+        #self.externalTrigger.write_attribute("SampPerChan", long(1))
+        #("SampPerChan", long(self.nrOfFrames)) is not necessary only need 1 trigger
+        self.externalTrigger.write_attribute("SampPerChan", long(self.nrOfFrames))
+        self.externalTrigger.write_attribute("InitialDelayTime",0) #sec (obligatory delay is 2 ticks)
+        self.externalTrigger.write_attribute("HighTime", 1) #sec
+        self.externalTrigger.write_attribute("LowTime", 1) #sec
+        self.externalTrigger.write_attribute("StartTriggerSource", "/Dev1/PFI12")
+        self.externalTrigger.write_attribute("StartTriggerType", "DigEdge")
+                              
+        #configuring master trigger
+        self.masterTrigger = PyTango.DeviceProxy(self.MASTER_TRIG_DEVICE[0])
+        self.masterTrigger.write_attribute("IdleState", "Low")
+        self.masterTrigger.write_attribute("SampleTimingType", "Implicit")
+        self.masterTrigger.write_attribute("SampPerChan", long(1))
+        self.masterTrigger.write_attribute("InitialDelayTime", 0) #sec (obligatory delay is 2 ticks)
+        self.masterTrigger.write_attribute("HighTime", 0.001) #sec
+        self.masterTrigger.write_attribute("LowTime", 0.001) #sec      
+                
+    def _restoreNi(self):
+         self.execMacro('ni_default %s' % self.MYTHEN_TRIG_DEVICE[0])
+         self.execMacro('ni_default %s' % self.EXT_TRIG_DEVICE[0])
+         self.execMacro('ni_default %s' % self.MASTER_TRIG_DEVICE[0])
+
+    def run(self, *args, **kwargs):
+        import threading
+        try:
+            self._configNi(*args, **kwargs)
+            
+            self._event = threading.Event()        
+            #callback function to set Event
+            def done(job_ret):
+                self._event.set()
+        
+            self.mntGrpAcqTime = 0.1
+            MntGrpController.prepareMntGrp(self)
+            MntGrpController.acquireMntGrp(self)
+            MntGrpController.waitMntGrp(self)
+            firstMntGrpResults = MntGrpController.getMntGrpResults(self)
+        
+            self.getManager().add_job(mythenAcquire, done, self)
+       
+	    #self.execMacro("mythen_acquire")
+            #waiting for detector till it arms
+            while True:
+                self.checkPoint()
+                time.sleep(0.1)
+                status = self.execMacro("mythen_getStatus").getResult()
+                if status == "running":
+                    break    
+            self.debug("mythen waiting for trigger")
+        
+            self.externalTrigger.start()
+            self.mythenTrigger.start()
+            self.masterTrigger.start() 
+            self._event.wait()
+            self.debug("Mythen end acq")
+        finally:
+            
+            #Aborting
+            status = self.execMacro("mythen_getStatus").getResult()
+            if status == "running":
+                abortProgram = SlsDetectorPut(["status", "stop"])            
+                abortProgram.execute()
+            self.externalTrigger.stop()
+            self.mythenTrigger.stop()    
+            self.masterTrigger.stop()
+            self.execMacro("mythen_setTiming", 'auto')
+            self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
+            self._restoreNi()
+
+        MntGrpController.acquireMntGrp(self)
+        MntGrpController.waitMntGrp(self)
+        lastMntGrpResults = MntGrpController.getMntGrpResults(self)
+        
+        #generating timestamps
+        outDir = self.execMacro("mythen_getOutDir").getResult()
+        outFileName = self.execMacro("mythen_getOutFileName").getResult()
+        lastIndex = self.execMacro("mythen_getIndex").getResult()
+        self.debug('lastIndex = %d'% lastIndex)
+        
+        acquiredFrames = lastIndex - self.firstIndex
+        if acquiredFrames != 1:
+            raise Exception("Nr of acquired images does not correspond to requested value.")
+        
+        parFile = outDir + "/" + outFileName + "_" + str(self.firstIndex) + "-" + str(lastIndex-1) + ".par"        
+        try:
+            pFile = open(parFile, "w")
+            pFile.write(firstMntGrpResults + "\n")
+            for i in range(self.nrOfFrames):
+                fileNames = outDir + "/" + outFileName + "_" + str(self.firstIndex + i) + ".{raw,dat}"
+                timestamp = i * (self.exposureTime + self.readoutTime)
+                line = "%s : %f" % (fileNames, timestamp)
+                pFile.write(line + '\n')
+                self.output(line)
+            extraHeader = self.execMacro("_mythpar").getResult()
+            pFile.write(extraHeader+'\n')
+            pFile.write('LastMngGrpResult:'+ '\n')
+            pFile.write(lastMntGrpResults)
+        except Exception, e:
+            self.error(e)
+            pFile.close()
+            self.output(parFile)
+
+class mythen_timeResolvedAUTO(Macro, MntGrpController):
+                                                   
+
+    param_def = [['time', Type.Float, None, 'Total experiment time'],
+                 ['expTime', Type.Float, None, 'Exposure time per frame']]
+
+    def prepare(self, *args, **kwargs):                                   
+        MntGrpController.init(self, self)                                 
+        self.experimentTime = args[0]                                          
+        self.exposureTime = args[1]  
+
+
+        #checking if multiple positions are configured                    
+        #if yes, exiting                                                  
+        positionsStr = self.execMacro("mythen_getPositions").getResult()  
+        positions = SafeEvaluator().eval(positionsStr)                    
+        self.debug("Positions: %s" % repr(positions))                     
+        if len(positions) > 0:                                            
+            raise Exception("Time resolved experiment is not possible with multiple positions.")
+        
+                                                                                        
+        #calculating nr of frames which mythen will be able to gather                           
+        #during the experiment time                                                             
+        dr = self.execMacro("mythen_getDr").getResult()                                         
+        self.debug("dr: %d" % dr)                                                               
+        mrt = MythenReadoutTime()                                                               
+        self.readoutTime = mrt[dr]                                                              
+        self.debug("readoutTime: %f" % self.readoutTime)                                        
+        timePerFrame = self.exposureTime + self.readoutTime                                     
+        self.nrOfFrames = int(math.floor(self.experimentTime / timePerFrame))                        
+        self.debug("nrOfFrames: %d" % self.nrOfFrames)            
+
+
+        #configuring mythen detector                                                            
+        self.execMacro("mythen_setTiming", 'auto')                                           
+        #self.execMacro("mythen_setExtSignal", 2, "trigger_in_rising_edge")                      
+        #self.execMacro("mythen_setNrOfTriggers", 1)                                             
+        self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)                       
+        self.execMacro("mythen_setExpTime", self.exposureTime)                                  
+        self.execMacro('mythen_setPositions')                                                   
+        self.firstIndex = self.execMacro("mythen_getIndex").getResult()                         
+        self.debug('FirstIndex = %d' %self.firstIndex)   
+
+
+
+
+    def run(self, *args, **kwargs):                                                                  
+        import threading                                                                             
+        self._event = threading.Event()                                                              
+        #callback function to set Event                                                              
+        def done(job_ret):                                                                           
+            self._event.set()                                                                        
+                                                                                                     
+        self.mntGrpAcqTime = 0.1                                                                     
+        MntGrpController.prepareMntGrp(self)                                                         
+        MntGrpController.acquireMntGrp(self)                                                         
+        MntGrpController.waitMntGrp(self)                                                            
+        firstMntGrpResults = MntGrpController.getMntGrpResults(self)                                 
+                                                                                                     
+        self.getManager().add_job(mythenAcquire, done, self)                                         
+                                                                                                     
+        #self.execMacro("mythen_acquire")                                                            
+        #waiting for detector till it arms                                                           
+        while True:                                                                                  
+            self.checkPoint()                                                                        
+            time.sleep(0.1)                                                                          
+            status = self.execMacro("mythen_getStatus").getResult()                                  
+            if status == "running":                                                                  
+                break                                                                                
+        self.debug("mythen waiting for trigger")                                                     
+                                                                                                     
+        try:                                                                                         
+            #self.externalTrigger.start()                                                             
+            #self.mythenTrigger.start()                                                               
+            #self.masterTrigger.start()                                                               
+            self._event.wait()                                                                       
+            self.debug("Mythen end acq")                                                             
+        finally:                                                                                     
+                                                                                                     
+            #Aborting                                                                                
+            status = self.execMacro("mythen_getStatus").getResult()                                  
+            if status == "running":                                                                  
+                abortProgram = SlsDetectorPut(["status", "stop"])                                    
+                abortProgram.execute()                                                               
+            #self.externalTrigger.stop()                                                              
+            #self.mythenTrigger.stop()                                                                
+            #self.masterTrigger.stop()
+            #self.execMacro("mythen_setTiming", 'auto')
+            self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
+
+        MntGrpController.acquireMntGrp(self)
+        MntGrpController.waitMntGrp(self)
+        lastMntGrpResults = MntGrpController.getMntGrpResults(self)
+
+        #generating timestamps
+        outDir = self.execMacro("mythen_getOutDir").getResult()
+        outFileName = self.execMacro("mythen_getOutFileName").getResult()
+        lastIndex = self.execMacro("mythen_getIndex").getResult()
+        self.debug('lastIndex = %d'% lastIndex)
+
+        acquiredFrames = lastIndex - self.firstIndex
+        if acquiredFrames != 1:
+            raise Exception("Nr of acquired images does not correspond to requested value.")
+
+        parFile = outDir + "/" + outFileName + "_" + str(self.firstIndex) + "-" + str(lastIndex-1) + ".par"
+        try:
+            pFile = open(parFile, "w")
+            pFile.write(firstMntGrpResults + "\n")
+            for i in range(self.nrOfFrames):
+                fileNames = outDir + "/" + outFileName + "_" + str(self.firstIndex + i) + ".{raw,dat}"
+                timestamp = i * (self.exposureTime + self.readoutTime)
+                line = "%s : %f" % (fileNames, timestamp)
+                pFile.write(line + '\n')
+                self.output(line)
+            extraHeader = self.execMacro("_mythpar").getResult()
+            pFile.write(extraHeader+'\n')
+            pFile.write('LastMngGrpResult:'+ '\n')
+            pFile.write(lastMntGrpResults)
+        except Exception, e:
+            self.error(e)
+            pFile.close()
+            self.output(parFile)
