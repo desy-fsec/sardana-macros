@@ -1,9 +1,12 @@
 import PyTango
+import taurus
 import time, math
-from sardana.macroserver.macro import Macro, Type
+from sardana.macroserver.macro import *
 from taurus.console.table import Table
 from trigger import PositionBase, Trigger
 from macro_utils.macroutils import SoftShutterController
+
+MAR_EXTRA_ACQ_TIME = 0.8
 
 class BaseExp:
 
@@ -208,7 +211,7 @@ class BaseScan(BaseExp):
         self.startPos = args[1]
         self.endPos = args[2]
         self.acqTime = args[3]
-        self.marAcqTime = self.acqTime + self.MAR_EXTRA_ACQ_TIME
+        self.marAcqTime = self.acqTime + MAR_EXTRA_ACQ_TIME
         self.mntGrpAcqTime = self.acqTime - 0.02
         self.debug("BaseScan.checkParams(%s) leaving..." % repr(args))    
 
@@ -278,16 +281,17 @@ class BaseScan(BaseExp):
 
 class mar_scan(Macro, BaseScan):
 
-    MAR_EXTRA_ACQ_TIME = 0.8
+    #MAR_EXTRA_ACQ_TIME = 0.8 MOVED TO CONSTANT
 
     param_def = [[ 'motor', Type.Motor, None, 'Motor to scan'],
                 [ 'start_pos', Type.Float, None, 'Start position'],
                 [ 'end_pos', Type.Float, None, 'End position'],
                 [ 'time', Type.Float, None, 'Count time']]
 
-    POS_CTR_NAME = "bl04/io/ibl0403-dev1-ctr4" # hp_som position in NI660X
-    BLADE_3_NAME = "bl04/io/ibl0403-dev3-ctr0" # FastShuttler blade 1
-    BLADE_4_NAME = "bl04/io/ibl0403-dev3-ctr1" # FastShuttler blade 2
+    POS_CTR_NAME = 'bl04/io/ibl0403-dev1-ctr5' # hp_som position in NI660X
+    BLADE_3_NAME = ['bl04/io/ibl0403-dev1-ctr1','COPulseChanTicks','Blade3Trigger'] # FastShuttler blade 1
+    BLADE_4_NAME = ['bl04/io/ibl0403-dev1-ctr2', 'COPulseChanTicks', 'Blade4Trigger'] # FastShuttler blade 2
+
 
     def init(self):
         self.debug("mar_scan.init() entering...")
@@ -296,6 +300,18 @@ class mar_scan(Macro, BaseScan):
         self.blade3 = None      #NI task to handle 3rd blade of the photon shutter
         self.blade4 = None      #NI task to handle 4th blade of the photon shutter    
         self.debug("mar_scan.init() leaving...")
+
+    def _configNi(self):
+        self.debug("mar_scan._configNi() entering...")
+        self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_3_NAME))
+        self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_4_NAME))
+        self.debug("mar_scan._configNi() leaving...")
+
+    def _restoreNi(self):
+        self.debug("mar_scan._restoreNi() entering...")
+        self.execMacro('ni_default %s' % self.BLADE_3_NAME[0])
+        self.execMacro('ni_default %s' % self.BLADE_4_NAME[0])
+        self.debug("mar_scan._restoreNi() leaving...")
 
     def checkParams(self, args):
         self.debug("mar_scan.checkParams(%s) entering..." % repr(args))
@@ -337,7 +353,7 @@ class mar_scan(Macro, BaseScan):
         blade3_high = 0.0
         blade3_low = abs(self.move)+abs(self.accDist)/4
         self.debug("mar_scan.prepareShutter(): blade3: idle = %s; delay = %f; high = %f; low = %f" % (blade3_idle,blade3_delay,blade3_high,blade3_low))
-        self.blade3 = Trigger(self.BLADE_3_NAME, self.posBase)
+        self.blade3 = Trigger(self.BLADE_3_NAME[0], self.posBase)
         self.blade3.setIdleState(blade3_idle)
         self.blade3.setDelay(blade3_delay)
         self.blade3.setHigh(blade3_high)
@@ -348,7 +364,7 @@ class mar_scan(Macro, BaseScan):
         blade4_high = 0.0
         blade4_low = abs(self.accDist) / 2
         self.debug("mar_scan.prepareShutter(): blade4: idle = %s; delay = %f; high = %f; low = %f" % (blade4_idle,blade4_delay,blade4_high,blade4_low))
-        self.blade4 = Trigger(self.BLADE_4_NAME, self.posBase)
+        self.blade4 = Trigger(self.BLADE_4_NAME[0], self.posBase)
         self.blade4.setIdleState(blade4_idle)
         self.blade4.setDelay(blade4_delay)
         self.blade4.setHigh(blade4_high)
@@ -377,22 +393,23 @@ class mar_scan(Macro, BaseScan):
         
     def run(self, *args, **kwargs):
         #preparing the scan
-        self.init()
-        self.checkParams(args)
-        self.checkDetector()
-        self.checkDiode()
-        self.prepareMotion()
-        self.prepareDetector()
-        self.prepareMntGrp()
-        self.prepareShutter()
-        self.moveToPrestart()
-        #dev = PyTango.DeviceProxy("bl04/io/ibl0403-dev1")
-        #dev.command_inout("ConnectTerms", ["/Dev1/PFI36", "/Dev1/PFI28", "DoNotInvertPolarity"])#ctr0.out (blade3) -> ctr2.out
-        #dev.command_inout("ConnectTerms", ["/Dev1/PFI27", "/Dev1/PFI16", "DoNotInvertPolarity"])#ctr3.src (PhaseA) -> ctr5.out
-        #dev.command_inout("ConnectTerms", ["/Dev1/PFI25", "/Dev1/PFI12", "DoNotInvertPolarity"])#ctr3.dir (PhaseB) -> ctr6.out
-        self.startShutter()
-
         try:
+            self.init()
+            self._configNi()
+            self.checkParams(args)
+            self.checkDetector()
+            self.checkDiode()
+            self.prepareMotion()
+            self.prepareDetector()
+            self.prepareMntGrp()
+            self.prepareShutter()
+            self.moveToPrestart()
+            #dev = PyTango.DeviceProxy("bl04/io/ibl0403-dev1")
+            #dev.command_inout("ConnectTerms", ["/Dev1/PFI36", "/Dev1/PFI28", "DoNotInvertPolarity"])#ctr0.out (blade3) -> ctr2.out
+            #dev.command_inout("ConnectTerms", ["/Dev1/PFI27", "/Dev1/PFI16", "DoNotInvertPolarity"])#ctr3.src (PhaseA) -> ctr5.out
+            #dev.command_inout("ConnectTerms", ["/Dev1/PFI25", "/Dev1/PFI12", "DoNotInvertPolarity"])#ctr3.dir (PhaseB) -> ctr6.out
+            self.startShutter()
+
             self.moveToPostend()
             self.acquireDetector() # detector has to start acquiring before shutter is opened
             time.sleep(self.accTime)
@@ -407,10 +424,11 @@ class mar_scan(Macro, BaseScan):
             #dev.command_inout("DisconnectTerms", ["/Dev1/PFI27", "/Dev1/PFI16"])
             #dev.command_inout("DisconnectTerms", ["/Dev1/PFI25", "/Dev1/PFI12"])
             self.cleanup()
+            #self._restoreNi()
 
 class mar_softscan(Macro, BaseScan, SoftShutterController):
 
-    MAR_EXTRA_ACQ_TIME = 0.27
+    #MAR_EXTRA_ACQ_TIME = 0.27
 
     param_def = [[ 'motor', Type.Motor, None, 'Motor to scan'],
                 [ 'start_pos', Type.Float, None, 'Start position'],
@@ -462,12 +480,12 @@ class mar_ct(Macro, BaseExp, SoftShutterController):
 
     param_def = [ [ 'time', Type.Float, 1.0, 'Count time']]   
 
-    MAR_EXTRA_ACQ_TIME = 0.3#0.5
+    #MAR_EXTRA_ACQ_TIME = 0.3#0.5
 
     def checkParams(self, args):
         self.debug("mar_ct.checkParams(%s) entering..." % repr(args))
         self.acqTime = args[0]
-        self.marAcqTime = self.acqTime + self.MAR_EXTRA_ACQ_TIME
+        self.marAcqTime = self.acqTime + MAR_EXTRA_ACQ_TIME
         self.mntGrpAcqTime = self.acqTime - 0.02
         self.debug("mar_ct.checkParams(%s) leaving..." % repr(args))    
 
