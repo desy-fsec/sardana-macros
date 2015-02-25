@@ -1,7 +1,7 @@
 """
     Macros for data acquisition with LimaCCDs DS
 """
-
+import taurus
 import PyTango
 import os, errno
 import time
@@ -36,7 +36,7 @@ class lima_status(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         state = '%s %s' % (lima.State(), 
                            lima.read_attribute('acq_status').value)
         return state
@@ -56,7 +56,7 @@ class lima_saving(Macro):
 
     @catch_error
     def run(self,dev,basedir,prefix,fileformat,auto):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.set_timeout_millis(30000)
 
 
@@ -97,7 +97,7 @@ Trigger modes are:
 
     @catch_error
     def run(self,dev,Texp,Tlat,NF,Trig):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.set_timeout_millis(30000)
 
         TrigList = ['INTERNAL_TRIGGER'
@@ -128,7 +128,7 @@ class lima_acquire(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.startAcq()
 
 
@@ -140,7 +140,7 @@ class lima_stop(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.stopAcq()
 
 
@@ -152,7 +152,7 @@ class lima_reset(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.reset()
 
 
@@ -169,7 +169,7 @@ Example:
 
     @catch_error
     def run(self,dev,header):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.write_attribute('saving_common_header', header.split("|"))
         
 
@@ -191,7 +191,7 @@ Example:
     def run(self,*args):
         dev = args[0]
         headers = args[1:]
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.write_attribute('saving_header_delimiter', ['=','|',';'])
         lima.setImageHeader(headers)
         
@@ -205,7 +205,7 @@ class lima_write_image(Macro):
 
     @catch_error
     def run(self,dev,imageid):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.writeImage(imageid)
  
 
@@ -222,7 +222,7 @@ Parameter list:
         
     @catch_error
     def run(self,dev,param):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
 
         Param = {'FileDir': 'saving_directory',
                  'FilePrefix': 'saving_prefix',
@@ -265,7 +265,7 @@ class lima_lastbuffer(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         value = lima.read_attribute("last_image_ready").value
         return value
      
@@ -279,7 +279,7 @@ class lima_lastimage(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         value = lima.read_attribute("saving_next_number").value - 1 
         return value 
      
@@ -293,7 +293,7 @@ class lima_nextimagefile(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         value = lima.read_attribute("saving_next_number").value
         dir = lima.read_attribute("saving_directory").value
         prefix = lima.read_attribute("saving_prefix").value
@@ -313,7 +313,7 @@ class lima_nextimage(Macro):
 
     @catch_error
     def run(self, dev, imgn):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.write_attribute('saving_next_number', imgn)
 
 
@@ -327,7 +327,7 @@ class lima_set_flip(Macro):
 
     @catch_error
     def run(self, dev, flipLR, flipUP):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.write_attribute('image_flip', [flipLR, flipUP])
        
 
@@ -341,7 +341,7 @@ class lima_get_flip(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         value = lima.read_attribute('image_flip').value
 
         return "%s %s" % (str(value[0]),str(value[1]))
@@ -359,7 +359,7 @@ class lima_set_bin(Macro):
 
     @catch_error
     def run(self, dev, binx, biny):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.write_attribute('image_bin', [binx, biny])
        
 
@@ -373,7 +373,7 @@ class lima_get_bin(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         value = lima.read_attribute('image_bin').value
 
         return "%s %s" % (str(value[0]),str(value[1]))
@@ -389,7 +389,7 @@ class lima_set_first_image(Macro):
 
     @catch_error
     def run(self, dev, first):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         lima.write_attribute('saving_next_number', first)
        
 
@@ -403,7 +403,7 @@ class lima_get_first_image(Macro):
 
     @catch_error
     def run(self,dev):
-        lima = PyTango.DeviceProxy(dev)
+        lima = taurus.Device(dev)
         value = lima.read_attribute('saving_next_number').value
 
         return value
@@ -430,7 +430,7 @@ class lima_take(Macro):
         self.device = dev
 
     def on_abort(self):
-        lima = PyTango.DeviceProxy(self.device)
+        lima = taurus.Device(self.device)
         lima.stopAcq()
 
     @catch_error
