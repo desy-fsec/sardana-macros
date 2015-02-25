@@ -77,13 +77,12 @@ class count2pulseWidth(Macro):
 
     def run(self, dev):
 		
-         dev_proxy = PyTango.DeviceProxy(dev)
+         dev = taurus.Device(dev)
          property = {'applicationType':['CIPulseWidthChan']}
-         dev_proxy.put_property(property)
+         dev.put_property(property)
          self.info("NI660X is ready to work with CIPulseWidthChan Type")
-         dev_proxy.set_timeout_millis(10000)
-         dev_proxy.init()
-         dev_proxy.set_timeout_millis(3000)
+         dev.init()
+         dev.set_timeout_millis(3000)
 
 
 class pulseWidth2count(Macro):
@@ -94,11 +93,10 @@ class pulseWidth2count(Macro):
 
 
     def run(self, dev):
-         dev_proxy = PyTango.DeviceProxy(dev)
+         dev = taurus.Device(dev)
          property = {'applicationType':['CICountEdgesChan']}
-         dev_proxy.put_property(property)
+         dev.put_property(property)
          self.info("NI660X is ready to work with CICountEdgesChan Type")
-         dev_proxy.set_timeout_millis(10000)
-         dev_proxy.init()
-         dev_proxy.set_timeout_millis(3000)
+         dev.init()
+         dev.set_timeout_millis(3000)
 
