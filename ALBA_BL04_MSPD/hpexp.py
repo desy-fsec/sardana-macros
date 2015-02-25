@@ -17,9 +17,10 @@ class BaseExp:
         self.mntGrpAcqTime = None   #time when measurement group is acquireing [s]
         self.countId = None         #id of the measurement group count
         self.marSave = None         #writing or not lima file
-        self.rayonixSpecific = PyTango.DeviceProxy("rayonix_custom") #lima device implementing specifics of rayonix detector
-        self.hpDiode = PyTango.DeviceProxy("hpi") # hp diode actuator device   
+        self.rayonixSpecific = taurus.Device("rayonix_custom") #lima device implementing specifics of rayonix detector
+        self.hpDiode = taurus.Device("hpi") # hp diode actuator device   
         self.debug("BaseExp.init() leaving...")
+        self.rayonixCCD = taurus.Device('bl04/eh/rayonixlima')
 
     def checkDetector(self):
         self.debug("BaseExp.checkDetector() entering...")
@@ -93,13 +94,15 @@ class BaseExp:
         self.mntGrp.waitFinish(id=self.countId)
         self.debug("BaseExp.waitMntGrp() leaving...")    
 
-    def monitorDetector(self):
+    def monitorDetector(self, wait_time = 0.2):
         self.debug("BaseExp.monitorDetector() entering...")
-        state,acq = self.execMacro('lima_status','rayonix').getResult().split()
-        while acq == "Running":
+        while True:
             self.pausePoint()
-            state,acq = self.execMacro('lima_status','rayonix').getResult().split()
-            time.sleep(0.05)
+            acq = self.rayonixCCD.read_attribute('acq_status').value
+            self.debug('RayonixCCD state is %s' % acq)
+            if acq != 'Running':
+                break
+            time.sleep(wait_time)
         self.debug("BaseExp.monitorDetector() leaving...")
 
     def populateHeader(self):
@@ -486,7 +489,8 @@ class mar_ct(Macro, BaseExp, SoftShutterController):
         self.debug("mar_ct.checkParams(%s) entering..." % repr(args))
         self.acqTime = args[0]
         self.marAcqTime = self.acqTime + MAR_EXTRA_ACQ_TIME
-        self.mntGrpAcqTime = self.acqTime - 0.02
+        #self.mntGrpAcqTime = self.acqTime - 0.02
+        self.mntGrpAcqTime = 0.1
         self.debug("mar_ct.checkParams(%s) leaving..." % repr(args))    
 
     def run(self, *args, **kwargs):
