@@ -1,5 +1,6 @@
 import time
 from sardana.macroserver.macro import * 
+from sardana.util.tree import BranchNode, LeafNode, Tree
 
 class repeat(Hookable, Macro):
     """This macro executes as many repetitions of it's body hook macros as specified by nr parameter.
@@ -51,3 +52,30 @@ class dwell(Macro):
                 dtime = 0
                 
                 
+class set_user_pos_pm(Macro):
+    """
+    This macro set the position of a pseudomotor by changing the offset of its 
+    motors. 
+    """
+    
+    param_def =[['pm', Type.PseudoMotor, None, 'Pseudo motor name' ],
+                ['pos', Type.Float, None, 'Position which will set']]
+    
+   
+    def set_pos(self, moveable, pos):
+        moveable_type = moveable.getType()
+        if moveable_type == "PseudoMotor":
+            moveables_names = moveable.elements                
+            values = moveable.calcphysical(pos)
+            sub_moveables = [(self.getMoveable(name), value) \
+                             for name, value in zip(moveables_names, values)]
+            for sub_moveable, value in sub_moveables:
+                self.set_pos(sub_moveable, value)
+        elif moveable_type == "Motor":
+            m = moveable.getName()
+            self.execMacro('set_user_pos %s %f' %(m,pos))
+    
+    def run(self, pm, pos):
+        self.set_pos(pm, pos)
+        
+    
