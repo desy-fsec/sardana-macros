@@ -1832,6 +1832,8 @@ class mythen_take(Macro, MntGrpController):
         self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
         
     def run(self, *args, **kwargs):
+
+        t0 = time.time()
         try:
             mode_safe = self.getEnv('MythenTakeCountingModeSafe')
         except UnknownEnv, e:
@@ -1873,6 +1875,8 @@ class mythen_take(Macro, MntGrpController):
                 self._restoreChannel(self.monitorChannel)
 
         self.info("Data stored: %s" % outFileName)
+        self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )
+        t1=time.time()
         
         mnt_grp_time = 0.1
         mnt_grp_results = None
@@ -1887,7 +1891,9 @@ class mythen_take(Macro, MntGrpController):
             self.error(msg)
             msg = 'Measurement group data will be skipped in the par file'
             self.info(msg)
-                               
+
+        self.warning('Elapsed time to get Mnt_grp: %.4f sec' %(time.time() - t1) )                               
+        self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )                               
         parFileName = outFileName[:-3] + "par"
         try:
             parFile = open(parFileName,"w")
@@ -1914,6 +1920,7 @@ class mythen_take(Macro, MntGrpController):
         #return outFileName
         monitors = monitorValueList
         #return outFileName,nrOfPositions,positions,monitorValueList
+        self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )                               
         return outFileName,nrOfPositions,positions,monitors
 
 

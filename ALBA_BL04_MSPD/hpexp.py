@@ -164,8 +164,21 @@ class BaseExp:
         self.report(infoString)
         self.report("scan_type = %s %s" % (self.getName(),self.getParameters()))
         self.debug("BaseExp.writeImage() leaving...")
-
-
+    
+    def abortAcq(self):
+        self.debug('Abort the acquisition')
+        if self.countId:
+            self.mntGrp.waitFinish()
+        self.debug('Cleaned the event object of the Measurmente Group')
+        self.rayonixCCD.stopAcq()
+        self.debug('Stop the rayonix')
+        while True:     
+            acq = self.rayonixCCD.read_attribute('acq_status').value
+            self.debug('RayonixCCD state is %s' % acq)
+            if acq != 'Running':
+                break
+            time.sleep(0.2)
+    
 class SoftShutterController:
 
     def init(self):
@@ -291,7 +304,9 @@ class mar_scan(Macro, BaseScan):
                 [ 'end_pos', Type.Float, None, 'End position'],
                 [ 'time', Type.Float, None, 'Count time']]
 
-    POS_CTR_NAME = 'bl04/io/ibl0403-dev1-ctr5' # hp_som position in NI660X
+    POS_CTR_NAME_HP_SOM = 'bl04/io/ibl0403-dev1-ctr5' # hp_som position in NI660X
+    POS_CTR_NAME_HP_SXD = 'bl04/io/ibl0403-dev1-ctr4' # hp_sxd position in NI660X
+
     BLADE_3_NAME = ['bl04/io/ibl0403-dev1-ctr1','COPulseChanTicks','Blade3Trigger'] # FastShuttler blade 1
     BLADE_4_NAME = ['bl04/io/ibl0403-dev1-ctr2', 'COPulseChanTicks', 'Blade4Trigger'] # FastShuttler blade 2
 
@@ -322,15 +337,20 @@ class mar_scan(Macro, BaseScan):
         motName = self.motor.name
         allowedMotors = ["hp_som"]
         if motName not in allowedMotors:
-            raise Exception("Wrong motor. Allowed motors are: %s." % repr(ALLOWED_MOTORS))
+            raise Exception("Wrong motor. Allowed motors are: %s." % repr(allowedMotors))
         self.debug("mar_scan.checkParams(%s) leaving..." % repr(args))
 
     def prepareShutter(self):
         self.debug("mar_scan.prepareShutter() entering...")
+        #Resolution of the Encoder
         if self.motor.name == "hp_som":
             resolution = 3.81373708097e-05
+            ctrl_mot = self.POS_CTR_NAME_HP_SOM
+        if self.motor.name == "hp_sxd":
+            resolution = 3.81373708097e-05
+            ctrl_mot = self.POS_CTR_NAME_HP_SXD
             #resolution = 2.5e-03 #indexer
-        self.posBase = PositionBase(self.POS_CTR_NAME, resolution)
+        self.posBase = PositionBase(ctrl_mot, resolution)
         #accDist = abs(self.accDist) #acc distance sign is irrelevant
         accEnc = abs(self.accDist) / resolution #encoder pulses in acceleration space
         accSpaceBase = math.ceil(accEnc/4) #counter position is X1 not X4 decoded!
@@ -489,30 +509,36 @@ class mar_ct(Macro, BaseExp, SoftShutterController):
         self.debug("mar_ct.checkParams(%s) entering..." % repr(args))
         self.acqTime = args[0]
         self.marAcqTime = self.acqTime + MAR_EXTRA_ACQ_TIME
-        #self.mntGrpAcqTime = self.acqTime - 0.02
-        self.mntGrpAcqTime = 0.1
+        self.mntGrpAcqTime = self.acqTime - 0.02
+        #self.mntGrpAcqTime = 0.1
         self.debug("mar_ct.checkParams(%s) leaving..." % repr(args))    
 
     def run(self, *args, **kwargs):
-        BaseExp.init(self)
-        SoftShutterController.init(self)
-        self.checkParams(args)
-        self.checkDetector()
-        self.checkDiode()
-        self.prepareShutter()
-        self.prepareDetector()
-        self.prepareMntGrp()
-        self.acquireDetector()
-        self.exposureShutter()
-        self.acquireMntGrp()
-        self.monitorDetector()
-        self.waitMntGrp()
-        self.populateHeader()
-        if self.marSave:
-            self.writeImage()
+        try:
+            BaseExp.init(self)
+            SoftShutterController.init(self)
+            self.checkParams(args)
+            self.checkDetector()
+            self.checkDiode()
+            self.prepareShutter()
+            self.prepareDetector()
+            self.prepareMntGrp()
+            self.acquireDetector()
+            self.exposureShutter()
+            self.acquireMntGrp()
+            self.monitorDetector()
 
-    def on_abort(self, *args, **kwargs):
-        self.debug("mar_ct.on_abort() entering...")
-        self.closeShutter()
-        self.debug("mar_ct.on_abort() leaving...")
+            self.waitMntGrp()
+            self.populateHeader()
+            if self.marSave:
+                self.writeImage()
+        except:
+            self.debug('abort out')
+            #self.on_abort()
+        finally:
+            self.debug("Finally macro....")
+            self.closeShutter()
 
+    def on_abort(self):
+        self.warning("Please, wait 5 seconds before sending new command")
+        self.abortAcq()
