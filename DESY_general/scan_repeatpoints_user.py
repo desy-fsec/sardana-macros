@@ -51,7 +51,7 @@ rep_counter = 0
 class HookPars:
     pass
 
-def hook_pre_move(self, hook_pars):
+def hook_pre_acq(self, hook_pars):
     global rep_counter
 
     self.output(str(rep_counter))
@@ -83,9 +83,9 @@ class ascan_repeat_example(Macro):
         # parameters for scan hook function
         hook_pars = HookPars()
         hook_pars.nb_repeat = nb_repeat
-        f = lambda : hook_pre_move(self, hook_pars)
+        f = lambda : hook_pre_acq(self, hook_pars)
         macro.hooks = [
-            (f, ["pre-move"]),
+            (f, ["pre-acq"]),
         ]
 
         self.runMacro(macro)
