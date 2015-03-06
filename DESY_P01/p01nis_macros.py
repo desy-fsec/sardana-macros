@@ -103,11 +103,12 @@ class nisscan(_nisscan):
         ['stop',       Type.Float,   None, 'Stop in meV'],
         ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
         ['integ_time', Type.Float,   None, 'Integration time'],
-        ['nb_scans',   Type.Integer, None, 'Nb of scans']
+        ['nb_scans',   Type.Integer, None, 'Nb of scans'],
+        ['eh_id',      Type.Integer, 0, '1 -> eh1, 2 -> eh2, 3 -> eh3. If 0 read from EH_ID environment']
         ]    
 
 
-    def run(self, start, stop, nr_interv, integ_time, nb_scans):
+    def run(self, start, stop, nr_interv, integ_time, nb_scans, eh_id):
         if not self.prepared:
             return
 
