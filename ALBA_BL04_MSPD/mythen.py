@@ -3,6 +3,7 @@ import os
 import Queue
 import PyTango
 import taurus
+import math
 #import ff_mythen
 from trigger import Trigger, TimeBase
 from taurus.core.util import SafeEvaluator
