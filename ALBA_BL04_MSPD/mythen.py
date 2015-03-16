@@ -2588,3 +2588,177 @@ class mythen_timeResolvedAUTO(Macro, MntGrpController):
             self.error(e)
             pFile.close()
             self.output(parFile)
+
+
+
+class mythen_fastTake(Macro, MntGrpController):
+                                                   
+
+    param_def = [['frames', Type.Float, None, 'Total experiment time'],
+                 ['expTime', Type.Float, None, 'Exposure time per frame']]
+    
+    
+    #NI channels to read values while the Mythen is acquiring
+    MONITOR_CHANNEL = 'bl04/io/ibl0403-dev2-ctr0' #i14
+    MONITOR_CHANNEL_GATE = '/Dev2/PFI38'    #i14 Gate
+    MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'  #i14 Source  
+    
+    
+    
+    #Make Bakup for the channels used to count
+    def _backupChannel(self, channel):
+        DicProperties = channel.get_property('applicationType')
+        valueProperties = DicProperties["applicationType"]
+        value = list(valueProperties)[0]
+
+        self.info(value)      
+        #if value == "CIPulseWidthChan":
+        #    self.info("Entering in value == CIPulseWidthChan")      
+        #    self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+
+        self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
+        self._pauseTriggerWhen = channel.read_attribute('PauseTriggerWhen').value
+        self._pauseTriggerSource = channel.read_attribute('PauseTriggerSource').value
+        self.debug('PauseTriggerType: %s' % self._pauseTriggerType)
+        self.debug('PauseTriggerWhen: %s' % self._pauseTriggerWhen)
+        self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)        
+        
+    def _restoreChannel(self, channel):
+        if self.spc>1:
+                self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+        channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
+        channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
+        channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
+        #channel.Init()
+        
+    def _configureChannel(self, channel):
+        self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
+
+        channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
+        channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
+        channel.write_attribute("SampPerChan", self.spc)
+        channel.write_attribute("SampleclockRate", 100.0)
+
+    def prepare(self, *args, **kwargs):                                   
+        MntGrpController.init(self, self)                                 
+        self.nrOfFrames = args[0]                                          
+        self.exposureTime = args[1]  
+                     
+        self.debug("nrOfFrames: %d" % self.nrOfFrames)            
+
+        #configuring mythen detector                                                            
+        self.execMacro("mythen_setTiming", 'auto')                                           
+        #self.execMacro("mythen_setExtSignal", 2, "trigger_in_rising_edge")                      
+        #self.execMacro("mythen_setNrOfTriggers", 1)                                             
+        self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)                       
+        self.execMacro("mythen_setExpTime", self.exposureTime)                                  
+        self.execMacro('mythen_setPositions')   
+        self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
+
+        self.firstIndex = self.execMacro("mythen_getIndex").getResult()                         
+        self.debug('FirstIndex = %d' %self.firstIndex)   
+        
+    def run(self, *args, **kwargs):        
+
+
+        #Backup the Actual NI configuration
+        self._backupChannel(self.monitorChannel)
+        self._configureChannel(self.monitorChannel)
+
+        #why?
+        import threading                                                                             
+        self._event = threading.Event()                                                              
+        #callback function to set Event    
+        
+        def done(job_ret):                                                                           
+            self._event.set()                                                                        
+                                                                                                    
+        self.mntGrpAcqTime = 0.1                                                                     
+        MntGrpController.prepareMntGrp(self)                                                         
+        MntGrpController.acquireMntGrp(self)                                                         
+        MntGrpController.waitMntGrp(self)                                                            
+        firstMntGrpResults = MntGrpController.getMntGrpResults(self)                                 
+        
+        #Start the Monitor channel
+        self.monitorChannel.Start()
+
+        #Start to take frames in Mythen
+        self.getManager().add_job(mythenAcquire, done, self)                                                                                                                                     
+        #self.execMacro("mythen_acquire")                                                            
+                                                            
+        #while True:                                                                                  
+        #    self.checkPoint()                                                                        
+        #    time.sleep(0.5)                                                                          
+        #    status = self.execMacro("mythen_getStatus").getResult()                                  
+        #    if status == "running":                                                                  
+        #        break                                                                                
+        #self.debug("mythen waiting for trigger")                                                     
+                                                                                                        
+        try:                                                                                         
+                                                                
+            self._event.wait()                                                                       
+            self.debug("Mythen end acq")
+            
+            #Read the Values of the NI
+            monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
+            monitorValueList = list(monitorValueList)
+            self.info('MonitorValuePerFrame: %s' % monitorValueList)
+
+            
+        finally:                                                                                     
+                                                                                                        
+            #Aborting                                                                                
+            status = self.execMacro("mythen_getStatus").getResult()                                  
+            if status == "running":                                                                  
+                abortProgram = SlsDetectorPut(["status", "stop"])                                    
+                abortProgram.execute()                                                               
+            self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
+            self.monitorChannel.Stop()
+            self._restoreChannel(self.monitorChannel)
+            position = self.execMacro("mythen_getPositions").getResult()
+
+
+
+        MntGrpController.acquireMntGrp(self)
+        MntGrpController.waitMntGrp(self)
+        lastMntGrpResults = MntGrpController.getMntGrpResults(self)
+
+        #generating timestamps
+        outDir = self.execMacro("mythen_getOutDir").getResult()
+        outFileName = self.execMacro("mythen_getOutFileName").getResult()
+        lastIndex = self.execMacro("mythen_getIndex").getResult()
+        self.debug('lastIndex = %d'% lastIndex)
+
+
+
+        acquiredFrames = lastIndex - self.firstIndex
+        if acquiredFrames != 1:
+            raise Exception("Nr of acquired images does not correspond to requested value.")
+
+        parFileName = outFileName[:-3] + "par"
+        try:
+            parFile = open(parFileName,"w")
+            #parFile.write("# imon %d " % monitorValuePerPosition)
+            parFile.write("# imon %d " % monitorValueList[0])
+            if mnt_grp_results != None:
+                parFile.write(mnt_grp_results)
+            
+            parFile.write('\nMonitor = %d' % monitorValueList[0])
+            parFile.write('\nIsMon = %s' % monitorValueList)
+            parFile.write('\nMythen_frameResolved Pos: %s' %(position))
+
+            extraHeader = self.execMacro("_mythpar").getResult()
+            parFile.write(extraHeader)
+            self.info("Metadata stored: %s" % parFileName)
+        except Exception,e:
+            self.error("Error while writing par file.")
+            raise e
+        finally:
+            parFile.close()
+
+        return outFileName,nrOfPositions,position,monitorValueList
+
+        
+            
+
+
