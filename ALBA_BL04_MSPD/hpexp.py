@@ -296,7 +296,10 @@ class BaseScan(BaseExp):
         self.debug("BaseScan.cleanup() leaving...")
 
 class mar_scan(Macro, BaseScan):
-
+    """
+    Scan to synchronize the movement of the motor 
+    with the photonShutter (Oopen/Close) and take images with the Rayonix
+    """
     #MAR_EXTRA_ACQ_TIME = 0.8 MOVED TO CONSTANT
 
     param_def = [[ 'motor', Type.Motor, None, 'Motor to scan'],
@@ -451,6 +454,12 @@ class mar_scan(Macro, BaseScan):
 
 class mar_softscan(Macro, BaseScan, SoftShutterController):
 
+    """
+    Take images with the rayonix with movement, the motors allowed are
+     "hp_som", "hp_sxu", "hp_syu", "hp_sz".
+     It takes images during the movement using the SoftShutter
+    """
+    
     #MAR_EXTRA_ACQ_TIME = 0.27
 
     param_def = [[ 'motor', Type.Motor, None, 'Motor to scan'],
@@ -500,6 +509,12 @@ class mar_softscan(Macro, BaseScan, SoftShutterController):
         self.closeShutter()
 
 class mar_ct(Macro, BaseExp, SoftShutterController):
+
+    """
+    The mar_ct is used to take a image with the rayonix using lima, 
+    and take acquisition with the mntGrp.
+    (without Movement)
+    """
 
     param_def = [ [ 'time', Type.Float, 1.0, 'Count time']]   
 
