@@ -55,6 +55,23 @@ class ni_app_change(Macro):
          self.debug("NI660X is ready to work in %s Type", application_type)
 
 
+class restoreNI(Macro):
+    
+    """
+    Macro To restart all the NI channel to the DEfault Values
+    """
+    
+    def run(self):
+        for i in NI_DEFAULT_CONFIG:
+            dev = i[0]
+            application_type = NI_DEFAULT_CONFIG[i][0]
+            task_name = NI_DEFAULT_CONFIG[i][1]
+            setNiConfig(dev, application_type, task_name)
+            self.debug("NI660X %s is Restored to %s Type" %(i,application_type))
+ 
+
+
+
 class ni_default(Macro):
     """
     Macro to restore the NI device to default values
@@ -70,7 +87,9 @@ class ni_default(Macro):
 
 
 class count2pulseWidth(Macro):
-
+    """
+    Macro to change the application type to CIPulseWidthChan
+    """
     param_def = [
         ["dev", Type.String, None, "Device to Convert to PulseWidthMeas Type"]
         ]
@@ -86,7 +105,10 @@ class count2pulseWidth(Macro):
 
 
 class pulseWidth2count(Macro):
-
+    """
+    Macro to change the application type to CICountEdgesChan
+    """
+    
     param_def = [
         ["dev", Type.String, None, "Device to Convert to CountEdgesChan Type"]
         ]
