@@ -40,27 +40,101 @@ class mvsa(Macro):
         argout = self.getEnv( 'ScanDir') + "/" + lst[0] + "_" + temp + "." + lst[1]
         return argout
 
+    def getMotorInfo( self, xpos):
+        """ 
+        finds the relevant motors in the ScanHistory and
+        uses the target position of the first motor to calculate
+        the target positions of the other motors
+        """
+        #
+        # d2scan exp_dmy01 -1.0 1.0 exp_dmy02 -2.0 2.0 11 0.1
+        #
+        self.output( "Cmd: %s " % self.getEnv( "ScanHistory")[-1]['title'])
+
+        lst = self.getEnv( "ScanHistory")[-1]['title'].split()
+
+        argout = []
+        if lst[0].lower() == "ascan":
+            dct = {}
+            dct[ 'motorName'] = lst[1]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            dct[ 'targetPos'] = xpos
+            argout.append( dct)
+        elif lst[0].lower() == "dscan":
+            dct = {}
+            dct[ 'motorName'] = lst[1]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            dct[ 'targetPos'] = xpos
+            argout.append( dct)
+        elif lst[0].lower() == "a2scan":
+            dct = {}
+            dct[ 'motorName'] = lst[1]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            dct[ 'targetPos'] = xpos
+            startPos = float( lst[2])
+            endPos   = float( lst[3])
+            ratio = (xpos - startPos)/(endPos - startPos)
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[4]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = float( lst[5])
+            endPos   = float( lst[6])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
+        elif lst[0].lower() == "d2scan":
+            dct = {}
+            dct[ 'motorName'] = lst[1]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            dct[ 'targetPos'] = xpos
+            startPos = dct['proxy'].Position + float(lst[2])
+            endPos   = dct['proxy'].Position + float(lst[3])
+            ratio = (xpos - startPos)/(endPos - startPos)
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[4]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = dct['proxy'].Position + float( lst[5])
+            endPos   = dct['proxy'].Position + float(lst[6])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
+        else:
+            return None
+        return argout
+        
     def run(self, mode, interactiveFlag):
+
         signalCounter = self.getEnv( "SignalCounter")
 
         #
         # mvsa only for ascan, dscan
         #
         scanType = self.getEnv( "ScanHistory")[-1]['title'].split()[0]
-        if not scanType.lower()  in ['ascan', 'dscan']:
-            self.output( "mvsa: scanType %s not in ['ascan', 'dscan']" % scanType)
+        if not scanType.lower()  in ['ascan', 'dscan', 'a2scan', 'd2scan']:
+            self.output( "mvsa: scanType %s not in ['ascan', 'dscan', 'a2scan', 'd2scan']" % scanType)
             return
-            
+
         fileName = self.getFullPathName()
         a = HasyUtils.fioReader( fileName)
 
         message = 'undefined'
+        flagFound = False
         for col in a.columns:
             if col.name == signalCounter:
                 message, xpos, xpeak, xcms, xcen = HasyUtils.fastscananalysis( col.x, col.y, mode)
                 if mode.lower() == 'show':
-                    ssaDct = HasyUtils.ssa( np.array(col.x), np.array(col.y))
+                    #
+                    # par-3: flag-non-background-subtraction
+                    #
+                    ssaDct = HasyUtils.ssa( np.array(col.x), np.array(col.y), False)
+                flagFound = True
                 break
+
+        if not flagFound:
+            self.output( "Column %s not found in %s" % ( signalCounter, fileName))
+            for col in a.columns:
+                self.output( "%s" % col.name)
+            return
 
         if message != 'success':
             self.output( "mvsa: failed to find the maximum for %s" % ( a.fileName))
@@ -68,6 +142,7 @@ class mvsa(Macro):
             return
 
         if mode.lower() == 'show':
+            self.output( "File name: %s " % fileName)
             self.output( "fsa: message %s" % (message))
             self.output( "fsa: xpos %g" % (xpos))
             self.output( "fsa: xpeak %g, cms %g cen  %g" % ( xpeak, xcms, xcen))
@@ -75,22 +150,30 @@ class mvsa(Macro):
             self.output( "ssa: xpeak %g, cms %g midp %g" % (ssaDct['peak_x'], ssaDct['cms'], ssaDct['midpoint']))
             self.output( "ssa: l_back %g, r_back %g" % (ssaDct['l_back'], ssaDct['r_back']))
             return
-        
-        motorName  = self.getEnv( "ScanHistory")[-1]['title'].split()[1] 
-        motorProxy = PyTango.DeviceProxy( motorName)
 
-        if interactiveFlag == 0:
-            motorProxy.write_attribute( "Position", xpos)
-            while motorProxy.State() == PyTango.DevState.MOVING:
-                time.sleep( 0.1)
-            self.output( "Motor %s now at %g" % (motorName, motorProxy.Position))
-        elif interactiveFlag == 1:
-            answer = self.input( "Move %s from %g to %g (%s) :" % (motorName, motorProxy.Position, xpos, signalCounter))
-            if answer.lower() == "yes" or answer.lower() == "y":
-                motorProxy.write_attribute( "Position", xpos)
-                while motorProxy.State() == PyTango.DevState.MOVING:
-                    time.sleep( 0.1)
-                self.output( "Motor %s is now at %g!" % (motorName, motorProxy.Position))
-            else:
-                self.output( "Motor %s not moved!" % motorName)
-        
+        motorArr = self.getMotorInfo( xpos)
+        #
+        # prompt the user for confirmation, unless we have an uncoditional 'go'
+        #
+        if interactiveFlag == 1:
+            self.output( "File name: %s " % fileName)
+            for elm in motorArr:
+                self.output( "Move %s from %g to %g" % ( elm[ 'motorName'], elm[ 'proxy'].Position, elm[ 'targetPos']))
+            answer = self.input( "Exec move(s) [Y/N], def. 'N': ")
+            if not (answer.lower() == "yes" or answer.lower() == "y"):
+                self.output( "Motor(s) not moved!")
+                return
+
+        for elm in ( motorArr):
+            elm[ 'proxy'].write_attribute( "Position", elm[ 'targetPos'])
+        moving = True
+        while moving:
+            moving = False
+            for elm in ( motorArr):
+                if elm[ 'proxy'].State() == PyTango.DevState.MOVING:
+                    moving = True
+                    break
+            time.sleep( 0.1)
+        for elm in ( motorArr):
+            self.output( "Motor %s is now at %g" % ( elm[ 'motorName'], elm[ 'proxy'].Position))
+        return
