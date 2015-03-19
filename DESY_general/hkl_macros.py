@@ -312,29 +312,39 @@ class pa(Macro, _diffrac):
                 if nb_ref < len(self.suffix): sf = self.suffix[nb_ref]
                 else: sf = self.suffix[3]
                 self.output("  %d%s Reflection (index %d): " % (nb_ref+1, sf, ref[0]))
-                self.output("  H K L : %10.4f %10.4f %10.4f" % (ref[1], ref[2], ref[3]))
-                self.output("  Affinement, Relevance : %d %d" % (ref[4], ref[5]))
+                self.output("    H K L : %10.4f %10.4f %10.4f" % (ref[1], ref[2], ref[3]))
+                self.output("    Affinement, Relevance : %d %d" % (ref[4], ref[5]))
                 if len(ref) > 10:
-                    self.output("mu theta chi phi gamma delta: %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9], ref[10], ref[11]))
+                    self.output("    mu theta chi phi gamma delta: %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9], ref[10], ref[11]))
                 else:
-                    self.output("ommega chi phi theta: %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9]))
+                    self.output("    omega chi phi theta: %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9]))
                 nb_ref = nb_ref + 1
                     
        
+        self.output("")
         self.output("  Lattice Constants (lengths / angles):")
         self.output("%24s = %s %s %s / %s %s %s" % ("real space", self.diffrac.a, 
                                                     self.diffrac.b, self.diffrac.c, self.diffrac.alpha, 
                                                     self.diffrac.beta, self.diffrac.gamma))
   
+        lst = self.diffrac.ubmatrix
+        self.output( "  UB-Matrix")
+        self.output( "  %15g %15g %15g" % (lst[0][0], lst[0][1], lst[0][2]))
+        self.output( "  %15g %15g %15g" % (lst[1][0], lst[1][1], lst[1][2]))
+        self.output( "  %15g %15g %15g" % (lst[2][0], lst[2][1], lst[2][2]))
+
+        self.output("")
+        self.output("%8s %9.5f %9.5f %9.5f " % 
+                    ("  Ref   = ",self.diffrac.psirefh, self.diffrac.psirefk,self.diffrac.psirefl))
         
-        self.output("  Azimuthal Reference:")
+        #self.output("  Azimuthal Reference:")
+        #self.output("")
+        #self.output("%24s = %s" %("[ToDo]","[ToDo]"))
         self.output("")
-        self.output("%24s = %s" %("[ToDo]","[ToDo]"))
-        self.output("")
-        self.output("%24s = %s" %("Lambda",self.diffrac.WaveLength))
-        self.output("")
-        self.output(" Cut Points:")
-        self.output("    [ToDo]")
+        self.output("  Lambda = %s" %(self.diffrac.WaveLength))
+        #self.output("")
+        #self.output(" Cut Points:")
+        #self.output("    [ToDo]")
 
 class wh(Macro, _diffrac):
     """wh - where, principal axes and reciprocal space
