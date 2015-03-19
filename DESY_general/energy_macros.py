@@ -13,7 +13,7 @@ from PyTango import *
 flag_no_first = 0
 
 class e2lambda(Macro):
-    """ returns the wavelength 12398.424/Energy"""
+    """ returns the wavelength [Angstr.]: 12398.424/energy"""
     param_def = [ 
         ['energy',  Type.Float,  None, 'Energy[eV]'],
         ]
@@ -21,6 +21,16 @@ class e2lambda(Macro):
     def run(self,  energy):
         wavelength = 12398.424/energy
         self.output( "Lambda: %g" % wavelength)
+
+class lambda2e(Macro):
+    """ returns the energy [eV]: 12398.424/wavelength"""
+    param_def = [ 
+        ['wavelength',  Type.Float,  None, 'Wavelength[Angstr.]'],
+        ]
+
+    def run(self,  wavelength):
+        energy = 12398.424/wavelength
+        self.output( "Energy: %g" % energy)
 
 class escan(Macro):
     """Scan energy"""
