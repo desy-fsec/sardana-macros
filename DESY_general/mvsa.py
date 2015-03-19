@@ -107,7 +107,7 @@ class mvsa(Macro):
         signalCounter = self.getEnv( "SignalCounter")
 
         #
-        # mvsa only for ascan, dscan
+        # mvsa only for ascan, dscan, a2scan, d2scan
         #
         scanType = self.getEnv( "ScanHistory")[-1]['title'].split()[0]
         if not scanType.lower()  in ['ascan', 'dscan', 'a2scan', 'd2scan']:
