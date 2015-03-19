@@ -21,7 +21,7 @@ if(  !defined( $node))
     goto finish;
 }
 if( ! -e "${dir_local}/Files.lis")
-{
+{ 
     print " Error: Files.lis is missing \n";
     $status = 0;
     goto finish;
