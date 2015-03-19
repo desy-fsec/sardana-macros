@@ -294,11 +294,16 @@ class pa(Macro, _diffrac):
     def run(self):
         if not self.prepared:
             return
-        
-        if self.type == 'E6C':
-            str_type = "Eulerian 6C"        
-        elif self.type == 'E4CV':
-            str_type = "Eulerian 4C Vertical"
+      
+        str_type = "Eulerian 6C"
+        if self.type == 'E4CV':
+            str_type = "Eulerian 4C Vertical"       
+        elif self.type == 'E4CH':
+            str_type = "Eulerian 4C Horizontal"       
+        elif self.type == 'K6C':
+            str_type = "Kappa 6C"       
+        elif self.type == 'K4CV':
+            str_type = "Kappa 4C Vertical"
             
         self.output("%s Geometry, %s" % (str_type, self.diffrac.enginemode))
         self.output("Sector %s" % "[ToDo]")
