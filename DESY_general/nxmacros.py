@@ -1,5 +1,5 @@
 #!/bin/env python
-""" NeXus components setting """
+""" NeXus recorder macros """
 
 import PyTango
 import time
@@ -11,7 +11,8 @@ from sardana.macroserver.macro import (
 
 
 def device_groups():
-    """ returns device groups """
+    """ Return device groups """
+
     return {
         "counter": ["*exp_c*"],
         "timer": ["*exp_t*"],
@@ -23,7 +24,7 @@ def device_groups():
 
 
 class nxprof(Macro):
-    """ Lists current profile """
+    """ List the current profile """
 
     def run(self):
         server = set_selector(self)
@@ -33,15 +34,15 @@ class nxprof(Macro):
         printConfList(self, "Timer", True, "Timer(s)")
         self.output("")
         printList(self, "Components", False, "Detector Components")
-        self.output("") 
+        self.output("")
         printList(self, "DataSources", False, "Other Detector Channels")
         self.output("")
-        printList(self, "MandatoryComponents", False, "Mandatory Components", 
+        printList(self, "MandatoryComponents", False, "Mandatory Components",
                   True)
         self.output("")
         printList(self, "AutomaticComponents", False, "Description Components")
         self.output("")
-        printConfList(self, "InitDataSources", False, 
+        printConfList(self, "InitDataSources", True,
                       "Other Description Channels")
         self.output("")
         printDict(self, "DataRecord", True, "User Data")
@@ -51,13 +52,13 @@ class nxprof(Macro):
         printString(self, "AppendEntry")
         self.output("")
         self.output("SelectorServer: %s" % str(server))
-        printString(self, "ConfigDevice" , "ConfigServer")
+        printString(self, "ConfigDevice", "ConfigServer")
         printString(self, "WriterDevice", "WriterServer")
 
 
 @macro()
 def nxlscp(self):
-    """ Lists avaliable components """
+    """ List all available components """
 
     set_selector(self)
     printList(self, "AvailableComponents", False, None, True)
@@ -65,7 +66,7 @@ def nxlscp(self):
 
 @macro()
 def nxlsds(self):
-    """ Lists avaliable datasources """
+    """ List all available datasources """
 
     set_selector(self)
     printList(self, "AvailableDataSources", False, None, True)
@@ -73,7 +74,7 @@ def nxlsds(self):
 
 @macro()
 def nxlsprof(self):
-    """ Lists avaliable profiles """
+    """ List all avaliable profiles """
 
     set_selector(self)
     printList(self, "AvailableSelections", False, None, True)
@@ -81,7 +82,7 @@ def nxlsprof(self):
 
 @macro()
 def nxlstimers(self):
-    """ Lists avaliable timers """
+    """ List all available timers """
 
     set_selector(self)
     printList(self, "AvailableTimers", False)
@@ -89,16 +90,16 @@ def nxlstimers(self):
 
 @macro()
 def nxlsdevtype(self):
-    """ Lists avaliable device types """
+    """ List all available device types """
 
     self.output("Types: %s" % str(device_groups().keys()))
 
 
 class nxlsprofvar(Macro):
-    """ Lists configuration variable names """
+    """ List profile variable names or its values (with param)"""
 
     param_def = [
-        ['name', Type.String, '', 'mntgrp name'],
+        ['name', Type.String, '', 'profile variable name'],
         ]
 
     def run(self, name):
@@ -110,12 +111,11 @@ class nxlsprofvar(Macro):
             self.output(conf[name])
 
 
-
 class nxsetprof(Macro):
-    """ change active profile """
+    """ Set the active profile """
 
     param_def = [
-        ['name', Type.String, '', 'mntgrp name'],
+        ['name', Type.String, '', 'profile name'],
         ]
 
     def run(self, name):
@@ -129,10 +129,10 @@ class nxsetprof(Macro):
 
 
 class nxrmprof(Macro):
-    """ remove current profile """
+    """ Remove the current profile """
 
     param_def = [
-        ['name', Type.String, '', 'mntgrp name'],
+        ['name', Type.String, '', 'profile name'],
         ]
 
     def run(self, name):
@@ -141,12 +141,12 @@ class nxrmprof(Macro):
 
 
 class nxsettimers(Macro):
-    """ Sets timers """
+    """ Set the current profile timers """
 
     param_def = [
         ['timer_list',
          ParamRepeat(['timer', Type.String, None, 'timer to select']),
-         None, 'List of timers to set'],
+         None, 'List of profile timers to set'],
     ]
 
     def run(self, *timer_list):
@@ -160,12 +160,12 @@ class nxsettimers(Macro):
 
 
 class nxadd(Macro):
-    """ Selects profile elements """
+    """ Add the given profile elements """
 
     param_def = [
         ['element_list',
-         ParamRepeat(['element', Type.String, None, 'Element to select']),
-         None, 'List of elements to show'],
+         ParamRepeat(['element', Type.String, None, 'Profile element to add']),
+         None, 'List of profile elements to add'],
     ]
 
     def run(self, *element_list):
@@ -187,11 +187,11 @@ class nxadd(Macro):
 
 
 class nxrm(Macro):
-    """ Deselects profile elements """
+    """ Deselect the given profile elements """
 
     param_def = [
         ['element_list',
-         ParamRepeat(['element', Type.String, None, 'Element to select']),
+         ParamRepeat(['element', Type.String, None, 'Profile element to remove']),
          None, 'List of elements to show'],
     ]
 
@@ -212,13 +212,33 @@ class nxrm(Macro):
         self.selector.importMntGrp()
 
 
+class nxclr(Macro):
+    """ Removes all profile elements """
+
+    def run(self):
+        set_selector(self)
+        cnf = json.loads(self.selector.Configuration)
+        cpdct = json.loads(cnf["ComponentGroup"])
+        dsdct = json.loads(cnf["DataSourceGroup"])
+        for name in cpdct.keys():
+            cpdct[str(name)] = False
+        for name in dsdct.keys():
+            dsdct[str(name)] = False
+        cnf["DataSourceGroup"] = str(json.dumps(dsdct))
+        cnf["ComponentGroup"] = str(json.dumps(cpdct))
+        self.selector.configuration = str(json.dumps(cnf))
+        self.selector.updateMntGrp()
+        self.selector.importMntGrp()
+
+
 class nxadddesc(Macro):
-    """ Adds description components """
+    """ Add the given description components """
 
     param_def = [
         ['element_list',
-         ParamRepeat(['element', Type.String, None, 'component to add']),
-         None, 'List of components to add'],
+         ParamRepeat(['element', Type.String, None,
+                      'description component to add']),
+         None, 'List of description components to add'],
     ]
 
     def run(self, *element_list):
@@ -237,12 +257,13 @@ class nxadddesc(Macro):
 
 
 class nxrmdesc(Macro):
-    """ Removes description components from list"""
+    """ Remove the given description components"""
 
     param_def = [
         ['element_list',
-         ParamRepeat(['element', Type.String, None, 'Element to select']),
-         None, 'List of elements to show'],
+         ParamRepeat(['element', Type.String, None,
+                      'description component to remove']),
+         None, 'List of descpription components to remove'],
     ]
 
     def run(self, *element_list):
@@ -260,7 +281,7 @@ class nxrmdesc(Macro):
 
 
 class nxsetappentry(Macro):
-    """ Sets append entry flag"""
+    """ Set the append entry flag for the current profile"""
 
     param_def = [
         ['append_flag', Type.Boolean, '', 'append entry flag'],
@@ -275,7 +296,7 @@ class nxsetappentry(Macro):
 
 
 class nxsetudata(Macro):
-    """Sets user data"""
+    """Set the given user data"""
 
     param_def = [['name', Type.String, None, 'user data name'],
                  ['value', Type.String, None, 'user data value']]
@@ -293,7 +314,7 @@ class nxsetudata(Macro):
 
 
 class nxusetudata(Macro):
-    """Unsets user data"""
+    """Unset the given user data"""
 
     param_def = [
         ['name_list',
@@ -319,7 +340,7 @@ class nxusetudata(Macro):
 
 
 class nxsetcnfvar(Macro):
-    """Sets user data"""
+    """Set the given configserver variable"""
 
     param_def = [['name', Type.String, None, 'configserver variable name'],
                  ['value', Type.String, None, 'configserver variable value']]
@@ -337,12 +358,13 @@ class nxsetcnfvar(Macro):
 
 
 class nxusetcnfvar(Macro):
-    """Unsets user data"""
+    """Unset the given configserver variables"""
 
     param_def = [
         ['name_list',
-         ParamRepeat(['name', Type.String, None, 'user data name to delete']),
-         None, 'List of user data names to delete'],
+         ParamRepeat(['name', Type.String, None,
+                      'ConfigServer variable name to delete']),
+         None, 'List of configserver variables to delete'],
     ]
 
     def run(self, *name_list):
@@ -364,7 +386,7 @@ class nxusetcnfvar(Macro):
 
 
 class nxupdatedesc(Macro):
-    """ Lists configuration variable names """
+    """ Update selection of description components """
 
     def run(self):
         set_selector(self)
@@ -374,7 +396,7 @@ class nxupdatedesc(Macro):
 
 
 class nxsetcnfsrv(Macro):
-    """ Changes configuration server """
+    """ Set the current configuration server """
 
     param_def = [
         ['name', Type.String, '', 'configserver name'],
@@ -391,10 +413,10 @@ class nxsetcnfsrv(Macro):
 
 
 class nxsetwrtsrv(Macro):
-    """ Changes writer server """
+    """ Set the current writer server """
 
     param_def = [
-        ['name', Type.String, '', 'writer server name'],
+        ['name', Type.String, '', 'writerserver name'],
         ]
 
     def run(self, name):
@@ -405,7 +427,7 @@ class nxsetwrtsrv(Macro):
 
 
 class nxsave(Macro):
-    """ Saves profile to file """
+    """ Save the current profile to the given file """
 
     param_def = [
         ['fname', Type.String, '', 'file name'],
@@ -421,7 +443,7 @@ class nxsave(Macro):
 
 
 class nxload(Macro):
-    """ Loads profile from file """
+    """ Load a profile from the given file """
 
     param_def = [
         ['fname', Type.String, '', 'file name'],
@@ -437,7 +459,7 @@ class nxload(Macro):
 
 
 class nxsetprofvar(Macro):
-    """Sets selector variable"""
+    """Set profile variable"""
 
     param_def = [['name', Type.String, None, 'selector variable name'],
                  ['value', Type.String, None, 'selector variable value']]
@@ -455,10 +477,10 @@ class nxsetprofvar(Macro):
 
 
 class nxlse(Macro):
-    """ Shows available profile elements to select"""
+    """ Show available profile elements to select"""
 
     param_def = [
-        ['dev_type', Type.String, '', 'device type'],
+        ['dev_type', Type.String, '', 'device type or name pattern'],
         ]
 
     def run(self, dev_type):
@@ -488,7 +510,7 @@ class nxlse(Macro):
 
 
 class nxshow(Macro):
-    """ Describes profile element """
+    """ Describe the given profile element """
 
     param_def = [
         ['name', Type.String, '', 'element name'],
@@ -534,7 +556,7 @@ class nxshow(Macro):
             desc = self.selector.getSourceDescription([str(name)])
             if desc:
                 md = json.loads(desc[0])
-                if "record" in md: 
+                if "record" in md:
                     md["source"] = md["record"]
                     md.pop("record")
                 dslist.append(str(json.dumps(md)))
@@ -543,6 +565,7 @@ class nxshow(Macro):
 
 
 def wait_for_device(proxy, counter=100):
+    """ Wait for the given Tango device """
     found = False
     cnt = 0
     while not found and cnt < counter:
@@ -560,7 +583,7 @@ def wait_for_device(proxy, counter=100):
 
 
 def printDict(mcr, name, decode=True, label=None):
-    """ Prints Server Dictionary """
+    """ Print the given server dictionary """
 
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
@@ -575,7 +598,7 @@ def printDict(mcr, name, decode=True, label=None):
 
 
 def printConfDict(mcr, name, decode=True, label=None):
-    """ Prints Server Dictionary """
+    """ Print the given server dictionary from Configuration"""
 
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
@@ -592,7 +615,7 @@ def printConfDict(mcr, name, decode=True, label=None):
 
 
 def printConfList(mcr, name, decode=True, label=None):
-    """ Prints Server List """
+    """ Print the given server list from Configuration """
 
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
@@ -611,7 +634,7 @@ def printConfList(mcr, name, decode=True, label=None):
 
 
 def printList(mcr, name, decode=True, label=None, command=False):
-    """ Prints Server List """
+    """ Print the given server list """
 
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
@@ -631,7 +654,7 @@ def printList(mcr, name, decode=True, label=None, command=False):
 
 
 def printConfString(mcr, name, label=None):
-    """ Prints Server String """
+    """ Print the given server variable from Configuration """
 
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
@@ -641,7 +664,7 @@ def printConfString(mcr, name, label=None):
 
 
 def printString(mcr, name, label=None, command=False):
-    """ Prints Server String """
+    """ Print the given server attribute """
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
     if not command:
@@ -652,20 +675,20 @@ def printString(mcr, name, label=None, command=False):
 
 
 def set_selector(mcr):
-    """ Sets Selector Server """
+    """ Set the current selector server """
     db = PyTango.Database()
     try:
         servers = [mcr.getEnv("NeXusSelectorDevice")]
     except Exception:
         servers = db.get_device_exported_for_class(
-            "NXSRecSettings").value_string
+            "NXSRecSelector").value_string
     if len(servers) > 0:
         mcr.selector = PyTango.DeviceProxy(str(servers[0]))
         return str(servers[0])
 
 
 def update_description(mcr):
-    """ Updates description components """
+    """ Update selection of description components """
     try:
         mcr.selector.updateControllers()
     except PyTango.CommunicationFailed as e:
@@ -673,4 +696,3 @@ def update_description(mcr):
             wait_for_device(mcr.selector)
         else:
             raise
-
