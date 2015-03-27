@@ -77,7 +77,8 @@ def nxlsprof(self):
     """ List all avaliable profiles """
 
     set_selector(self)
-    printList(self, "AvailableSelections", False, None, True)
+    printList(self, "AvailableSelections", False,
+              "Available profiles", True)
 
 
 @macro()
@@ -85,7 +86,8 @@ def nxlstimers(self):
     """ List all available timers """
 
     set_selector(self)
-    printList(self, "AvailableTimers", False)
+    printList(self, "AvailableTimers", False,
+              "Available timers")
 
 
 @macro()
@@ -106,7 +108,7 @@ class nxlsprofvar(Macro):
         set_selector(self)
         conf = json.loads(self.selector.Configuration)
         if not name or name not in conf.keys():
-            self.output(conf.keys())
+            self.output([str(k) for k in conf.keys()])
         else:
             self.output(conf[name])
 
@@ -272,7 +274,8 @@ class nxrmdesc(Macro):
         cpdct = json.loads(cnf["AutomaticComponentGroup"])
         for name in element_list:
             if name in cpdct:
-                cpdct[str(name)] = False
+                cpdct.pop(str(name))
+                self.output("Removing %s" % name)
         cnf["AutomaticComponentGroup"] = str(json.dumps(cpdct))
         self.selector.configuration = str(json.dumps(cnf))
         update_description(self)
@@ -592,6 +595,9 @@ def printDict(mcr, name, decode=True, label=None):
         data = mcr.selector.read_attribute(name).value
         if decode:
             data = json.loads(data)
+        data = dict(
+            [str(k), (str(v) if isinstance(v, unicode) else v)] \
+                for k,v in data.items())
     except Exception:
         pass
     mcr.output("  %s" % str(data))
@@ -609,6 +615,9 @@ def printConfDict(mcr, name, decode=True, label=None):
         data = conf[name]
         if decode:
             data = json.loads(data)
+        data = dict(
+            [str(k), (str(v) if isinstance(v, unicode) else v)] \
+                for k,v in data.items())
     except Exception:
         pass
     mcr.output("  %s" % str(data))
@@ -626,10 +635,11 @@ def printConfList(mcr, name, decode=True, label=None):
         data = conf[name]
         if decode:
             data = json.loads(data)
+        data = [
+            (str(v) if isinstance(v, unicode) else v) \
+                for v in data]
     except Exception as e:
         mcr.output(str(e))
-    if isinstance(data, tuple):
-        data = list(data)
     mcr.output("  %s" % str(data))
 
 
@@ -646,10 +656,11 @@ def printList(mcr, name, decode=True, label=None, command=False):
             data = mcr.selector.command_inout(name)
         if decode:
             data = json.loads(data)
+        data = [
+            (str(v) if isinstance(v, unicode) else v) \
+                for v in data]
     except Exception as e:
         mcr.output(str(e))
-    if isinstance(data, tuple):
-        data = list(data)
     mcr.output("  %s" % str(data))
 
 
