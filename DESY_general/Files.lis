@@ -3,8 +3,11 @@ energy_macros.py
 hkl_macros.py
 LimaMacros.py
 mg_macros.py
+motor_macros.py
+motor_limits.py
 mvsa.py
 news.py
+nxmacros.py
 scan_macros.py
 sequency_macros.py
 
