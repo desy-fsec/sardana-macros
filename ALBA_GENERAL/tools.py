@@ -1,6 +1,7 @@
 import time
 from sardana.macroserver.macro import * 
 from sardana.util.tree import BranchNode, LeafNode, Tree
+import taurus
 
 class repeat(Hookable, Macro):
     """This macro executes as many repetitions of it's body hook macros as specified by nr parameter.
@@ -77,5 +78,79 @@ class set_user_pos_pm(Macro):
     
     def run(self, pm, pos):
         self.set_pos(pm, pos)
-        
+
+class PSHU(object):
+    OPEN_VALUE = 1
+    CLOSE_VALUE = 0 
+    def initPSHU(self):
+        try:
+            sh_attr_name = self.getEnv('PSHU_ATTR')
+            self.attr = taurus.Attribute(sh_attr_name)
+
+        except Exception, e:
+            msg = ('The macro use the enviroment variable PSHU_ATTR which has '
+                   'the attribute name of the EPS to open the shutter.\n%s' % e)
+            raise RuntimeError(msg)
     
+    @property
+    def state(self):
+        return self.attr.read().value
+    
+    def _writeValue(self, value):
+        self.attr.write(value)
+        while self.state != value:
+            time.sleep(0.1)
+            self.checkPoint()
+            
+    def open(self):
+        if self.state:
+            self.info('The photon shutter was open')
+            return
+        self.info('Opening photon shutter...')
+        self._writeValue(self.OPEN_VALUE)
+        self.info('The photon shutter is open')
+ 
+    def close(self):
+        if not self.state:
+            self.info('The photon shutter was closed')
+            return
+        self.info('Closing photon shutter...')
+        self._writeValue(self.CLOSE_VALUE)
+        self.info('The photon shutter is closed')
+ 
+    
+class shopen(Macro, PSHU):
+    """
+    This macro open the photon shutter. 
+    
+    Other macros: shclose, shstate
+    """
+    def run(self):
+        self.initPSHU()
+        self.open()
+    
+class shclose(Macro, PSHU):
+    """
+    This macro close the photon shutter. 
+    
+    Other macros: shopen, shstate
+    """
+    def run(self):
+        self.initPSHU()
+        self.close()
+
+class shstate(Macro, PSHU):
+    """
+    This macro show the photon shutter state. 
+    
+    Other macros: shopen, shclose
+    """
+    def run(self):
+        self.initPSHU()
+        state = self.state
+        st_msg = 'closed'
+        if state == self.OPEN_VALUE:
+            st_msg = 'open'
+            
+        self.info('The photon shutter is ' + st_msg)
+        
