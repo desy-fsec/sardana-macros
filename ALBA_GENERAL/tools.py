@@ -84,12 +84,14 @@ class PSHU(object):
     CLOSE_VALUE = 0 
     def initPSHU(self):
         try:
-            sh_attr_name = self.getEnv('PSHU_ATTR')
+            sh_attr_name = self.getEnv('PshuAttr')
+            self.sh_timeout = self.getEnv('PshuTimeout')
             self.attr = taurus.Attribute(sh_attr_name)
-
+            
         except Exception, e:
-            msg = ('The macro use the enviroment variable PSHU_ATTR which has '
-                   'the attribute name of the EPS to open the shutter.\n%s' % e)
+            msg = ('The macro use the enviroment variable PshuAttr which has '
+                   'the attribute name of the EPS to open the shutter, and the'
+                   ' variable PshuTimeout with the timeout in seconds \n%s' % e)
             raise RuntimeError(msg)
     
     @property
@@ -98,7 +100,14 @@ class PSHU(object):
     
     def _writeValue(self, value):
         self.attr.write(value)
+        t1 = time.time()
+        msg_to = 'Timeout Error: Could not open the photon shutter'
+        if value == self.CLOSE_VALUE:
+            msg_to = 'Timeout Error: Could not close the photon shutter'
         while self.state != value:
+            t = time.time() - t1
+            if t > self.sh_timeout:
+                raise RuntimeError(msg_to)
             time.sleep(0.1)
             self.checkPoint()
             
