@@ -48,10 +48,10 @@ class escan(Macro):
         global flag_no_first
         self.info("\tCalling move hkl hook")
     
-        pos_to_set = self.energy_motor.Position + flag_no_first * self.step
+        pos_to_set = self.energy_device.Position + flag_no_first * self.step
         flag_no_first = 1
 
-        wavelength = self.lambda_to_e/(self.energy_motor.Position + self.step)
+        wavelength = self.lambda_to_e/(self.energy_device.Position + self.step)
         
         self.diffrac.write_attribute("wavelength", wavelength)
 
@@ -77,10 +77,20 @@ class escan(Macro):
             self.output("Add fixq as argument if q has to be kept fixed during the movement")
             return
 
-        try:
-            energy_device = self.getObj("mnchrmtr")
-            energy_device_name = "mnchrmtr"
-        except:
+        if end_energy == -999:
+            self.error("end_energy not specified")
+            return
+        if nr_interv == -999:
+            self.error("nr_interv not specified")
+            return
+        if integ_time == -999:
+            self.error("integ_time not specified")
+            return
+            
+
+        energy_device = self.getObj("mnchrmtr")
+        energy_device_name = "mnchrmtr"
+        if energy_device == None:
             self.warning("mnchrmtr device does not exist.")
             self.warning("Trying to get the energy device name from the EnergyDevice environment variable")
             try:
@@ -91,9 +101,12 @@ class escan(Macro):
             try:
                 energy_device = self.getObj(energy_device_name)
             except:
-                self.error("Unable to get energy device %s. Macro exitin" % energy_device_name)
+                self.error("Unable to get energy device %s. Macro exiting" % energy_device_name)
                 return
-                
+
+        # store the current position from the energy device to return to it after the scan
+
+        saved_initial_position = energy_device.Position
 
         # set the motor to the initial position for having the right position at the first hook
 
@@ -126,6 +139,10 @@ class escan(Macro):
 
         self.runMacro(macro)
 
+        # Return the energy to the initial value
+        
+        self.output("Returning the energy to the value before the scan ...")
+        self.execMacro("mv %s %f" % (energy_device_name, saved_initial_position))
 
 class me(Macro):
     """Move energy. Diffractometer wavelength is set"""
