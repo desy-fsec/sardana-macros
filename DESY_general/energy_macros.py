@@ -91,17 +91,14 @@ class escan(Macro):
         energy_device_name = "mnchrmtr"
         try: # if the device exists gives error if comparing to None
             if energy_device == None:
-                self.output("4")
                 self.warning("mnchrmtr device does not exist.")
                 self.warning("Trying to get the energy device name from the EnergyDevice environment variable")
                 try:
-                    self.output("5")
                     energy_device_name = self.getEnv('EnergyDevice')
                 except:
                     self.error("EnergyDevice not defined. Macro exiting")
                     return
                 try:
-                    self.output("6")
                     energy_device = self.getObj(energy_device_name)
                 except:
                     self.error("Unable to get energy device %s. Macro exiting" % energy_device_name)
@@ -109,14 +106,12 @@ class escan(Macro):
         except:
             pass
 
-        self.output("10")
         # store the current position from the energy device to return to it after the scan
 
         saved_initial_position = energy_device.Position
 
         # set the motor to the initial position for having the right position at the first hook
 
-        self.output("3")
         self.output("Moving energy to the start value ...")
         self.execMacro("mv %s %f" % (energy_device_name, start_energy))
 
@@ -131,7 +126,10 @@ class escan(Macro):
             diffrac_name = self.getEnv('DiffracDevice')
             self.diffrac = self.getDevice(diffrac_name)
             pseudo_motor_names = []
+            self.output("fixq")
+            self.output(pseudo_motor_names)
             for motor in self.diffrac.hklpseudomotorlist:
+                self.output(pseudo_motor_names)
                 pseudo_motor_names.append(motor.split(' ')[0])
             
             h_device = self.getDevice(pseudo_motor_names[0])
