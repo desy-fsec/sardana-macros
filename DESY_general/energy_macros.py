@@ -87,29 +87,36 @@ class escan(Macro):
             self.error("integ_time not specified")
             return
             
-
         energy_device = self.getObj("mnchrmtr")
         energy_device_name = "mnchrmtr"
-        if energy_device == None:
-            self.warning("mnchrmtr device does not exist.")
-            self.warning("Trying to get the energy device name from the EnergyDevice environment variable")
-            try:
-                energy_device_name = self.getEnv('EnergyDevice')
-            except:
-                self.error("EnergyDevice not defined. Macro exiting")
-                return
-            try:
-                energy_device = self.getObj(energy_device_name)
-            except:
-                self.error("Unable to get energy device %s. Macro exiting" % energy_device_name)
-                return
+        try: # if the device exists gives error if comparing to None
+            if energy_device == None:
+                self.output("4")
+                self.warning("mnchrmtr device does not exist.")
+                self.warning("Trying to get the energy device name from the EnergyDevice environment variable")
+                try:
+                    self.output("5")
+                    energy_device_name = self.getEnv('EnergyDevice')
+                except:
+                    self.error("EnergyDevice not defined. Macro exiting")
+                    return
+                try:
+                    self.output("6")
+                    energy_device = self.getObj(energy_device_name)
+                except:
+                    self.error("Unable to get energy device %s. Macro exiting" % energy_device_name)
+                    return
+        except:
+            pass
 
+        self.output("10")
         # store the current position from the energy device to return to it after the scan
 
         saved_initial_position = energy_device.Position
 
         # set the motor to the initial position for having the right position at the first hook
 
+        self.output("3")
         self.output("Moving energy to the start value ...")
         self.execMacro("mv %s %f" % (energy_device_name, start_energy))
 
