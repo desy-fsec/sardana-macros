@@ -186,12 +186,12 @@ class dNscanRepeat(aNscanRepeat):
     hints = copy.deepcopy(aNscanRepeat.hints)
     hints['scan'] = 'dNscanRepeat'
 
-    def _prepare(self, motorlist, startlist, endlist, scan_length, integ_time, mode=StepMode, **opts):
+    def _prepare(self, motorlist, startlist, endlist, scan_length, integ_time, nb_repeat, mode=StepMode, **opts):
         self._motion=self.getMotion( [ m.getName() for m in motorlist] )
         self.originalPositions = numpy.array(self._motion.readPosition())
         starts = numpy.array(startlist, dtype='d') + self.originalPositions
         finals = numpy.array(endlist, dtype='d') + self.originalPositions
-        aNscanRepeat._prepare(self, motorlist, starts, finals, scan_length, integ_time, mode=mode, **opts)
+        aNscanRepeat._prepare(self, motorlist, starts, finals, scan_length, integ_time,  nb_repeat, mode=mode, **opts)
         
     def do_restore(self):
         self.info("Returning to start positions... NOT CALLED")
@@ -223,3 +223,26 @@ class ascan_repeat(aNscanRepeat, Macro):
                 **opts):
         self._prepare([motor], [start_pos], [final_pos], nr_interv, integ_time, nb_repeat,  **opts)
        
+
+
+class dscan_repeat(dNscanRepeat, Macro): 
+    """motor scan relative to the starting position.
+    dscan scans one motor, as specified by motor. If motor motor is at a
+    position X before the scan begins, it will be scanned from X+start_pos
+    to X+final_pos. The step size is (start_pos-final_pos)/nr_interv.
+    The number of data points collected will be nr_interv+1. Count time is
+    given by time which if positive, specifies seconds and if negative,
+    specifies monitor counts. """
+
+    param_def = [
+       ['motor',      Type.Moveable,   None, 'Moveable to move'],
+       ['start_pos',  Type.Float,   None, 'Scan start position'],
+       ['final_pos',  Type.Float,   None, 'Scan final position'],
+       ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
+       ['integ_time', Type.Float,   None, 'Integration time'],
+       ['nb_repeat',  Type.Integer, None, 'Number of repetitions per point']
+    ]
+
+    def prepare(self, motor, start_pos, final_pos, nr_interv, integ_time, nb_repeat,
+                **opts):
+        self._prepare([motor], [start_pos], [final_pos], nr_interv, integ_time,  nb_repeat,**opts)
