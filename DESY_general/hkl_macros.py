@@ -52,8 +52,8 @@ class _diffrac:
             self.angle_names.append("th")
             self.angle_names.append("chi")
             self.angle_names.append("phi")
-            self.angle_names.append("delta")
             self.angle_names.append("gamma")
+            self.angle_names.append("delta")
 
         prop = self.diffrac.get_property(['DiffractometerType'])        
         for v in prop['DiffractometerType']:       
