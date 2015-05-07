@@ -41,7 +41,6 @@ class MgConf:
         if not flagClear:
             self.hsh = json.loads( self.mg.Configuration) 
             self.masterTimer = self.findMasterTimer()
-            self.masterTimer = "exp_t01"
             self.index = len(self.mg.ElementList)
         else:
             self.hsh = {}
