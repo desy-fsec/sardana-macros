@@ -335,3 +335,28 @@ class qExafsCleanup(Macro):
         self.info("qExafs cleanup is done")
 
 
+
+class qExafsE(Macro):
+    """
+    Macro to run the qExafs experiment using the energy resolution.
+       
+    """
+    param_def = [["E0", Type.Float, None, "Starting energy"],
+                 ["E1", Type.Float, None, "Ending energy"],
+                 ["deltaE", Type.Integer, None, "Energy resolution"],
+                 ["intTime", Type.Float, None, "Integration time by point"],
+                 
+                 ["speedLim", Type.Boolean, True, ("Active the verification "
+                                                   "of the speed and "
+                                                   "integration time")]]
+    
+    
+    def run(self, e0, e1, deltaE, int_time, speed_lim):
+        nr_points, modulo = devmod(abs(e0-e1),deltaE)
+        if module != 0:
+            nr_point += 1
+        scan_time = nr_points * int_time
+        qExafsScan, pars = self.createMacro('qExafs', e0, e1, nr_points,
+                                            scan_time, speed_lim)
+        self.runMacro(qExafsScan)
+   
