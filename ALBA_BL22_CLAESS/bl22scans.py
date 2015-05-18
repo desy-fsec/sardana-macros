@@ -5,6 +5,7 @@ from sardana.macroserver.scan import SScan
 from sardana.macroserver.macros.scan import ascan, getCallable, UNCONSTRAINED
 import taurus
 import PyTango
+from math import sqrt
 
 EV2REVA = 0.2624682843
 
@@ -121,6 +122,9 @@ class qExafs(Macro):
                  ["speedLim", Type.Boolean, True, ("Active the verification "
                                                    "of the speed and "
                                                    "integration time")],
+                 ["runStartup", Type.Boolean, True, 'run qExasfStartup'],
+                 ["runCleanup", Type.Boolean, True, 'run qExasfCleanup'],
+                 
                  ["pmacDelay", Type.Float, 0.01, ("Delay to run the motion "
                                                    "of the speed and "
                                                    "integration time")],
@@ -146,7 +150,8 @@ class qExafs(Macro):
         pmac.GetMVariable(103)
         #enabling plc0 execution
         pmac.SetIVariable([5, 3])
-        self.execMacro('qExafsStartup')
+        if self.run_startup:
+            self.execMacro('qExafsStartup')
 
     def postConfigure(self):
         self.debug('postConfigure entering...')
@@ -174,7 +179,8 @@ class qExafs(Macro):
         
 
     def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim,
-            pmac_delay, acqTime, nrOfRepeats, backAndForth):
+            run_startup, run_clean_up,pmac_delay, acqTime, nrOfRepeats, 
+            backAndForth):
         moveable = self.getMoveable(self.motName)
         int_time = scanTime/nrOfTriggers
         self.pmac_dt = pmac_delay
@@ -191,6 +197,9 @@ class qExafs(Macro):
             raise Exception(('You can not send this scan, because there is not '
                             'enough memory. The combination of the nrOfTrigger'
                             '*scanTime < 1000000'))
+   
+        self.run_startup = run_startup
+        self.run_cleanup = run_cleanup
         try:
             for i in range(nrOfRepeats):
                 quickScanPosCapture, pars = self.createMacro("ascanct_ni", 
@@ -213,12 +222,11 @@ class qExafs(Macro):
                     temp = startPos
                     startPos = finalPos
                     finalPos = temp
-        
-        except Exception, e:
-            self.info(e)
+  
         finally:
             self.setEnv('ActiveMntGrp',self.mg_bck)
-            self.execMacro('qExafsCleanup')
+            if self.run_cleanup:
+                self.execMacro('qExafsCleanup')
 
 class qExafsStartup(Macro):
     """
@@ -336,6 +344,15 @@ class qExafsCleanup(Macro):
 
 
 
+
+def getNrOfPoints(e0, e1, deltaE):
+    nr_points, modulo = devmod(abs(e0-e1),deltaE)
+    if module != 0:
+        nr_points += 1
+
+    return nr_points
+
+
 class qExafsE(Macro):
     """
     Macro to run the qExafs experiment using the energy resolution.
@@ -343,8 +360,8 @@ class qExafsE(Macro):
     """
     param_def = [["E0", Type.Float, None, "Starting energy"],
                  ["E1", Type.Float, None, "Ending energy"],
-                 ["deltaE", Type.Integer, None, "Energy resolution"],
-                 ["intTime", Type.Float, None, "Integration time by point"],
+                 ["deltaE", Type.Float, None, "Energy resolution"],
+                 ["intTime", Type.Float, 0.5, "Integration time by point"],
                  
                  ["speedLim", Type.Boolean, True, ("Active the verification "
                                                    "of the speed and "
@@ -352,11 +369,83 @@ class qExafsE(Macro):
     
     
     def run(self, e0, e1, deltaE, int_time, speed_lim):
-        nr_points, modulo = devmod(abs(e0-e1),deltaE)
-        if module != 0:
-            nr_point += 1
-        scan_time = nr_points * int_time
-        qExafsScan, pars = self.createMacro('qExafs', e0, e1, nr_points,
-                                            scan_time, speed_lim)
-        self.runMacro(qExafsScan)
-   
+        try:
+            nr_points = getNrOfPoints(e0, e1, deltaE)
+            scan_time = nr_points * int_time
+            qExafsScan, pars = self.createMacro('qExafs', e0, e1, nr_points,
+                                                scan_time, speed_lim)
+            self.runMacro(qExafsScan)
+        finally:
+            self.execMacro('qExafsCleanup')
+
+
+class qSpectrum(Macro):
+    """
+    Macro to run the qExafs experiment using the energy resolution.
+       
+    """
+    param_def = [["E1", Type.Float, None, "first energy (eV)"],
+                 ["E2", Type.Float, None, "second energy (eV)"],
+                 ["E3", Type.Float, None, "third energy (eV)"],
+                 ["E4", Type.Float, None, "fourth energy (eV)"],
+                 ["E0", Type.Float, None, "edge energy (eV)"],
+                 ["deltaE1", Type.Float, None, "Energy resolution (eV)"],
+                 ["deltaE1", Type.Float, None, "Energy resolution (eV)"],
+                 ["deltaK", Type.Float, None, "K resolution (A^-1)"],
+                 ['filename', Type.String, None, "filename to extract data"]
+                 ["intTime", Type.Float, 0.5, "Integration time by point"],
+                 
+                 ["speedLim", Type.Boolean, True, ("Active the verification "
+                                                   "of the speed and "
+                                                   "integration time")]]
+    
+    def run(self, e1, e2, e3, e4, e0, deltaE1, deltaE2, deltaK, filename, 
+            int_time, speedLim):
+        
+        try:
+            run_cleanup = True
+
+            #First region
+            nr_points1 = getNrOfPoints(e1, e2, deltaE1)
+            scan_time1 = nr_points1 * int_time
+            #run the startup but not the cleanup
+            qExafsScan1, pars = self.createMacro('qExafs', e1, e2, nr_points1,
+                                                scan_time1, speed_lim, True, 
+                                                False)
+            
+            #Second region
+            nr_points2 = getNrOfPoints(e2, e3, deltaE2)
+            scan_time2 = nr_points2 * int_time
+            #don't run the startup and the cleanup
+            qExafsScan2, pars = self.createMacro('qExafs', e2, e3, nr_points2,
+                                                scan_time2, speed_lim, False, 
+                                                False)
+            
+            
+            #Third region
+            h2_2me = 1.505e-18 #Constans h2/2me = 1.505 eVnm2
+            e3_e0 = abs(e3 - e0)            
+            deltaE3 = (sqrt(e3_e0) - (deltaK*1e10)*(sqrt(h2_2me)))**2 - e3_e0
+            deltaE3 = abs(deltaE3) 
+            nr_points3 = getNrOfPoints(e3, e4, deltaE3)
+            scan_time3 = nr_points3 * int_time
+            #run the cleanup but not the startup
+            qExafsScan3, pars = self.createMacro('qExafs', e3, e4, nr_points3,
+                                                scan_time3, speed_lim, False, 
+                                                True)
+            
+            
+            
+            
+            self.runMacro(qExafsScan1)
+            self.runMacro(qExafsScan2)
+            self.runMacro(qExafsScan3)
+            run_cleanup = False
+            fname = '%s/%s.dat' % (self.getEnv('ScanDir'), filename) 
+            self.execMacro('extractlastexafs %s 3 none' % (fname))
+
+            
+        
+        finally:
+            if run_cleanup:
+                self.execMacro('qExafsCleanup')
