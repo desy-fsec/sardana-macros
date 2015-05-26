@@ -39,21 +39,29 @@ class _diffrac:
 
         motor_list = self.diffrac.motorlist
 
-        self.nb_motors = len(motor_list)        
-        self.angle_names = []
-        
+        self.nb_motors = len(motor_list)
+
+        try:
+            self.angle_names = self.diffrac.motorroles
+        except: # Only for compatibility
+            self.angle_names = []
+            if self.nb_motors == 4:
+                self.angle_names.append("omega")
+                self.angle_names.append("chi")
+                self.angle_names.append("phi")
+                self.angle_names.append("theta")
+            elif self.nb_motors == 6:
+                self.angle_names.append("mu")
+                self.angle_names.append("th")
+                self.angle_names.append("chi")
+                self.angle_names.append("phi")
+                self.angle_names.append("gamma")
+                self.angle_names.append("delta")
+
         if self.nb_motors == 4:
-            self.angle_names.append("omega")
-            self.angle_names.append("chi")
-            self.angle_names.append("phi")
-            self.angle_names.append("theta")
+            self.labelmotor = {'Omega': "omega", 'Chi': "chi", 'Phi': "phi", 'Theta': "theta"}
         elif self.nb_motors == 6:
-            self.angle_names.append("mu")
-            self.angle_names.append("th")
-            self.angle_names.append("chi")
-            self.angle_names.append("phi")
-            self.angle_names.append("gamma")
-            self.angle_names.append("delta")
+            self.labelmotor = {'Mu': "mu", 'Theta': "omega", 'Chi': "chi", 'Phi': "phi", 'Gamma': "gamma", 'Delta': "delta"}
 
         prop = self.diffrac.get_property(['DiffractometerType'])        
         for v in prop['DiffractometerType']:       
@@ -220,17 +228,15 @@ class ca(Macro, _diffrac):
         self.output("%s %7.5f" % ("Wavelength = ", self.diffrac.WaveLength))
         self.output("")
 
-        str_pos1 = "%7.5f" % angles_list[5]
-        str_pos2 = "%7.5f" % angles_list[1]
-        str_pos3 = "%7.5f" % angles_list[2]
-        str_pos4 = "%7.5f" % angles_list[3]
-        str_pos5 = "%7.5f" % angles_list[0] 
-        str_pos6 = "%7.5f" % angles_list[4] 
+        str_pos = {}
+        i = 0
+        for name in self.angle_names:
+            str_pos[name] = "%7.5f" % angles_list[i]
+            i = i + 1
 
-        
         self.output("%10s %11s %12s %11s %10s %11s" %("Delta","Theta","Chi","Phi","Mu","Gamma"))
         self.output("%10s %11s %12s %11s %10s %11s" % 
-                    (str_pos1, str_pos2, str_pos3, str_pos4, str_pos5, str_pos6))
+                    (str_pos[self.labelmotor["Delta"]], str_pos[self.labelmotor["Theta"]], str_pos[self.labelmotor["Chi"]], str_pos[self.labelmotor["Phi"]], str_pos[self.labelmotor["Mu"]], str_pos[self.labelmotor["Gamma"]]))
 
                            
 class caa(Macro, _diffrac):
@@ -421,12 +427,12 @@ class wh(Macro, _diffrac):
         self.output("%s %7.5f" % ("Wavelength = ", self.diffrac.WaveLength))
         self.output("")
 
-        str_pos1 = "%7.5f" % self.getDevice(self.angle_device_names['delta']).Position
-        str_pos2 = "%7.5f" % self.getDevice(self.angle_device_names['th']).Position
-        str_pos3 = "%7.5f" % self.getDevice(self.angle_device_names['chi']).Position
-        str_pos4 = "%7.5f" % self.getDevice(self.angle_device_names['phi']).Position
-        str_pos5 = "%7.5f" % self.getDevice(self.angle_device_names['mu']).Position
-        str_pos6 = "%7.5f" % self.getDevice(self.angle_device_names['gamma']).Position
+        str_pos1 = "%7.5f" % self.getDevice(self.angle_device_names[self.labelmotor["Delta"]]).Position
+        str_pos2 = "%7.5f" % self.getDevice(self.angle_device_names[self.labelmotor["Theta"]]).Position
+        str_pos3 = "%7.5f" % self.getDevice(self.angle_device_names[self.labelmotor["Chi"]]).Position
+        str_pos4 = "%7.5f" % self.getDevice(self.angle_device_names[self.labelmotor["Phi"]]).Position
+        str_pos5 = "%7.5f" % self.getDevice(self.angle_device_names[self.labelmotor["Mu"]]).Position
+        str_pos6 = "%7.5f" % self.getDevice(self.angle_device_names[self.labelmotor["Gamma"]]).Position
         
         self.output("%10s %11s %12s %11s %10s %11s" %("Delta","Theta","Chi","Phi","Mu","Gamma"))
         self.output("%10s %11s %12s %11s %10s %11s" % 
