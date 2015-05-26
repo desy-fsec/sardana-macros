@@ -179,7 +179,7 @@ class qExafs(Macro):
         
 
     def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim,
-            run_startup, run_clean_up,pmac_delay, acqTime, nrOfRepeats, 
+            run_startup, run_cleanup,pmac_delay, acqTime, nrOfRepeats, 
             backAndForth):
         moveable = self.getMoveable(self.motName)
         int_time = scanTime/nrOfTriggers
@@ -346,11 +346,11 @@ class qExafsCleanup(Macro):
 
 
 def getNrOfPoints(e0, e1, deltaE):
-    nr_points, modulo = devmod(abs(e0-e1),deltaE)
-    if module != 0:
+    nr_points, modulo = divmod(abs(e0-e1),deltaE)
+    if modulo != 0:
         nr_points += 1
 
-    return nr_points
+    return int(nr_points)
 
 
 class qExafsE(Macro):
@@ -390,17 +390,16 @@ class qSpectrum(Macro):
                  ["E4", Type.Float, None, "fourth energy (eV)"],
                  ["E0", Type.Float, None, "edge energy (eV)"],
                  ["deltaE1", Type.Float, None, "Energy resolution (eV)"],
-                 ["deltaE1", Type.Float, None, "Energy resolution (eV)"],
-                 ["deltaK", Type.Float, None, "K resolution (A^-1)"],
-                 ['filename', Type.String, None, "filename to extract data"]
+                 ["deltaE2", Type.Float, None, "Energy resolution (eV)"],
+                 ["deltaK", Type.Float, None, "K resolution (A^-1) between first and second point"],
+                 ['filename', Type.String, None, "filename to extract data"],
                  ["intTime", Type.Float, 0.5, "Integration time by point"],
-                 
                  ["speedLim", Type.Boolean, True, ("Active the verification "
                                                    "of the speed and "
                                                    "integration time")]]
     
     def run(self, e1, e2, e3, e4, e0, deltaE1, deltaE2, deltaK, filename, 
-            int_time, speedLim):
+            int_time, speed_lim):
         
         try:
             run_cleanup = True
