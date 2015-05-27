@@ -122,6 +122,9 @@ class qExafs(Macro):
                  ["speedLim", Type.Boolean, True, ("Active the verification "
                                                    "of the speed and "
                                                    "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                   "opening of Front End")],
+                                                   
                  ["runStartup", Type.Boolean, True, 'run qExasfStartup'],
                  ["runCleanup", Type.Boolean, True, 'run qExasfCleanup'],
                  
@@ -152,6 +155,8 @@ class qExafs(Macro):
         pmac.SetIVariable([5, 3])
         if self.run_startup:
             self.execMacro('qExafsStartup')
+        if self.wait_fe:
+            self.execMacro('waitFE')
 
     def postConfigure(self):
         self.debug('postConfigure entering...')
@@ -178,7 +183,7 @@ class qExafs(Macro):
         self.setEnv('ActiveMntGrp', mg)
         
 
-    def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim,
+    def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, wait_fe,
             run_startup, run_cleanup,pmac_delay, acqTime, nrOfRepeats, 
             backAndForth):
         moveable = self.getMoveable(self.motName)
@@ -200,6 +205,8 @@ class qExafs(Macro):
    
         self.run_startup = run_startup
         self.run_cleanup = run_cleanup
+        self.wait_fe = wait_fe
+        
         try:
             for i in range(nrOfRepeats):
                 quickScanPosCapture, pars = self.createMacro("ascanct_ni", 
@@ -365,15 +372,18 @@ class qExafsE(Macro):
                  
                  ["speedLim", Type.Boolean, True, ("Active the verification "
                                                    "of the speed and "
-                                                   "integration time")]]
+                                                   "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                   "opening of Front End")]]
     
     
-    def run(self, e0, e1, deltaE, int_time, speed_lim):
+    def run(self, e0, e1, deltaE, int_time, speed_lim, wait_fe):
         try:
             nr_points = getNrOfPoints(e0, e1, deltaE)
             scan_time = nr_points * int_time
             qExafsScan, pars = self.createMacro('qExafs', e0, e1, nr_points,
-                                                scan_time, speed_lim)
+                                                scan_time, speed_lim, wait_fe,
+                                                True, False)
             self.runMacro(qExafsScan)
         finally:
             self.execMacro('qExafsCleanup')
@@ -396,12 +406,15 @@ class qSpectrum(Macro):
                  ["intTime", Type.Float, 0.5, "Integration time by point"],
                  ["speedLim", Type.Boolean, True, ("Active the verification "
                                                    "of the speed and "
-                                                   "integration time")]]
-
+                                                   "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                   "opening of Front End")]]
+ 
+                                                   
     mem_overload = 1000000
     
     def run(self, e1, e2, e3, e4, e0, deltaE1, deltaE2, deltaK, filename, 
-            int_time, speed_lim):
+            int_time, speed_lim, wait_fe):
         
         try:
             run_cleanup = True
@@ -412,8 +425,8 @@ class qSpectrum(Macro):
             mem_1 = nr_points1 * scan_time1
             #run the startup but not the cleanup
             qExafsScan1, pars = self.createMacro('qExafs', e1, e2, nr_points1,
-                                                scan_time1, speed_lim, True, 
-                                                False)
+                                                scan_time1, speed_lim, wait_fe,
+                                                True, False)
 
             if mem_1 > self.mem_overload:
                 raise Exception(('You can not send this scan, because there is '
@@ -426,8 +439,8 @@ class qSpectrum(Macro):
             mem_2 = nr_points2 * scan_time2
             #don't run the startup and the cleanup
             qExafsScan2, pars = self.createMacro('qExafs', e2, e3, nr_points2,
-                                                scan_time2, speed_lim, False, 
-                                                False)
+                                                scan_time2, speed_lim, wait_fe,
+                                                False, False)
             
 
             if mem_2 > self.mem_overload:
@@ -445,8 +458,8 @@ class qSpectrum(Macro):
             mem_3 = nr_points3 * scan_time3
             #run the cleanup but not the startup
             qExafsScan3, pars = self.createMacro('qExafs', e3, e4, nr_points3,
-                                                scan_time3, speed_lim, False, 
-                                                True)
+                                                scan_time3, speed_lim, wait_fe,
+                                                False, True)
             
             if mem_3 > self.mem_overload:
                 raise Exception(('You can not send this scan, because there is '
