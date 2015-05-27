@@ -178,7 +178,7 @@ class qExafs(Macro):
         pmac.SetIVariable([5, 2])
 
     def prepare(self, *args, **kwargs):
-        self.mg_bck = self.getEnv('ActiveMntGrp')
+        #self.mg_bck = self.getEnv('ActiveMntGrp')
         mg = self.getEnv('ContScanMG')
         self.setEnv('ActiveMntGrp', mg)
         
@@ -231,9 +231,10 @@ class qExafs(Macro):
                     finalPos = temp
   
         finally:
-            self.setEnv('ActiveMntGrp',self.mg_bck)
-            if self.run_cleanup:
-                self.execMacro('qExafsCleanup')
+           if self.run_cleanup:
+               mg = self.getEnv('DefaultMG')
+               self.setEnv('ActiveMntGrp',mg)
+               self.execMacro('qExafsCleanup')
 
 class qExafsStartup(Macro):
     """
