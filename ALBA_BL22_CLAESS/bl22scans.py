@@ -468,7 +468,10 @@ class qSpectrum(Macro):
                                  'small'))
    
 
-   
+            #Show the estimate time of the specturm
+            total_time = (scan_time1 + scan_time2 + scan_time3) / 60.0 
+            msg = 'The estimated time of the spectrum is %f min.' % total_time
+            self.info(msg)
             
             self.runMacro(qExafsScan1)
             self.runMacro(qExafsScan2)
