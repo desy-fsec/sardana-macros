@@ -397,6 +397,8 @@ class qSpectrum(Macro):
                  ["speedLim", Type.Boolean, True, ("Active the verification "
                                                    "of the speed and "
                                                    "integration time")]]
+
+    mem_overload = 1000000
     
     def run(self, e1, e2, e3, e4, e0, deltaE1, deltaE2, deltaK, filename, 
             int_time, speed_lim):
@@ -407,20 +409,32 @@ class qSpectrum(Macro):
             #First region
             nr_points1 = getNrOfPoints(e1, e2, deltaE1)
             scan_time1 = nr_points1 * int_time
+            mem_1 = nr_points1 * scan_time1
             #run the startup but not the cleanup
             qExafsScan1, pars = self.createMacro('qExafs', e1, e2, nr_points1,
                                                 scan_time1, speed_lim, True, 
                                                 False)
-            
+
+            if mem_1 > self.mem_overload:
+                raise Exception(('You can not send this scan, because there is '
+                                 'not enough memory. The deltaE1 is too '
+                                 'small'))
+
             #Second region
             nr_points2 = getNrOfPoints(e2, e3, deltaE2)
             scan_time2 = nr_points2 * int_time
+            mem_2 = nr_points2 * scan_time2
             #don't run the startup and the cleanup
             qExafsScan2, pars = self.createMacro('qExafs', e2, e3, nr_points2,
                                                 scan_time2, speed_lim, False, 
                                                 False)
             
-            
+
+            if mem_2 > self.mem_overload:
+                raise Exception(('You can not send this scan, because there is '
+                                 'not enough memory. The deltaE2 is too '
+                                 'small'))
+
             #Third region
             h2_2me = 1.505e-18 #Constans h2/2me = 1.505 eVnm2
             e3_e0 = abs(e3 - e0)            
@@ -428,13 +442,19 @@ class qSpectrum(Macro):
             deltaE3 = abs(deltaE3) 
             nr_points3 = getNrOfPoints(e3, e4, deltaE3)
             scan_time3 = nr_points3 * int_time
+            mem_3 = nr_points3 * scan_time3
             #run the cleanup but not the startup
             qExafsScan3, pars = self.createMacro('qExafs', e3, e4, nr_points3,
                                                 scan_time3, speed_lim, False, 
                                                 True)
             
-            
-            
+            if mem_3 > self.mem_overload:
+                raise Exception(('You can not send this scan, because there is '
+                                 'not enough memory. The deltaK is too '
+                                 'small'))
+   
+
+   
             
             self.runMacro(qExafsScan1)
             self.runMacro(qExafsScan2)
