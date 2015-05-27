@@ -28,7 +28,9 @@ class mvsa(Macro):
         '''
         constructs the full file name using ScanDir, ScanFile and ScanID
         '''
+        self.scanId =  int(self.getEnv( "ScanID"))
         temp = "%05d" % int(self.getEnv( "ScanID"))
+        
         #
         # sometimes ScanFile is a one-element list instead of an array
         #
@@ -49,10 +51,13 @@ class mvsa(Macro):
         """
         #
         # d2scan exp_dmy01 -1.0 1.0 exp_dmy02 -2.0 2.0 11 0.1
-        #
+        # 
         self.output( "Cmd: %s " % self.getEnv( "ScanHistory")[-1]['title'])
 
         lst = self.getEnv( "ScanHistory")[-1]['title'].split()
+        if self.scanId != self.getEnv("ScanHistory")[-1]['serialno']:
+            self.output( "mvsa.getMotorInfo: previous scan ended incomplete")
+            return None
 
         argout = []
         if lst[0].lower() == "ascan":
@@ -153,6 +158,8 @@ class mvsa(Macro):
             return
 
         motorArr = self.getMotorInfo( xpos)
+        if motorArr is None:
+            return
         #
         # prompt the user for confirmation, unless we have an uncoditional 'go'
         #
