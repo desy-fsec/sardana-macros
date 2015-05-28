@@ -132,11 +132,11 @@ class aNscanCheck(Hookable):
         global global_check
         global_check = 0
         while point_no < self.nr_points:
+            step["positions"] = self.starts + point_no * self.interv_sizes
+            step["point_id"] = point_id
             ic = self.check_condition()
             if ic:
                 point_no = point_no - 1
-            step["positions"] = self.starts + point_no * self.interv_sizes
-            step["point_id"] = point_id
             point_id = point_id + 1
             point_no = point_no + 1
             yield step
@@ -210,6 +210,7 @@ class dNscanCheck(aNscanCheck):
         self._motion.move(self.originalPositions)
         
 
+
 class ascan_checkabs(aNscanCheck, Macro): 
     """Do an absolute scan of the specified motor.
     ascan scans one motor, as specified by motor. The motor starts at the
@@ -236,5 +237,5 @@ class ascan_checkabs(aNscanCheck, Macro):
 
         # Define here your condition.
         # Set check_flag to 1 if the condition requires repetion of the point
-         
+
         return check_flag
