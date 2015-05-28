@@ -56,6 +56,7 @@ ContinuousMode = 'c' #TODO: change it to be more verbose e.g. ContinuousSwMode
 ContinuousHwTimeMode = 'ct'
 HybridMode = 'h'
 
+
 def getCallable(repr):
     '''returns a function .
     Ideas: repr could be an URL for a file where the function is contained,
@@ -129,14 +130,14 @@ class aNscanCheck(Hookable):
         step["check_func"] = []
         point_id = 0
         point_no = 0
-        global global_check
-        global_check = 0
         while point_no < self.nr_points:
-            step["positions"] = self.starts + point_no * self.interv_sizes
-            step["point_id"] = point_id
             ic = self.check_condition()
+            if point_no == 0 and point_id == 0:
+                ic = 0
             if ic:
                 point_no = point_no - 1
+            step["positions"] = self.starts + point_no * self.interv_sizes
+            step["point_id"] = point_id
             point_id = point_id + 1
             point_no = point_no + 1
             yield step
