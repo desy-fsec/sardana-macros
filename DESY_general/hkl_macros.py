@@ -52,7 +52,7 @@ class _diffrac:
                 self.angle_names.append("theta")
             elif self.nb_motors == 6:
                 self.angle_names.append("mu")
-                self.angle_names.append("th")
+                self.angle_names.append("omega")
                 self.angle_names.append("chi")
                 self.angle_names.append("phi")
                 self.angle_names.append("gamma")
