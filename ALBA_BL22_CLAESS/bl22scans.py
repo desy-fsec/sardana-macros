@@ -481,13 +481,11 @@ class ascanE(Macro):
     Macro to run a step scan. The macro verifies if the front end is open before
     to measure in each point.
     """
-     param_def = [
-       ['motor',      Type.Moveable,   None, 'Moveable to move'],
-       ['start_pos',  Type.Float,   None, 'Scan start position'],
-       ['final_pos',  Type.Float,   None, 'Scan final position'],
-       ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
-       ['integ_time', Type.Float,   None, 'Integration time']
-    ]
+    param_def = [['motor', Type.Moveable, None, 'Moveable to move'],
+                  ['start_pos',  Type.Float,   None, 'Scan start position'],
+                  ['final_pos',  Type.Float,   None, 'Scan final position'],
+                  ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
+                  ['integ_time', Type.Float,   None, 'Integration time']]
 
     def pre_acquisition(self):
         self.execMacro('waitFE')
