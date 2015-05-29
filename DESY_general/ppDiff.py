@@ -55,8 +55,10 @@ class ppDiff(Macro):
         if not os.path.isdir( savesDir):
             os.mkdir( savesDir)
         shutil.copy( fioFile, savesDir)
-        shutil.copytree( imageDir, "%s/%s_%05d_%s" % (savesDir, prefix, scanID, detector))
-        self.output( "saved %s and related images in %s" % (fioFile, savesDir))
+        self.output( "saved %s in %s" % (fioFile, savesDir))
+        if os.path.isdir( imageDir):
+            shutil.copytree( imageDir, "%s/%s_%05d_%s" % (savesDir, prefix, scanID, detector))
+            self.output( "saved images in %s" % (savesDir))
 
         fioObj = HasyUtils.fioReader( fioFile)
         #
@@ -68,6 +70,10 @@ class ppDiff(Macro):
         for i in range( len( x) - 1):
             if x[i] == x[i + 1]:
                 iDoubles.append( i)
+        if len( iDoubles) == 0:
+            self.output( "No doubles found")
+            return
+
         self.output( "Doubles %s" % str(iDoubles))
         #        
         # we must not start to delete from the beginning so revers the order
@@ -83,6 +89,10 @@ class ppDiff(Macro):
         os.remove( fioFile)
         HasyUtils.fioWriter( fioObj)
         self.output( "ppDiff: created %s" % fioObj.fileName)
+
+        if not os.path.isdir( imageDir):
+            self.output( "No images need to be processed")
+            return
         #
         # remove the images that belong to the superfluous points
         # mind that the indices of the images start at 1
