@@ -476,7 +476,7 @@ class qSpectrum(Macro):
             if run_cleanup:
                 self.execMacro('qExafsCleanup')
 
-class ascanE(Macro):
+class aEscan(Macro):
     """
     Macro to run a step scan. The macro verifies if the front end is open before
     to measure in each point.
