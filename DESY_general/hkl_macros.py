@@ -535,17 +535,18 @@ class getmode(Macro, _diffrac):
 class setlat(Macro, _diffrac):
     """Set the crystal lattice parameters a, b, c, alpha, beta, gamma.
        for the currently active diffraction pseudo motor controller."""  
-    
+ 
     param_def = [
-       ['a', Type.Float, None, "Lattice 'a' parameter"],
-       ['b', Type.Float, None, "Lattice 'b' parameter"],
-       ['c', Type.Float, None, "Lattice 'c' parameter"],
-       ['alpha', Type.Float, None, "Lattice 'alpha' parameter"],
-       ['beta',  Type.Float, None, "Lattice 'beta' parameter"],
-       ['gamma', Type.Float, None, "Lattice 'gamma' parameter"]
-    ]
+       ['a', Type.Float, -999, "Lattice 'a' parameter"],
+       ['b', Type.Float, -999, "Lattice 'b' parameter"],
+       ['c', Type.Float, -999, "Lattice 'c' parameter"],
+       ['alpha', Type.Float, -999, "Lattice 'alpha' parameter"],
+       ['beta',  Type.Float, -999, "Lattice 'beta' parameter"],
+       ['gamma', Type.Float, -999, "Lattice 'gamma' parameter"]
+    ] 
 
     hints = { 'interactive' : 'True' }
+    interactive=True
 
     def prepare(self, a, b, c, alpha, beta, gamma):
         _diffrac.prepare(self)
@@ -553,13 +554,33 @@ class setlat(Macro, _diffrac):
     def run(self, a, b, c, alpha, beta, gamma):
         if not self.prepared:
             return
-        
-        self.diffrac.write_attribute("a", a)        
-        self.diffrac.write_attribute("b", b)        
-        self.diffrac.write_attribute("c", c)        
-        self.diffrac.write_attribute("alpha", alpha)        
-        self.diffrac.write_attribute("beta", beta)        
-        self.diffrac.write_attribute("gamma", gamma)
+       
+        if gamma == -999:
+            a=self.diffrac.a
+            b=self.diffrac.b
+            c=self.diffrac.c
+            alpha=self.diffrac.alpha
+            beta=self.diffrac.beta
+            gamma=self.diffrac.gamma
+            a=self.input("a = ", default_value=a,data_type=Type.String)
+            b=self.input("b = ", default_value=b,data_type=Type.String)
+            c=self.input("c = ", default_value=c,data_type=Type.String)
+            alpha=self.input("alpha = ", default_value=alpha,data_type=Type.String)
+            beta=self.input("beta = ", default_value=beta,data_type=Type.String)
+            gamma=self.input("gamma = ", default_value=gamma,data_type=Type.String)
+            self.diffrac.write_attribute("a", float(a))
+            self.diffrac.write_attribute("b", float(b))
+            self.diffrac.write_attribute("c", float(c))
+            self.diffrac.write_attribute("alpha", float(alpha))
+            self.diffrac.write_attribute("beta",float(beta))
+            self.diffrac.write_attribute("gamma", float(gamma))
+        else:
+            self.diffrac.write_attribute("a", a)
+            self.diffrac.write_attribute("b", b)
+            self.diffrac.write_attribute("c", c)
+            self.diffrac.write_attribute("alpha", alpha)
+            self.diffrac.write_attribute("beta", beta)
+            self.diffrac.write_attribute("gamma", gamma) 
   
         self.execMacro('compute_u')
 
@@ -599,7 +620,7 @@ class or0(Macro, _diffrac):
 
 class or1(Macro, _diffrac):
     """Set secondary orientation reflection.""" 
-    
+
     param_def = [
        ['H', Type.Float, None, "H value"],
        ['K', Type.Float, None, "K value"],
@@ -632,20 +653,54 @@ class or1(Macro, _diffrac):
         self.execMacro('compute_u')
 
 class setor0(Macro, _diffrac):
-    """Set primary orientation reflection. Alternative to or0""" 
+    """Set primary orientation reflection choosing hkl and angle values""" 
     
-    def prepare(self):
+    param_def = [
+       ['H', Type.Float, -999, "H value"],
+       ['K', Type.Float, -999, "K value"],
+       ['L', Type.Float, -999, "L value"],
+       ['mu', Type.Float, -999, "Mu value"],
+       ['theta', Type.Float, -999, "Theta value"],
+       ['chi', Type.Float, -999, "Chi value"],
+       ['phi', Type.Float, -999, "Phi value"],
+       ['gamma', Type.Float, -999, "Gamma value"],
+       ['delta', Type.Float, -999, "Delta value"],
+    ]
+    
+
+    hints = { 'interactive' : 'True' }
+    interactive=True
+
+    def prepare(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         _diffrac.prepare(self)
     
-    def run(self):
+    def run(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         if not self.prepared:
             return
               
-        H = self.h_device.position
-        K = self.k_device.position
-        L = self.l_device.position
+        if delta == -999:
+            tmp_h = self.h_device.position
+            tmp_k = self.k_device.position
+            tmp_l = self.l_device.position
+            tmp_mu = self.getDevice(self.angle_device_names[self.labelmotor["Mu"]]).Position
+            tmp_theta = self.getDevice(self.angle_device_names[self.labelmotor["Theta"]]).Position
+            tmp_chi = self.getDevice(self.angle_device_names[self.labelmotor["Chi"]]).Position
+            tmp_phi = self.getDevice(self.angle_device_names[self.labelmotor["Phi"]]).Position
+            tmp_gamma = self.getDevice(self.angle_device_names[self.labelmotor["Gamma"]]).Position
+            tmp_delta = self.getDevice(self.angle_device_names[self.labelmotor["Delta"]]).Position
 
-
+            H=float(self.input("h = ", default_value=tmp_h,data_type=Type.String))
+            K=float(self.input("k = ", default_value=tmp_k,data_type=Type.String))
+            L=float(self.input("l = ", default_value=tmp_l,data_type=Type.String))
+            mu=float(self.input("mu = ", default_value=tmp_mu,data_type=Type.String))
+            theta=float(self.input("theta = ", default_value=tmp_theta,data_type=Type.String))
+            chi=float(self.input("chi = ", default_value=tmp_chi,data_type=Type.String))
+            phi=float(self.input("phi = ", default_value=tmp_phi,data_type=Type.String))
+            gamma=float(self.input("gamma = ", default_value=tmp_gamma,data_type=Type.String))
+            delta=float(self.input("delta = ", default_value=tmp_delta,data_type=Type.String))
+             
+        self.angle_values = {"mu": mu, "omega": theta, "chi": chi, "phi": phi, "gamma": gamma, "delta": delta} 
+          
         # Check collinearity
 
         hkl_ref1 = _diffrac.get_hkl_ref1(self)
@@ -655,6 +710,8 @@ class setor0(Macro, _diffrac):
                 self.warning("Can not orient: or0 %9.5f %9.5f %9.5f are parallel to or1" % (H, K, L))
                 return
 
+        # Set reflection
+
         values = []                 
         values.append(0)        
         values.append(H)        
@@ -663,23 +720,68 @@ class setor0(Macro, _diffrac):
         
         self.diffrac.write_attribute("AddReflectionWithIndex", values)  
 
+        # Adjust angles
+        
+        values = []
+        values.append(0)
+
+        for angle_name in self.angle_names:
+            values.append(self.angle_values[angle_name])
+
+        self.diffrac.write_attribute("AdjustAnglesToReflection", values)
+
+        # Recompute u
+
         self.execMacro('compute_u')
 
 class setor1(Macro, _diffrac):
-    """Set secondary orientation reflection. Alternative to or1""" 
+    """Set secondary orientation reflection choosing hkl and angle values"""
     
-    def prepare(self):
+    param_def = [
+       ['H', Type.Float, -999, "H value"],
+       ['K', Type.Float, -999, "K value"],
+       ['L', Type.Float, -999, "L value"],
+       ['mu', Type.Float, -999, "Mu value"],
+       ['theta', Type.Float, -999, "Theta value"],
+       ['chi', Type.Float, -999, "Chi value"],
+       ['phi', Type.Float, -999, "Phi value"],
+       ['gamma', Type.Float, -999, "Gamma value"],
+       ['delta', Type.Float, -999, "Delta value"],
+    ]
+    
+
+    hints = { 'interactive' : 'True' }
+    interactive=True 
+    
+    def prepare(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         _diffrac.prepare(self)
     
-    def run(self):
+    def run(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         if not self.prepared:
             return
               
-        H = self.h_device.position
-        K = self.k_device.position
-        L = self.l_device.position
+        if delta == -999:
+            tmp_h = self.h_device.position
+            tmp_k = self.k_device.position
+            tmp_l = self.l_device.position
+            tmp_mu = self.getDevice(self.angle_device_names[self.labelmotor["Mu"]]).Position
+            tmp_theta = self.getDevice(self.angle_device_names[self.labelmotor["Theta"]]).Position
+            tmp_chi = self.getDevice(self.angle_device_names[self.labelmotor["Chi"]]).Position
+            tmp_phi = self.getDevice(self.angle_device_names[self.labelmotor["Phi"]]).Position
+            tmp_gamma = self.getDevice(self.angle_device_names[self.labelmotor["Gamma"]]).Position
+            tmp_delta = self.getDevice(self.angle_device_names[self.labelmotor["Delta"]]).Position
 
-
+            H=float(self.input("h = ", default_value=tmp_h,data_type=Type.String))
+            K=float(self.input("k = ", default_value=tmp_k,data_type=Type.String))
+            L=float(self.input("l = ", default_value=tmp_l,data_type=Type.String))
+            mu=float(self.input("mu = ", default_value=tmp_mu,data_type=Type.String))
+            theta=float(self.input("theta = ", default_value=tmp_theta,data_type=Type.String))
+            chi=float(self.input("chi = ", default_value=tmp_chi,data_type=Type.String))
+            phi=float(self.input("phi = ", default_value=tmp_phi,data_type=Type.String))
+            gamma=float(self.input("gamma = ", default_value=tmp_gamma,data_type=Type.String))
+            delta=float(self.input("delta = ", default_value=tmp_delta,data_type=Type.String))
+             
+        self.angle_values = {"mu": mu, "omega": theta, "chi": chi, "phi": phi, "gamma": gamma, "delta": delta} 
 
         # Check collinearity
 
@@ -690,6 +792,8 @@ class setor1(Macro, _diffrac):
                 self.warning("Can not orient: or0 is parallel to or1 %9.5f %9.5f %9.5f" % (H, K, L))
                 return
 
+        # Set reflection
+
         values = []                 
         values.append(1)        
         values.append(H)        
@@ -697,6 +801,18 @@ class setor1(Macro, _diffrac):
         values.append(L)
         
         self.diffrac.write_attribute("AddReflectionWithIndex", values)  
+
+        # Adjust angles
+        
+        values = []
+        values.append(1)
+
+        for angle_name in self.angle_names:
+            values.append(self.angle_values[angle_name])
+
+        self.diffrac.write_attribute("AdjustAnglesToReflection", values)
+
+        # Recompute u 
  
         self.execMacro('compute_u')
 
