@@ -1224,6 +1224,118 @@ class savecrystal(Macro,_diffrac):
         self.diffrac.write_attribute("SaveCrystal", 1)
                 
 
+class lattice_cal(Macro, _diffrac):
+    """
+        lattice_cal - calibrate lattice parameters a, b or c to current 2theta value
+    """
+
+    param_def = [
+        [ "parameter", Type.String, "", "Parameter" ],
+        ]
+    interactive=True
+
+    def prepare(self,parameter):
+        _diffrac.prepare(self)
+
+    def run( self,parameter):
+        if parameter != "":
+            if parameter=="a" or parameter=="b" or parameter=="c":
+                if parameter == "a":
+                    a0=self.diffrac.a
+                    self.output("Old lattice parameter %s = %s" % (parameter,a0))
+                    h0=self.h_device.position
+                    h1=round(h0)
+                    a1=h1/h0*a0
+                    self.output("New lattice parameter %s = %s" % (parameter,a1))
+                    self.diffrac.write_attribute("a", a1)
+                if parameter == "b":
+                    a0=self.diffrac.b
+                    self.output("Old lattice parameter %s = %s" % (parameter,a0))
+                    h0=self.k_device.position
+                    h1=round(h0)
+                    a1=h1/h0*a0
+                    self.output("New lattice parameter %s = %s" % (parameter,a1))
+                    self.diffrac.write_attribute("b", a1)
+                if parameter == "c":
+                    a0=self.diffrac.c
+                    self.output("Old lattice parameter %s = %s" % (parameter,a0))
+                    h0=self.l_device.position
+                    h1=round(h0)
+                    a1=h1/h0*a0
+                    self.output("New lattice parameter %s = %s" % (parameter,a1))
+                    self.diffrac.write_attribute("c", a1)
+
+                self.execMacro('compute_u')
+
+
+            else:
+                self.output("Lattice parameter a, b or c")
+
+
+        else:
+            self.output( "Calibration of lattice parameters a, b or c to current 2theta value")
+            self.output( "usage:  lattice_cal parameter")
+
+
+
+
+
+class tw(Macro):
+    """
+    tw - tweak motor by variable delta
+    """
+
+    param_def = [
+        ['motor', Type.Moveable, "test", 'Motor to move'],
+        ['delta',   Type.Float, -999, 'amount to tweak']
+        ]
+    interactive=True
+
+
+    def run( self,motor,delta):
+        if delta != -999:
+            self.output("Indicate direction with + (or p) or - (or n) or enter")
+            self.output("new step size. Type something else (or ctrl-C) to quit.")
+            self.output("")
+            if np.sign(delta)==-1:
+                a="-"
+            if np.sign(delta)==1:
+                a="+"
+            while a in ('+','-','p','n'):
+                pos=motor.position
+                a=self.input("%s = %s, which way? " % (motor,pos),default_value=a,data_type=Type.String)
+                try:
+                    a1=float(a)
+                    check="True"
+                except:
+                    check="False"
+
+                if a =="p" and np.sign(delta)<0:
+                    a="+"
+                    delta=-delta
+                if a=="n" and np.sign(delta)>0:
+                    a="-"
+                    delta=-delta
+                if a =="+" and np.sign(delta)<0:
+                    delta=-delta
+                if a=="-" and np.sign(delta)>0:
+                    delta=-delta
+
+                if check=="True":
+                    delta = float(a1)
+                    if np.sign(delta)==-1:
+                        a="-"
+                    if np.sign(delta)==1:
+                        a="+"
+                pos+=delta
+                self.mv(motor,pos)
+
+
+        else:
+            self.output("usage: tw motor delta")
+
+
+
 class printmove(Macro,_diffrac):
 
 
