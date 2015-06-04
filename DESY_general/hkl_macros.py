@@ -6,6 +6,7 @@
 """
 import time
 import math
+import numpy as np 
 
 from sardana.macroserver.macro import *
 
@@ -487,26 +488,44 @@ class setmode(Macro, _diffrac):
        ['new_mode', Type.Integer, -1, "Mode to be set"]
     ]    
    
+    interactive=True 
+
     def prepare(self, new_mode):
         _diffrac.prepare(self)
-        
+    
     def run(self, new_mode):
         if not self.prepared:
-            return   
-        
+            return
+
         modes = self.diffrac.enginemodelist
-        
+
         if new_mode == -1:
-            self.output("Available modes:") 
+            self.output("Available modes:")
             imode = 1
+            old_mode=self.diffrac.read_attribute("enginemode").value
             for mode in modes:
+                if mode==old_mode:
+                    def_mode=imode
                 self.output(" %d -> %s " % (imode, mode))
                 imode = imode + 1
+            old_mode=self.diffrac.read_attribute("enginemode").value
+            self.output("")
+            a=self.input("Your choice?",default_value=def_mode)
+            imode=1
+            for mode in modes:
+                if imode==int(a):
+                    def_mode=imode
+                imode = imode + 1
+
+            self.diffrac.write_attribute("enginemode",modes[def_mode - 1])
+            self.output("")
+            self.output("Now using %s mode" % modes[def_mode - 1])
             return
-            
-            
+
+
+
         if new_mode > len(modes):
-            self.output("Wrong index mode -> only from 1 to %d allowed:" % len(modes)) 
+            self.output("Wrong index mode -> only from 1 to %d allowed:" % len(modes))
             imode = 1
             for mode in modes:
                 self.output(" %d -> %s " % (imode, mode))
@@ -515,8 +534,8 @@ class setmode(Macro, _diffrac):
         else:
             self.diffrac.write_attribute("enginemode",modes[new_mode - 1])
             self.output("Now using %s mode" % modes[new_mode - 1])
-                       
-            self.execMacro('savecrystal')
+
+            self.execMacro('savecrystal') 
             
 class getmode(Macro, _diffrac):
     """Get operation mode."""
