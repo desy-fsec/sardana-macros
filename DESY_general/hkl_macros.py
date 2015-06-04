@@ -677,62 +677,10 @@ class setor0(Macro, _diffrac):
     def run(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         if not self.prepared:
             return
-              
-        if delta == -999:
-            tmp_h = self.h_device.position
-            tmp_k = self.k_device.position
-            tmp_l = self.l_device.position
-            tmp_mu = self.getDevice(self.angle_device_names[self.labelmotor["Mu"]]).Position
-            tmp_theta = self.getDevice(self.angle_device_names[self.labelmotor["Theta"]]).Position
-            tmp_chi = self.getDevice(self.angle_device_names[self.labelmotor["Chi"]]).Position
-            tmp_phi = self.getDevice(self.angle_device_names[self.labelmotor["Phi"]]).Position
-            tmp_gamma = self.getDevice(self.angle_device_names[self.labelmotor["Gamma"]]).Position
-            tmp_delta = self.getDevice(self.angle_device_names[self.labelmotor["Delta"]]).Position
+                
+        setorn, pars= self.createMacro("setorn", 0, H, K, L, mu, theta, chi, phi, gamma, delta)
 
-            H=float(self.input("h = ", default_value=tmp_h,data_type=Type.String))
-            K=float(self.input("k = ", default_value=tmp_k,data_type=Type.String))
-            L=float(self.input("l = ", default_value=tmp_l,data_type=Type.String))
-            mu=float(self.input("mu = ", default_value=tmp_mu,data_type=Type.String))
-            theta=float(self.input("theta = ", default_value=tmp_theta,data_type=Type.String))
-            chi=float(self.input("chi = ", default_value=tmp_chi,data_type=Type.String))
-            phi=float(self.input("phi = ", default_value=tmp_phi,data_type=Type.String))
-            gamma=float(self.input("gamma = ", default_value=tmp_gamma,data_type=Type.String))
-            delta=float(self.input("delta = ", default_value=tmp_delta,data_type=Type.String))
-             
-        self.angle_values = {"mu": mu, "omega": theta, "chi": chi, "phi": phi, "gamma": gamma, "delta": delta} 
-          
-        # Check collinearity
-
-        hkl_ref1 = _diffrac.get_hkl_ref1(self)
-        if len(hkl_ref1) > 1:
-            check = _diffrac.check_collinearity(self, H, K, L, hkl_ref1[0], hkl_ref1[1], hkl_ref1[2])
-            if check:
-                self.warning("Can not orient: or0 %9.5f %9.5f %9.5f are parallel to or1" % (H, K, L))
-                return
-
-        # Set reflection
-
-        values = []                 
-        values.append(0)        
-        values.append(H)        
-        values.append(K)
-        values.append(L)
-        
-        self.diffrac.write_attribute("AddReflectionWithIndex", values)  
-
-        # Adjust angles
-        
-        values = []
-        values.append(0)
-
-        for angle_name in self.angle_names:
-            values.append(self.angle_values[angle_name])
-
-        self.diffrac.write_attribute("AdjustAnglesToReflection", values)
-
-        # Recompute u
-
-        self.execMacro('compute_u')
+        self.runMacro(setorn)
 
 class setor1(Macro, _diffrac):
     """Set secondary orientation reflection choosing hkl and angle values"""
@@ -759,89 +707,110 @@ class setor1(Macro, _diffrac):
     def run(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         if not self.prepared:
             return
+                
+        setorn, pars= self.createMacro("setorn", 1, H, K, L, mu, theta, chi, phi, gamma, delta)
+
+        self.runMacro(setorn)
+
+class setorn(Macro, _diffrac):
+    """Set orientation reflection indicated by the index.""" 
+    
+    param_def = [
+        ['ref_id', Type.Integer, None, "reflection index (starting at 0)"],
+        ['H', Type.Float, -999, "H value"],
+        ['K', Type.Float, -999, "K value"],
+        ['L', Type.Float, -999, "L value"],
+        ['mu', Type.Float, -999, "Mu value"],
+        ['theta', Type.Float, -999, "Theta value"],
+        ['chi', Type.Float, -999, "Chi value"],
+        ['phi', Type.Float, -999, "Phi value"],
+        ['gamma', Type.Float, -999, "Gamma value"],
+        ['delta', Type.Float, -999, "Delta value"],
+        ]
+    
+
+    hints = { 'interactive' : 'True' }
+    interactive=True
+ 
+    
+    def prepare(self, ref_id, H, K, L, mu, theta, chi, phi, gamma, delta):
+        _diffrac.prepare(self)
+    
+    def run(self, ref_id, H, K, L, mu, theta, chi, phi, gamma, delta):
+        if not self.prepared:
+            return
               
         if delta == -999:
-            tmp_h = self.h_device.position
-            tmp_k = self.k_device.position
-            tmp_l = self.l_device.position
-            tmp_mu = self.getDevice(self.angle_device_names[self.labelmotor["Mu"]]).Position
-            tmp_theta = self.getDevice(self.angle_device_names[self.labelmotor["Theta"]]).Position
-            tmp_chi = self.getDevice(self.angle_device_names[self.labelmotor["Chi"]]).Position
-            tmp_phi = self.getDevice(self.angle_device_names[self.labelmotor["Phi"]]).Position
-            tmp_gamma = self.getDevice(self.angle_device_names[self.labelmotor["Gamma"]]).Position
-            tmp_delta = self.getDevice(self.angle_device_names[self.labelmotor["Delta"]]).Position
+            reflections = []
+            try:
+                reflections = self.diffrac.reflectionlist
+            except:
+                pass
+            tmp_ref = []
+            if reflections != None:
+                if len(reflections) > ref_id:
+                    for i in range(1,4):
+                        tmp_ref.append(reflections[ref_id][i])
+                    for i in range(6,12):
+                        tmp_ref.append(reflections[ref_id][i])
+                else:
+                    for i in range(0,10):
+                        tmp_ref.append(0)
+            else:
+                for i in range(0,10):
+                    tmp_ref.append(0)
 
-            H=float(self.input("h = ", default_value=tmp_h,data_type=Type.String))
-            K=float(self.input("k = ", default_value=tmp_k,data_type=Type.String))
-            L=float(self.input("l = ", default_value=tmp_l,data_type=Type.String))
-            mu=float(self.input("mu = ", default_value=tmp_mu,data_type=Type.String))
-            theta=float(self.input("theta = ", default_value=tmp_theta,data_type=Type.String))
-            chi=float(self.input("chi = ", default_value=tmp_chi,data_type=Type.String))
-            phi=float(self.input("phi = ", default_value=tmp_phi,data_type=Type.String))
-            gamma=float(self.input("gamma = ", default_value=tmp_gamma,data_type=Type.String))
-            delta=float(self.input("delta = ", default_value=tmp_delta,data_type=Type.String))
+            H=float(self.input("h = ", default_value=tmp_ref[0],data_type=Type.String))
+            K=float(self.input("k = ", default_value=tmp_ref[1],data_type=Type.String))
+            L=float(self.input("l = ", default_value=tmp_ref[2],data_type=Type.String))
+            mu=float(self.input("mu = ", default_value=tmp_ref[3],data_type=Type.String))
+            theta=float(self.input("theta = ", default_value=tmp_ref[4],data_type=Type.String))
+            chi=float(self.input("chi = ", default_value=tmp_ref[5],data_type=Type.String))
+            phi=float(self.input("phi = ", default_value=tmp_ref[6],data_type=Type.String))
+            gamma=float(self.input("gamma = ", default_value=tmp_ref[7],data_type=Type.String))
+            delta=float(self.input("delta = ", default_value=tmp_ref[8],data_type=Type.String))
              
         self.angle_values = {"mu": mu, "omega": theta, "chi": chi, "phi": phi, "gamma": gamma, "delta": delta} 
 
+        
         # Check collinearity
 
-        hkl_ref0 = _diffrac.get_hkl_ref0(self)
-        if len(hkl_ref0) > 1:
-            check = _diffrac.check_collinearity(self, hkl_ref0[0], hkl_ref0[1], hkl_ref0[2], H, K, L)
-            if check:
-                self.warning("Can not orient: or0 is parallel to or1 %9.5f %9.5f %9.5f" % (H, K, L))
-                return
+        if ref_id == 0:
+            hkl_ref = _diffrac.get_hkl_ref1(self)
+        if ref_id == 1:
+            hkl_ref = _diffrac.get_hkl_ref0(self)
+        if ref_id < 2:
+            if len(hkl_ref) > 1:
+                check = _diffrac.check_collinearity(self, hkl_ref[0], hkl_ref[1], hkl_ref[2], H, K, L)
+                if check:
+                    self.warning("Can not orient: ref0 is parallel to ref1 %9.5f %9.5f %9.5f" % (H, K, L))
+                    return
 
         # Set reflection
 
         values = []                 
-        values.append(1)        
+        values.append(ref_id)        
         values.append(H)        
         values.append(K)
         values.append(L)
         
-        self.diffrac.write_attribute("AddReflectionWithIndex", values)  
+        self.diffrac.write_attribute("AddReflectionWithIndex", values)
 
         # Adjust angles
         
         values = []
-        values.append(1)
+        values.append(ref_id)
 
         for angle_name in self.angle_names:
             values.append(self.angle_values[angle_name])
 
         self.diffrac.write_attribute("AdjustAnglesToReflection", values)
 
-        # Recompute u 
- 
+        # Recompute u
+
         self.execMacro('compute_u')
 
-class setorn(Macro, _diffrac):
-    """Set orientation reflection indicated by the index.""" 
-    
-    param_def = [
-        ['i', Type.Integer, None, "reflection index (starting at 0)"],
-    ]
- 
-    
-    def prepare(self):
-        _diffrac.prepare(self)
-    
-    def run(self):
-        if not self.prepared:
-            return
-              
-        H = self.h_device.position
-        K = self.k_device.position
-        L = self.l_device.position
-
-        values = []                 
-        values.append(i)        
-        values.append(H)        
-        values.append(K)
-        values.append(L)
         
-        self.diffrac.write_attribute("AddReflectionWithIndex", values)
 
 class setaz(Macro, _diffrac):
     """ Set hkl values of the psi reference vector"""
