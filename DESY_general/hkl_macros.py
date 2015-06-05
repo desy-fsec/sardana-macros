@@ -980,13 +980,16 @@ class or_swap(Macro, _diffrac):
 
 class newcrystal(Macro, _diffrac):
     """ Create a new crystal (if it does not exist) and select it. """
-    
+
     param_def = [
-        ['crystal_name',  Type.String,   None, 'Name of the crystal to add and select']
+        ['crystal_name',  Type.String, "", 'Name of the crystal to add and select']
         ]
+
+    interactive=True
+
     def prepare(self, crystal_name):
         _diffrac.prepare(self)
-    
+
     def run(self, crystal_name):
         if not self.prepared:
             return
@@ -994,16 +997,59 @@ class newcrystal(Macro, _diffrac):
         crystal_list = self.diffrac.crystallist
 
         to_add = 1
+        i=1
+        if crystal_name == "":
+            crystal_name=self.diffrac.crystal
+            self.output("Available crystals:")
+            for crystal in crystal_list:
+                self.output("(%s) %s" %(i,crystal))
+                if crystal_name == crystal:
+                    iselname=crystal
+                i=i+1
+            a=self.input("New crystal?", default_value=iselname,data_type=Type.String)
+            try:
+                a1=int(a)
+                i=1
+                for crystal in crystal_list:
+                    if a1 == i:
+                        a=crystal
+                    i=i+1
+                if a1>i-1:
+                    a=iselname
+            except:
+                pass
+
+            if a != iselname:
+                crystal_name=a
+            else:
+                crystal_name=iselname
+
         for crystal in crystal_list:
             if crystal_name == crystal:
                 to_add = 0
-        
+
         if to_add:
             self.diffrac.write_attribute("addcrystal", crystal_name)
 
-        self.diffrac.write_attribute("crystal", crystal_name) 
+        self.diffrac.write_attribute("crystal", crystal_name)
 
-        self.output("Crystal %s selected " % crystal_name)
+        self.output("")
+        self.output("Crystal selected: %s " % crystal_name)
+
+        if to_add:
+            a=self.input(" Lattice a?", default_value=5.43,data_type=Type.String)
+            b=self.input(" Lattice b?", default_value=5.43,data_type=Type.String)
+            c=self.input(" Lattice c?", default_value=5.43,data_type=Type.String)
+            alpha=self.input(" Lattice alpha?", default_value=90,data_type=Type.String)
+            beta=self.input(" Lattice beta?", default_value=90,data_type=Type.String)
+            gamma=self.input(" Lattice gamma?", default_value=90,data_type=Type.String)
+            self.output("")
+            self.diffrac.write_attribute("a", float(a))
+            self.diffrac.write_attribute("b", float(b))
+            self.diffrac.write_attribute("c", float(c))
+            self.diffrac.write_attribute("alpha", float(alpha))
+            self.diffrac.write_attribute("beta",float(beta))
+            self.diffrac.write_attribute("gamma", float(gamma)) 
     
 
 class hscan(Macro, _diffrac):
