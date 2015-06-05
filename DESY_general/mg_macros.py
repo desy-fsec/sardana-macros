@@ -14,6 +14,8 @@ import time
 from PyTango import *
 import json
 
+import HasyUtils
+
 class MgConf:
     def __init__(self, poolName, mntgrpName, flagClear):
         self.db = Database()
@@ -670,3 +672,49 @@ class change_mg(Macro):
                 mgConf.addCounter(elem,0)
 
         mgConf.updateConfiguration()
+
+class setmg(Macro):
+    """
+        setmg - select active measurement group
+    """
+
+    param_def = [
+        [ "measgroup", Type.Integer, -999, "Measurement group" ],
+        ]
+
+    interactive=True
+
+    def run( self,measgroup):
+
+        actmg = self.getEnv('ActiveMntGrp')
+        a1= HasyUtils.getLocalMgNames()
+        la=len(a1)
+        if measgroup != -999:
+            i=0
+            while i < la:
+                mg=a1[i].split('/')[2]
+                if measgroup == i:
+                    self.setEnv('ActiveMntGrp',mg)
+                    actmg=mg
+                i=i+1
+            self.output("Active measurement group: %s" % (actmg))
+
+        else:
+            i=0
+            while i < la:
+                mg=a1[i].split('/')[2]
+                self.output( "[%i] %s" % (i,mg))
+                if actmg == mg:
+                    nact=i
+                i=i+1
+            self.output("")
+            a2=self.input("Your choice? ", default_value=nact)
+            i=0
+            while i < la:
+                mg=a1[i].split('/')[2]
+                if int(a2) == i:
+                    self.setEnv('ActiveMntGrp',mg)
+                    actmg=mg
+                i=i+1
+            self.output("")
+            self.output("Active measurement group: %s" % (actmg))

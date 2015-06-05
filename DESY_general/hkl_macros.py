@@ -581,12 +581,15 @@ class setlat(Macro, _diffrac):
             alpha=self.diffrac.alpha
             beta=self.diffrac.beta
             gamma=self.diffrac.gamma
-            a=self.input("a = ", default_value=a,data_type=Type.String)
-            b=self.input("b = ", default_value=b,data_type=Type.String)
-            c=self.input("c = ", default_value=c,data_type=Type.String)
-            alpha=self.input("alpha = ", default_value=alpha,data_type=Type.String)
-            beta=self.input("beta = ", default_value=beta,data_type=Type.String)
-            gamma=self.input("gamma = ", default_value=gamma,data_type=Type.String)
+            self.output("")
+            self.output("Enter real space lattice parameters:")
+            a=self.input(" Lattice a?", default_value=a,data_type=Type.String)
+            b=self.input(" Lattice b?", default_value=b,data_type=Type.String)
+            c=self.input(" Lattice c?", default_value=c,data_type=Type.String)
+            alpha=self.input(" Lattice alpha?", default_value=alpha,data_type=Type.String)
+            beta=self.input(" Lattice beta?", default_value=beta,data_type=Type.String)
+            gamma=self.input(" Lattice gamma?", default_value=gamma,data_type=Type.String)
+            self.output("") 
             self.diffrac.write_attribute("a", float(a))
             self.diffrac.write_attribute("b", float(b))
             self.diffrac.write_attribute("c", float(c))
@@ -779,15 +782,28 @@ class setorn(Macro, _diffrac):
                 for i in range(0,10):
                     tmp_ref.append(0)
 
-            H=float(self.input("h = ", default_value=tmp_ref[0],data_type=Type.String))
-            K=float(self.input("k = ", default_value=tmp_ref[1],data_type=Type.String))
-            L=float(self.input("l = ", default_value=tmp_ref[2],data_type=Type.String))
-            mu=float(self.input("mu = ", default_value=tmp_ref[3],data_type=Type.String))
-            theta=float(self.input("theta = ", default_value=tmp_ref[4],data_type=Type.String))
-            chi=float(self.input("chi = ", default_value=tmp_ref[5],data_type=Type.String))
-            phi=float(self.input("phi = ", default_value=tmp_ref[6],data_type=Type.String))
-            gamma=float(self.input("gamma = ", default_value=tmp_ref[7],data_type=Type.String))
-            delta=float(self.input("delta = ", default_value=tmp_ref[8],data_type=Type.String))
+
+            self.output("")
+            if ref_id == 0:
+                ref_txt = "primary-reflection"
+            elif ref_id ==1:
+                ref_txt = "secondary-reflection"
+            else:
+                ref_txt = "reflection " + str(ref_id)
+                
+            self.output("Enter %s angles" % ref_txt) 
+            delta=float(self.input("Delta?", default_value=tmp_ref[8],data_type=Type.String))
+            theta=float(self.input("Theta? ", default_value=tmp_ref[4],data_type=Type.String))
+            chi=float(self.input("Chi?", default_value=tmp_ref[5],data_type=Type.String))
+            phi=float(self.input("Phi?", default_value=tmp_ref[6],data_type=Type.String))
+            gamma=float(self.input("Gamma?", default_value=tmp_ref[7],data_type=Type.String))
+            mu=float(self.input(" Mu?", default_value=tmp_ref[3],data_type=Type.String))
+           
+            self.output("")
+            self.output("Enter %s HKL coordinates"  % ref_txt) 
+            H=float(self.input("H?", default_value=tmp_ref[0],data_type=Type.String))
+            K=float(self.input("K?", default_value=tmp_ref[1],data_type=Type.String))
+            L=float(self.input("L?", default_value=tmp_ref[2],data_type=Type.String))
              
         self.angle_values = {"mu": mu, "omega": theta, "chi": chi, "phi": phi, "gamma": gamma, "delta": delta} 
 
@@ -831,14 +847,16 @@ class setorn(Macro, _diffrac):
 
         
 
+
 class setaz(Macro, _diffrac):
     """ Set hkl values of the psi reference vector"""
-    
+
     param_def = [
-        ['PsiH', Type.Float, None, "H value of psi reference vector"],
-        ['PsiK', Type.Float, None, "K value of psi reference vector"],
-        ['PsiL', Type.Float, None, "L value of psi reference vector"],
+        ['PsiH', Type.Float, -999, "H value of psi reference vector"],
+        ['PsiK', Type.Float, -999, "K value of psi reference vector"],
+        ['PsiL', Type.Float, -999, "L value of psi reference vector"],
         ]
+    interactive=True
 
     def prepare(self, PsiH, PsiK, PsiL):
         _diffrac.prepare(self)
@@ -846,9 +864,24 @@ class setaz(Macro, _diffrac):
     def run(self, PsiH, PsiK, PsiL):
         if not self.prepared:
             return
-
         engine_restore = self.diffrac.engine
         mode_restore   = self.diffrac.enginemode
+
+        if PsiL == -999:
+            self.diffrac.write_attribute("engine", "hkl")
+            self.diffrac.write_attribute("enginemode", "psi_constant_vertical")
+            azh=self.diffrac.read_attribute("psirefh").value
+            azk=self.diffrac.read_attribute("psirefk").value
+            azl=self.diffrac.read_attribute("psirefl").value
+            self.output("")
+            self.output("Enter azimuthal reference H K L:")
+            a1=self.input(" Azimuthal H?", default_value=azh,data_type=Type.String)
+            a2=self.input(" Azimuthal K?", default_value=azk,data_type=Type.String)
+            a3=self.input(" Azimuthal L?", default_value=azl,data_type=Type.String)
+            PsiH=float(a1)
+            PsiK=float(a2)
+            PsiL=float(a3)
+
 
         self.diffrac.write_attribute("engine", "hkl")
         self.diffrac.write_attribute("enginemode", "psi_constant_vertical")
@@ -863,11 +896,10 @@ class setaz(Macro, _diffrac):
         self.diffrac.write_attribute("psirefh", PsiH)
         self.diffrac.write_attribute("psirefk", PsiK)
         self.diffrac.write_attribute("psirefl", PsiL)
-        
+
         self.diffrac.write_attribute("engine", engine_restore)
         self.diffrac.write_attribute("enginemode", mode_restore)
-        
-        self.execMacro('savecrystal')
+        self.execMacro('savecrystal') 
 
 class compute_u(Macro, _diffrac):
     """ Compute U matrix with reflections 0 and 1 """
