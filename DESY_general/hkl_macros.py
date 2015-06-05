@@ -792,19 +792,20 @@ class setorn(Macro, _diffrac):
                 ref_txt = "reflection " + str(ref_id)
                 
             self.output("Enter %s angles" % ref_txt) 
-            delta=float(self.input("Delta?", default_value=tmp_ref[8],data_type=Type.String))
-            theta=float(self.input("Theta? ", default_value=tmp_ref[4],data_type=Type.String))
-            chi=float(self.input("Chi?", default_value=tmp_ref[5],data_type=Type.String))
-            phi=float(self.input("Phi?", default_value=tmp_ref[6],data_type=Type.String))
-            gamma=float(self.input("Gamma?", default_value=tmp_ref[7],data_type=Type.String))
+            delta=float(self.input(" Delta?", default_value=tmp_ref[8],data_type=Type.String))
+            theta=float(self.input(" Theta? ", default_value=tmp_ref[4],data_type=Type.String))
+            chi=float(self.input(" Chi?", default_value=tmp_ref[5],data_type=Type.String))
+            phi=float(self.input(" Phi?", default_value=tmp_ref[6],data_type=Type.String))
+            gamma=float(self.input(" Gamma?", default_value=tmp_ref[7],data_type=Type.String))
             mu=float(self.input(" Mu?", default_value=tmp_ref[3],data_type=Type.String))
            
             self.output("")
             self.output("Enter %s HKL coordinates"  % ref_txt) 
-            H=float(self.input("H?", default_value=tmp_ref[0],data_type=Type.String))
-            K=float(self.input("K?", default_value=tmp_ref[1],data_type=Type.String))
-            L=float(self.input("L?", default_value=tmp_ref[2],data_type=Type.String))
-             
+            H=float(self.input(" H?", default_value=tmp_ref[0],data_type=Type.String))
+            K=float(self.input(" K?", default_value=tmp_ref[1],data_type=Type.String))
+            L=float(self.input(" L?", default_value=tmp_ref[2],data_type=Type.String))
+            self.output("")
+  
         self.angle_values = {"mu": mu, "omega": theta, "chi": chi, "phi": phi, "gamma": gamma, "delta": delta} 
 
         
