@@ -110,6 +110,28 @@ class marccd_set_beam(Macro):
         lima.write_attribute('source_beam_y', Y)
 
 
+class marccd_set_beam_x(Macro):
+    """Sets beam possition"""
+
+    param_def =  [['dev',Type.String, None, 'Device name or alias'],
+                  ['X',Type.Float, None, 'X possition'],]
+
+    @catch_error
+    def run(self, dev, X):
+        lima = PyTango.DeviceProxy(dev + "_custom")
+        lima.write_attribute('source_beam_x', X)
+
+class marccd_set_beam_y(Macro):
+    """Sets beam possition"""
+
+    param_def =  [['dev',Type.String, None, 'Device name or alias'],
+                  ['Y',Type.Float, None, 'X possition'],]
+
+    @catch_error
+    def run(self, dev, Y):
+        lima = PyTango.DeviceProxy(dev + "_custom")
+        lima.write_attribute('source_beam_y', Y)
+
 
 class marccd_set_distance(Macro):
     """Sets source distance"""

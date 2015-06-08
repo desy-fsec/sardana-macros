@@ -474,9 +474,9 @@ class qSpectrum(Macro):
 
         finally:
             if run_cleanup:
-                self.execMacro('qExafsCeanup')
+                self.execMacro('qExafsCleanup')
 
-class ascanE(Macro):
+class aEscan(Macro):
     """
     Macro to run a step scan. The macro verifies if the front end is open before
     to measure in each point.
@@ -495,7 +495,7 @@ class ascanE(Macro):
         self.setEnv('ActiveMntGrp', mg)
 
     def run(self, motor, start_pos, final_pos, nr_interv, integ_time):
-        macro_ascan = self.createMacro('ascan',motor, start_pos, final_pos,
+        macro_ascan, _ = self.createMacro('ascan',motor, start_pos, final_pos,
                                        nr_interv,integ_time)
 
         macro_ascan.hooks = [(self.pre_acquisition, ["pre-acq"]),]
