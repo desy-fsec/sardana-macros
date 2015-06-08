@@ -26,7 +26,10 @@ class ppDiff(Macro):
 
         scanDir = self.getEnv( 'ScanDir')
         scanFile = self.getEnv( 'ScanFile')
-        if scanID == -1:
+        if type( scanFile) is list: 
+            scanFile = scanFile[0]
+
+        if scanID == -1: 
             scanID = int(self.getEnv( 'ScanID'))
         
         prefix, ext = scanFile.split( '.')
