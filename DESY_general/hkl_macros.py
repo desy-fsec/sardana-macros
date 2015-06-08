@@ -167,8 +167,6 @@ class br(Macro, _diffrac):
             angle_dev.write_attribute("Position",angles_list[i])
             i = i + 1
 
-        self.execMacro('printmove')
-
     def on_stop(self):
         _diffrac.on_stop(self)
         
@@ -190,6 +188,7 @@ class ubr(Macro):
         if ll != -999:        
             br, pars = self.createMacro("br", hh, kk, ll)
             self.runMacro(br)
+            self.execMacro('printmove')
         else:
             self.output( "usage:  ubr H K L [Trajectory]")
 
@@ -768,19 +767,24 @@ class setorn(Macro, _diffrac):
                 reflections = self.diffrac.reflectionlist
             except:
                 pass
-            tmp_ref = []
+            tmp_ref = {}
+            hkl_names = ["h", "k", "l"]
             if reflections != None:
                 if len(reflections) > ref_id:
                     for i in range(1,4):
-                        tmp_ref.append(reflections[ref_id][i])
+                        tmp_ref[hkl_names[i-1]] = reflections[ref_id][i]
                     for i in range(6,12):
-                        tmp_ref.append(reflections[ref_id][i])
+                        tmp_ref[self.angle_names[i-6]] = reflections[ref_id][i]
                 else:
-                    for i in range(0,10):
-                        tmp_ref.append(0)
+                    for i in range(0,3):
+                        tmp_ref[hkl_names[i]] = 0
+                    for i in range(0, 6):
+                        tmp_ref[self.angle_names[i]] = 0                                   
             else:
-                for i in range(0,10):
-                    tmp_ref.append(0)
+                for i in range(0,3):
+                    tmp_ref[hkl_names[i]] = 0
+                for i in range(0, 6):
+                    tmp_ref[self.angle_names[i]] = 0
 
 
             self.output("")
@@ -791,22 +795,23 @@ class setorn(Macro, _diffrac):
             else:
                 ref_txt = "reflection " + str(ref_id)
                 
+  
+
             self.output("Enter %s angles" % ref_txt) 
-            delta=float(self.input(" Delta?", default_value=tmp_ref[8],data_type=Type.String))
-            theta=float(self.input(" Theta? ", default_value=tmp_ref[4],data_type=Type.String))
-            chi=float(self.input(" Chi?", default_value=tmp_ref[5],data_type=Type.String))
-            phi=float(self.input(" Phi?", default_value=tmp_ref[6],data_type=Type.String))
-            gamma=float(self.input(" Gamma?", default_value=tmp_ref[7],data_type=Type.String))
-            mu=float(self.input(" Mu?", default_value=tmp_ref[3],data_type=Type.String))
+            delta=float(self.input(" Delta?", default_value=tmp_ref["delta"],data_type=Type.String))
+            theta=float(self.input(" Theta? ", default_value=tmp_ref["omega"],data_type=Type.String))
+            chi=float(self.input(" Chi?", default_value=tmp_ref["chi"],data_type=Type.String))
+            phi=float(self.input(" Phi?", default_value=tmp_ref["phi"],data_type=Type.String))
+            gamma=float(self.input(" Gamma?", default_value=tmp_ref["gamma"],data_type=Type.String))
+            mu=float(self.input(" Mu?", default_value=tmp_ref["mu"],data_type=Type.String))
            
+
             self.output("")
             self.output("Enter %s HKL coordinates"  % ref_txt) 
-            H=float(self.input(" H?", default_value=tmp_ref[0],data_type=Type.String))
-            K=float(self.input(" K?", default_value=tmp_ref[1],data_type=Type.String))
-            L=float(self.input(" L?", default_value=tmp_ref[2],data_type=Type.String))
+            H=float(self.input(" H?", default_value=tmp_ref["h"],data_type=Type.String))
+            K=float(self.input(" K?", default_value=tmp_ref["k"],data_type=Type.String))
+            L=float(self.input(" L?", default_value=tmp_ref["l"],data_type=Type.String))
             self.output("")
-  
-        self.angle_values = {"mu": mu, "omega": theta, "chi": chi, "phi": phi, "gamma": gamma, "delta": delta} 
 
         
         # Check collinearity
@@ -833,7 +838,9 @@ class setorn(Macro, _diffrac):
         self.diffrac.write_attribute("AddReflectionWithIndex", values)
 
         # Adjust angles
-        
+
+        self.angle_values = {"mu": mu, "omega": theta, "chi": chi, "phi": phi, "gamma": gamma, "delta": delta}   
+      
         values = []
         values.append(ref_id)
 
@@ -968,15 +975,17 @@ class affine(Macro, _diffrac):
 
 class or_swap(Macro, _diffrac):
     """Swap values for primary and secondary vectors."""
-    
+
     def prepare(self):
         _diffrac.prepare(self)
-    
+
     def run(self):
         if not self.prepared:
             return
 
         self.diffrac.write_attribute("SwapReflections01", 0)
+        self.output("Orientation vectors swapped.")
+        self.execMacro('compute_u')
 
 class newcrystal(Macro, _diffrac):
     """ Create a new crystal (if it does not exist) and select it. """
@@ -1298,13 +1307,13 @@ class luppsi_debug(Macro, _diffrac):
             for i in range(0,nr_interv+1):
                 self.info("Moving psi to " + str(psi_save + (i+1)*angle_interv))
                 self.execMacro('freeze', 'psi', psi_save + (i+1)*angle_interv)
-                self.execMacro('br', h, k, l)
+                self.execMacro('ubr', h, k, l)
             
             # Return to start position
             
             self.info("Return to start position " + str(psi_save))
             self.execMacro('freeze', 'psi', psi_save)
-            self.execMacro('br', h, k, l)
+            self.execMacro('ubr', h, k, l)
                 
         else:
             self.output( "Usage:  luppsi_debug rel_startangle  rel_stopangle n_intervals time")
@@ -1431,8 +1440,6 @@ class tw(Macro):
 
         else:
             self.output("usage: tw motor delta")
-
-
 
 class printmove(Macro,_diffrac):
 
