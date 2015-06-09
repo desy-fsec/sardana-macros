@@ -141,13 +141,14 @@ class br(Macro, _diffrac):
        ['H', Type.Float, None, "H value"],
        ['K', Type.Float, None, "K value"],
        ['L', Type.Float, None, "L value"],
-       ['AnglesIndex', Type.Integer, -1, "Angles index"]
+       ['AnglesIndex', Type.Integer, -1, "Angles index"],
+       ['FlagNotBlocking', Type.Integer,  0, "If 1 not block. Return without finish movement"]
     ]
 
-    def prepare(self, H, K, L, AnglesIndex):
+    def prepare(self, H, K, L, AnglesIndex, FlagNotBlocking):
         _diffrac.prepare(self)
         
-    def run(self, H, K, L, AnglesIndex):
+    def run(self, H, K, L, AnglesIndex, FlagNotBlocking):
         if not self.prepared:
             return
 
@@ -155,6 +156,7 @@ class br(Macro, _diffrac):
             sel_tr = AnglesIndex
         else:
             sel_tr =  self.diffrac.selectedtrajectory
+
 
         hkl_values = [H, K, L]
         self.diffrac.write_attribute("computetrajectoriessim",hkl_values)
@@ -166,6 +168,9 @@ class br(Macro, _diffrac):
             angle_dev = self.getDevice(self.angle_device_names[angle])
             angle_dev.write_attribute("Position",angles_list[i])
             i = i + 1
+        
+        if FlagNotBlocking == 0:
+            self.execMacro('blockprintmove', 0)
 
     def on_stop(self):
         _diffrac.on_stop(self)
@@ -179,16 +184,17 @@ class ubr(Macro):
     param_def = [
         [ "hh", Type.Float, -999, "H position" ],
         [ "kk", Type.Float, -999, "K position" ],
-        [ "ll", Type.Float, -999, "L position" ]
+        [ "ll", Type.Float, -999, "L position" ],
+        ['AnglesIndex', Type.Integer, -1, "Angles index"]
         ]
 
     
-    def run( self, hh,kk,ll):
+    def run( self, hh,kk,ll, AnglesIndex):
 
         if ll != -999:        
-            br, pars = self.createMacro("br", hh, kk, ll)
+            br, pars = self.createMacro("br", hh, kk, ll, AnglesIndex, 1)
             self.runMacro(br)
-            self.execMacro('printmove')
+            self.execMacro('blockprintmove', 1)
         else:
             self.output( "usage:  ubr H K L [Trajectory]")
 
@@ -1441,13 +1447,17 @@ class tw(Macro):
         else:
             self.output("usage: tw motor delta")
 
-class printmove(Macro,_diffrac):
+class blockprintmove(Macro,_diffrac):
 
 
-    def prepare(self):
+    param_def = [
+        ['flagprint', Type.Integer, 0, '1 for printing']
+        ]
+
+    def prepare(self, flagprint):
         _diffrac.prepare(self)
         
-    def run(self):
+    def run(self, flagprint):
         if not self.prepared:
             return     
         moving = 1
@@ -1459,9 +1469,11 @@ class printmove(Macro,_diffrac):
             for angle in self.angle_names:
                 if tmp_dev[angle].state() == 6:
                     moving = 1
+            if flagprint == 1:
+                self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
+                self.flushOutput()
+            time.sleep(1.0)
+        if flagprint == 1:
             self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
             self.flushOutput()
-            time.sleep(1.0)
-        self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
-        self.flushOutput()
   
