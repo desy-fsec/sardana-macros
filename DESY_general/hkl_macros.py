@@ -6,6 +6,7 @@
 """
 import time
 import math
+import numpy as np 
 
 from sardana.macroserver.macro import *
 
@@ -52,7 +53,7 @@ class _diffrac:
                 self.angle_names.append("theta")
             elif self.nb_motors == 6:
                 self.angle_names.append("mu")
-                self.angle_names.append("th")
+                self.angle_names.append("omega")
                 self.angle_names.append("chi")
                 self.angle_names.append("phi")
                 self.angle_names.append("gamma")
@@ -140,13 +141,14 @@ class br(Macro, _diffrac):
        ['H', Type.Float, None, "H value"],
        ['K', Type.Float, None, "K value"],
        ['L', Type.Float, None, "L value"],
-       ['AnglesIndex', Type.Integer, -1, "Angles index"]
+       ['AnglesIndex', Type.Integer, -1, "Angles index"],
+       ['FlagNotBlocking', Type.Integer,  0, "If 1 not block. Return without finish movement"]
     ]
 
-    def prepare(self, H, K, L, AnglesIndex):
+    def prepare(self, H, K, L, AnglesIndex, FlagNotBlocking):
         _diffrac.prepare(self)
         
-    def run(self, H, K, L, AnglesIndex):
+    def run(self, H, K, L, AnglesIndex, FlagNotBlocking):
         if not self.prepared:
             return
 
@@ -154,6 +156,7 @@ class br(Macro, _diffrac):
             sel_tr = AnglesIndex
         else:
             sel_tr =  self.diffrac.selectedtrajectory
+
 
         hkl_values = [H, K, L]
         self.diffrac.write_attribute("computetrajectoriessim",hkl_values)
@@ -165,8 +168,9 @@ class br(Macro, _diffrac):
             angle_dev = self.getDevice(self.angle_device_names[angle])
             angle_dev.write_attribute("Position",angles_list[i])
             i = i + 1
-
-        self.execMacro('printmove')
+        
+        if FlagNotBlocking == 0:
+            self.execMacro('blockprintmove', 0)
 
     def on_stop(self):
         _diffrac.on_stop(self)
@@ -180,15 +184,17 @@ class ubr(Macro):
     param_def = [
         [ "hh", Type.Float, -999, "H position" ],
         [ "kk", Type.Float, -999, "K position" ],
-        [ "ll", Type.Float, -999, "L position" ]
+        [ "ll", Type.Float, -999, "L position" ],
+        ['AnglesIndex', Type.Integer, -1, "Angles index"]
         ]
 
     
-    def run( self, hh,kk,ll):
+    def run( self, hh,kk,ll, AnglesIndex):
 
         if ll != -999:        
-            br, pars = self.createMacro("br", hh, kk, ll)
+            br, pars = self.createMacro("br", hh, kk, ll, AnglesIndex, 1)
             self.runMacro(br)
+            self.execMacro('blockprintmove', 1)
         else:
             self.output( "usage:  ubr H K L [Trajectory]")
 
@@ -487,26 +493,44 @@ class setmode(Macro, _diffrac):
        ['new_mode', Type.Integer, -1, "Mode to be set"]
     ]    
    
+    interactive=True 
+
     def prepare(self, new_mode):
         _diffrac.prepare(self)
-        
+    
     def run(self, new_mode):
         if not self.prepared:
-            return   
-        
+            return
+
         modes = self.diffrac.enginemodelist
-        
+
         if new_mode == -1:
-            self.output("Available modes:") 
+            self.output("Available modes:")
             imode = 1
+            old_mode=self.diffrac.read_attribute("enginemode").value
             for mode in modes:
+                if mode==old_mode:
+                    def_mode=imode
                 self.output(" %d -> %s " % (imode, mode))
                 imode = imode + 1
+            old_mode=self.diffrac.read_attribute("enginemode").value
+            self.output("")
+            a=self.input("Your choice?",default_value=def_mode)
+            imode=1
+            for mode in modes:
+                if imode==int(a):
+                    def_mode=imode
+                imode = imode + 1
+
+            self.diffrac.write_attribute("enginemode",modes[def_mode - 1])
+            self.output("")
+            self.output("Now using %s mode" % modes[def_mode - 1])
             return
-            
-            
+
+
+
         if new_mode > len(modes):
-            self.output("Wrong index mode -> only from 1 to %d allowed:" % len(modes)) 
+            self.output("Wrong index mode -> only from 1 to %d allowed:" % len(modes))
             imode = 1
             for mode in modes:
                 self.output(" %d -> %s " % (imode, mode))
@@ -515,8 +539,8 @@ class setmode(Macro, _diffrac):
         else:
             self.diffrac.write_attribute("enginemode",modes[new_mode - 1])
             self.output("Now using %s mode" % modes[new_mode - 1])
-                       
-            self.execMacro('savecrystal')
+
+            self.execMacro('savecrystal') 
             
 class getmode(Macro, _diffrac):
     """Get operation mode."""
@@ -535,17 +559,18 @@ class getmode(Macro, _diffrac):
 class setlat(Macro, _diffrac):
     """Set the crystal lattice parameters a, b, c, alpha, beta, gamma.
        for the currently active diffraction pseudo motor controller."""  
-    
+ 
     param_def = [
-       ['a', Type.Float, None, "Lattice 'a' parameter"],
-       ['b', Type.Float, None, "Lattice 'b' parameter"],
-       ['c', Type.Float, None, "Lattice 'c' parameter"],
-       ['alpha', Type.Float, None, "Lattice 'alpha' parameter"],
-       ['beta',  Type.Float, None, "Lattice 'beta' parameter"],
-       ['gamma', Type.Float, None, "Lattice 'gamma' parameter"]
-    ]
+       ['a', Type.Float, -999, "Lattice 'a' parameter"],
+       ['b', Type.Float, -999, "Lattice 'b' parameter"],
+       ['c', Type.Float, -999, "Lattice 'c' parameter"],
+       ['alpha', Type.Float, -999, "Lattice 'alpha' parameter"],
+       ['beta',  Type.Float, -999, "Lattice 'beta' parameter"],
+       ['gamma', Type.Float, -999, "Lattice 'gamma' parameter"]
+    ] 
 
     hints = { 'interactive' : 'True' }
+    interactive=True
 
     def prepare(self, a, b, c, alpha, beta, gamma):
         _diffrac.prepare(self)
@@ -553,13 +578,36 @@ class setlat(Macro, _diffrac):
     def run(self, a, b, c, alpha, beta, gamma):
         if not self.prepared:
             return
-        
-        self.diffrac.write_attribute("a", a)        
-        self.diffrac.write_attribute("b", b)        
-        self.diffrac.write_attribute("c", c)        
-        self.diffrac.write_attribute("alpha", alpha)        
-        self.diffrac.write_attribute("beta", beta)        
-        self.diffrac.write_attribute("gamma", gamma)
+       
+        if gamma == -999:
+            a=self.diffrac.a
+            b=self.diffrac.b
+            c=self.diffrac.c
+            alpha=self.diffrac.alpha
+            beta=self.diffrac.beta
+            gamma=self.diffrac.gamma
+            self.output("")
+            self.output("Enter real space lattice parameters:")
+            a=self.input(" Lattice a?", default_value=a,data_type=Type.String)
+            b=self.input(" Lattice b?", default_value=b,data_type=Type.String)
+            c=self.input(" Lattice c?", default_value=c,data_type=Type.String)
+            alpha=self.input(" Lattice alpha?", default_value=alpha,data_type=Type.String)
+            beta=self.input(" Lattice beta?", default_value=beta,data_type=Type.String)
+            gamma=self.input(" Lattice gamma?", default_value=gamma,data_type=Type.String)
+            self.output("") 
+            self.diffrac.write_attribute("a", float(a))
+            self.diffrac.write_attribute("b", float(b))
+            self.diffrac.write_attribute("c", float(c))
+            self.diffrac.write_attribute("alpha", float(alpha))
+            self.diffrac.write_attribute("beta",float(beta))
+            self.diffrac.write_attribute("gamma", float(gamma))
+        else:
+            self.diffrac.write_attribute("a", a)
+            self.diffrac.write_attribute("b", b)
+            self.diffrac.write_attribute("c", c)
+            self.diffrac.write_attribute("alpha", alpha)
+            self.diffrac.write_attribute("beta", beta)
+            self.diffrac.write_attribute("gamma", gamma) 
   
         self.execMacro('compute_u')
 
@@ -599,7 +647,7 @@ class or0(Macro, _diffrac):
 
 class or1(Macro, _diffrac):
     """Set secondary orientation reflection.""" 
-    
+
     param_def = [
        ['H', Type.Float, None, "H value"],
        ['K', Type.Float, None, "K value"],
@@ -632,109 +680,197 @@ class or1(Macro, _diffrac):
         self.execMacro('compute_u')
 
 class setor0(Macro, _diffrac):
-    """Set primary orientation reflection. Alternative to or0""" 
+    """Set primary orientation reflection choosing hkl and angle values""" 
     
-    def prepare(self):
+    param_def = [
+       ['H', Type.Float, -999, "H value"],
+       ['K', Type.Float, -999, "K value"],
+       ['L', Type.Float, -999, "L value"],
+       ['mu', Type.Float, -999, "Mu value"],
+       ['theta', Type.Float, -999, "Theta value"],
+       ['chi', Type.Float, -999, "Chi value"],
+       ['phi', Type.Float, -999, "Phi value"],
+       ['gamma', Type.Float, -999, "Gamma value"],
+       ['delta', Type.Float, -999, "Delta value"],
+    ]
+    
+
+    hints = { 'interactive' : 'True' }
+    interactive=True
+
+    def prepare(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         _diffrac.prepare(self)
     
-    def run(self):
+    def run(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         if not self.prepared:
             return
-              
-        H = self.h_device.position
-        K = self.k_device.position
-        L = self.l_device.position
+                
+        setorn, pars= self.createMacro("setorn", 0, H, K, L, mu, theta, chi, phi, gamma, delta)
 
-
-        # Check collinearity
-
-        hkl_ref1 = _diffrac.get_hkl_ref1(self)
-        if len(hkl_ref1) > 1:
-            check = _diffrac.check_collinearity(self, H, K, L, hkl_ref1[0], hkl_ref1[1], hkl_ref1[2])
-            if check:
-                self.warning("Can not orient: or0 %9.5f %9.5f %9.5f are parallel to or1" % (H, K, L))
-                return
-
-        values = []                 
-        values.append(0)        
-        values.append(H)        
-        values.append(K)
-        values.append(L)
-        
-        self.diffrac.write_attribute("AddReflectionWithIndex", values)  
-
-        self.execMacro('compute_u')
+        self.runMacro(setorn)
 
 class setor1(Macro, _diffrac):
-    """Set secondary orientation reflection. Alternative to or1""" 
+    """Set secondary orientation reflection choosing hkl and angle values"""
     
-    def prepare(self):
+    param_def = [
+       ['H', Type.Float, -999, "H value"],
+       ['K', Type.Float, -999, "K value"],
+       ['L', Type.Float, -999, "L value"],
+       ['mu', Type.Float, -999, "Mu value"],
+       ['theta', Type.Float, -999, "Theta value"],
+       ['chi', Type.Float, -999, "Chi value"],
+       ['phi', Type.Float, -999, "Phi value"],
+       ['gamma', Type.Float, -999, "Gamma value"],
+       ['delta', Type.Float, -999, "Delta value"],
+    ]
+    
+
+    hints = { 'interactive' : 'True' }
+    interactive=True 
+    
+    def prepare(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         _diffrac.prepare(self)
     
-    def run(self):
+    def run(self, H, K, L, mu, theta, chi, phi, gamma, delta):
         if not self.prepared:
             return
-              
-        H = self.h_device.position
-        K = self.k_device.position
-        L = self.l_device.position
+                
+        setorn, pars= self.createMacro("setorn", 1, H, K, L, mu, theta, chi, phi, gamma, delta)
 
-
-
-        # Check collinearity
-
-        hkl_ref0 = _diffrac.get_hkl_ref0(self)
-        if len(hkl_ref0) > 1:
-            check = _diffrac.check_collinearity(self, hkl_ref0[0], hkl_ref0[1], hkl_ref0[2], H, K, L)
-            if check:
-                self.warning("Can not orient: or0 is parallel to or1 %9.5f %9.5f %9.5f" % (H, K, L))
-                return
-
-        values = []                 
-        values.append(1)        
-        values.append(H)        
-        values.append(K)
-        values.append(L)
-        
-        self.diffrac.write_attribute("AddReflectionWithIndex", values)  
- 
-        self.execMacro('compute_u')
+        self.runMacro(setorn)
 
 class setorn(Macro, _diffrac):
     """Set orientation reflection indicated by the index.""" 
     
     param_def = [
-        ['i', Type.Integer, None, "reflection index (starting at 0)"],
-    ]
+        ['ref_id', Type.Integer, None, "reflection index (starting at 0)"],
+        ['H', Type.Float, -999, "H value"],
+        ['K', Type.Float, -999, "K value"],
+        ['L', Type.Float, -999, "L value"],
+        ['mu', Type.Float, -999, "Mu value"],
+        ['theta', Type.Float, -999, "Theta value"],
+        ['chi', Type.Float, -999, "Chi value"],
+        ['phi', Type.Float, -999, "Phi value"],
+        ['gamma', Type.Float, -999, "Gamma value"],
+        ['delta', Type.Float, -999, "Delta value"],
+        ]
+    
+
+    hints = { 'interactive' : 'True' }
+    interactive=True
  
     
-    def prepare(self):
+    def prepare(self, ref_id, H, K, L, mu, theta, chi, phi, gamma, delta):
         _diffrac.prepare(self)
     
-    def run(self):
+    def run(self, ref_id, H, K, L, mu, theta, chi, phi, gamma, delta):
         if not self.prepared:
             return
               
-        H = self.h_device.position
-        K = self.k_device.position
-        L = self.l_device.position
+        if delta == -999:
+            reflections = []
+            try:
+                reflections = self.diffrac.reflectionlist
+            except:
+                pass
+            tmp_ref = {}
+            hkl_names = ["h", "k", "l"]
+            if reflections != None:
+                if len(reflections) > ref_id:
+                    for i in range(1,4):
+                        tmp_ref[hkl_names[i-1]] = reflections[ref_id][i]
+                    for i in range(6,12):
+                        tmp_ref[self.angle_names[i-6]] = reflections[ref_id][i]
+                else:
+                    for i in range(0,3):
+                        tmp_ref[hkl_names[i]] = 0
+                    for i in range(0, 6):
+                        tmp_ref[self.angle_names[i]] = 0                                   
+            else:
+                for i in range(0,3):
+                    tmp_ref[hkl_names[i]] = 0
+                for i in range(0, 6):
+                    tmp_ref[self.angle_names[i]] = 0
+
+
+            self.output("")
+            if ref_id == 0:
+                ref_txt = "primary-reflection"
+            elif ref_id ==1:
+                ref_txt = "secondary-reflection"
+            else:
+                ref_txt = "reflection " + str(ref_id)
+                
+  
+
+            self.output("Enter %s angles" % ref_txt) 
+            delta=float(self.input(" Delta?", default_value=tmp_ref["delta"],data_type=Type.String))
+            theta=float(self.input(" Theta? ", default_value=tmp_ref["omega"],data_type=Type.String))
+            chi=float(self.input(" Chi?", default_value=tmp_ref["chi"],data_type=Type.String))
+            phi=float(self.input(" Phi?", default_value=tmp_ref["phi"],data_type=Type.String))
+            gamma=float(self.input(" Gamma?", default_value=tmp_ref["gamma"],data_type=Type.String))
+            mu=float(self.input(" Mu?", default_value=tmp_ref["mu"],data_type=Type.String))
+           
+
+            self.output("")
+            self.output("Enter %s HKL coordinates"  % ref_txt) 
+            H=float(self.input(" H?", default_value=tmp_ref["h"],data_type=Type.String))
+            K=float(self.input(" K?", default_value=tmp_ref["k"],data_type=Type.String))
+            L=float(self.input(" L?", default_value=tmp_ref["l"],data_type=Type.String))
+            self.output("")
+
+        
+        # Check collinearity
+
+        if ref_id == 0:
+            hkl_ref = _diffrac.get_hkl_ref1(self)
+        if ref_id == 1:
+            hkl_ref = _diffrac.get_hkl_ref0(self)
+        if ref_id < 2:
+            if len(hkl_ref) > 1:
+                check = _diffrac.check_collinearity(self, hkl_ref[0], hkl_ref[1], hkl_ref[2], H, K, L)
+                if check:
+                    self.warning("Can not orient: ref0 is parallel to ref1 %9.5f %9.5f %9.5f" % (H, K, L))
+                    return
+
+        # Set reflection
 
         values = []                 
-        values.append(i)        
+        values.append(ref_id)        
         values.append(H)        
         values.append(K)
         values.append(L)
         
         self.diffrac.write_attribute("AddReflectionWithIndex", values)
 
+        # Adjust angles
+
+        self.angle_values = {"mu": mu, "omega": theta, "chi": chi, "phi": phi, "gamma": gamma, "delta": delta}   
+      
+        values = []
+        values.append(ref_id)
+
+        for angle_name in self.angle_names:
+            values.append(self.angle_values[angle_name])
+
+        self.diffrac.write_attribute("AdjustAnglesToReflection", values)
+
+        # Recompute u
+
+        self.execMacro('compute_u')
+
+        
+
+
 class setaz(Macro, _diffrac):
     """ Set hkl values of the psi reference vector"""
-    
+
     param_def = [
-        ['PsiH', Type.Float, None, "H value of psi reference vector"],
-        ['PsiK', Type.Float, None, "K value of psi reference vector"],
-        ['PsiL', Type.Float, None, "L value of psi reference vector"],
+        ['PsiH', Type.Float, -999, "H value of psi reference vector"],
+        ['PsiK', Type.Float, -999, "K value of psi reference vector"],
+        ['PsiL', Type.Float, -999, "L value of psi reference vector"],
         ]
+    interactive=True
 
     def prepare(self, PsiH, PsiK, PsiL):
         _diffrac.prepare(self)
@@ -742,9 +878,24 @@ class setaz(Macro, _diffrac):
     def run(self, PsiH, PsiK, PsiL):
         if not self.prepared:
             return
-
         engine_restore = self.diffrac.engine
         mode_restore   = self.diffrac.enginemode
+
+        if PsiL == -999:
+            self.diffrac.write_attribute("engine", "hkl")
+            self.diffrac.write_attribute("enginemode", "psi_constant_vertical")
+            azh=self.diffrac.read_attribute("psirefh").value
+            azk=self.diffrac.read_attribute("psirefk").value
+            azl=self.diffrac.read_attribute("psirefl").value
+            self.output("")
+            self.output("Enter azimuthal reference H K L:")
+            a1=self.input(" Azimuthal H?", default_value=azh,data_type=Type.String)
+            a2=self.input(" Azimuthal K?", default_value=azk,data_type=Type.String)
+            a3=self.input(" Azimuthal L?", default_value=azl,data_type=Type.String)
+            PsiH=float(a1)
+            PsiK=float(a2)
+            PsiL=float(a3)
+
 
         self.diffrac.write_attribute("engine", "hkl")
         self.diffrac.write_attribute("enginemode", "psi_constant_vertical")
@@ -759,11 +910,10 @@ class setaz(Macro, _diffrac):
         self.diffrac.write_attribute("psirefh", PsiH)
         self.diffrac.write_attribute("psirefk", PsiK)
         self.diffrac.write_attribute("psirefl", PsiL)
-        
+
         self.diffrac.write_attribute("engine", engine_restore)
         self.diffrac.write_attribute("enginemode", mode_restore)
-        
-        self.execMacro('savecrystal')
+        self.execMacro('savecrystal') 
 
 class compute_u(Macro, _diffrac):
     """ Compute U matrix with reflections 0 and 1 """
@@ -831,25 +981,30 @@ class affine(Macro, _diffrac):
 
 class or_swap(Macro, _diffrac):
     """Swap values for primary and secondary vectors."""
-    
+
     def prepare(self):
         _diffrac.prepare(self)
-    
+
     def run(self):
         if not self.prepared:
             return
 
         self.diffrac.write_attribute("SwapReflections01", 0)
+        self.output("Orientation vectors swapped.")
+        self.execMacro('compute_u')
 
 class newcrystal(Macro, _diffrac):
     """ Create a new crystal (if it does not exist) and select it. """
-    
+
     param_def = [
-        ['crystal_name',  Type.String,   None, 'Name of the crystal to add and select']
+        ['crystal_name',  Type.String, "", 'Name of the crystal to add and select']
         ]
+
+    interactive=True
+
     def prepare(self, crystal_name):
         _diffrac.prepare(self)
-    
+
     def run(self, crystal_name):
         if not self.prepared:
             return
@@ -857,16 +1012,59 @@ class newcrystal(Macro, _diffrac):
         crystal_list = self.diffrac.crystallist
 
         to_add = 1
+        i=1
+        if crystal_name == "":
+            crystal_name=self.diffrac.crystal
+            self.output("Available crystals:")
+            for crystal in crystal_list:
+                self.output("(%s) %s" %(i,crystal))
+                if crystal_name == crystal:
+                    iselname=crystal
+                i=i+1
+            a=self.input("New crystal?", default_value=iselname,data_type=Type.String)
+            try:
+                a1=int(a)
+                i=1
+                for crystal in crystal_list:
+                    if a1 == i:
+                        a=crystal
+                    i=i+1
+                if a1>i-1:
+                    a=iselname
+            except:
+                pass
+
+            if a != iselname:
+                crystal_name=a
+            else:
+                crystal_name=iselname
+
         for crystal in crystal_list:
             if crystal_name == crystal:
                 to_add = 0
-        
+
         if to_add:
             self.diffrac.write_attribute("addcrystal", crystal_name)
 
-        self.diffrac.write_attribute("crystal", crystal_name) 
+        self.diffrac.write_attribute("crystal", crystal_name)
 
-        self.output("Crystal %s selected " % crystal_name)
+        self.output("")
+        self.output("Crystal selected: %s " % crystal_name)
+
+        if to_add:
+            a=self.input(" Lattice a?", default_value=5.43,data_type=Type.String)
+            b=self.input(" Lattice b?", default_value=5.43,data_type=Type.String)
+            c=self.input(" Lattice c?", default_value=5.43,data_type=Type.String)
+            alpha=self.input(" Lattice alpha?", default_value=90,data_type=Type.String)
+            beta=self.input(" Lattice beta?", default_value=90,data_type=Type.String)
+            gamma=self.input(" Lattice gamma?", default_value=90,data_type=Type.String)
+            self.output("")
+            self.diffrac.write_attribute("a", float(a))
+            self.diffrac.write_attribute("b", float(b))
+            self.diffrac.write_attribute("c", float(c))
+            self.diffrac.write_attribute("alpha", float(alpha))
+            self.diffrac.write_attribute("beta",float(beta))
+            self.diffrac.write_attribute("gamma", float(gamma)) 
     
 
 class hscan(Macro, _diffrac):
@@ -1115,13 +1313,13 @@ class luppsi_debug(Macro, _diffrac):
             for i in range(0,nr_interv+1):
                 self.info("Moving psi to " + str(psi_save + (i+1)*angle_interv))
                 self.execMacro('freeze', 'psi', psi_save + (i+1)*angle_interv)
-                self.execMacro('br', h, k, l)
+                self.execMacro('ubr', h, k, l)
             
             # Return to start position
             
             self.info("Return to start position " + str(psi_save))
             self.execMacro('freeze', 'psi', psi_save)
-            self.execMacro('br', h, k, l)
+            self.execMacro('ubr', h, k, l)
                 
         else:
             self.output( "Usage:  luppsi_debug rel_startangle  rel_stopangle n_intervals time")
@@ -1139,13 +1337,127 @@ class savecrystal(Macro,_diffrac):
         self.diffrac.write_attribute("SaveCrystal", 1)
                 
 
-class printmove(Macro,_diffrac):
+class lattice_cal(Macro, _diffrac):
+    """
+        lattice_cal - calibrate lattice parameters a, b or c to current 2theta value
+    """
+
+    param_def = [
+        [ "parameter", Type.String, "", "Parameter" ],
+        ]
+    interactive=True
+
+    def prepare(self,parameter):
+        _diffrac.prepare(self)
+
+    def run( self,parameter):
+        if parameter != "":
+            if parameter=="a" or parameter=="b" or parameter=="c":
+                if parameter == "a":
+                    a0=self.diffrac.a
+                    self.output("Old lattice parameter %s = %s" % (parameter,a0))
+                    h0=self.h_device.position
+                    h1=round(h0)
+                    a1=h1/h0*a0
+                    self.output("New lattice parameter %s = %s" % (parameter,a1))
+                    self.diffrac.write_attribute("a", a1)
+                if parameter == "b":
+                    a0=self.diffrac.b
+                    self.output("Old lattice parameter %s = %s" % (parameter,a0))
+                    h0=self.k_device.position
+                    h1=round(h0)
+                    a1=h1/h0*a0
+                    self.output("New lattice parameter %s = %s" % (parameter,a1))
+                    self.diffrac.write_attribute("b", a1)
+                if parameter == "c":
+                    a0=self.diffrac.c
+                    self.output("Old lattice parameter %s = %s" % (parameter,a0))
+                    h0=self.l_device.position
+                    h1=round(h0)
+                    a1=h1/h0*a0
+                    self.output("New lattice parameter %s = %s" % (parameter,a1))
+                    self.diffrac.write_attribute("c", a1)
+
+                self.execMacro('compute_u')
 
 
-    def prepare(self):
+            else:
+                self.output("Lattice parameter a, b or c")
+
+
+        else:
+            self.output( "Calibration of lattice parameters a, b or c to current 2theta value")
+            self.output( "usage:  lattice_cal parameter")
+
+
+
+
+
+class tw(Macro):
+    """
+    tw - tweak motor by variable delta
+    """
+
+    param_def = [
+        ['motor', Type.Moveable, "test", 'Motor to move'],
+        ['delta',   Type.Float, -999, 'amount to tweak']
+        ]
+    interactive=True
+
+
+    def run( self,motor,delta):
+        if delta != -999:
+            self.output("Indicate direction with + (or p) or - (or n) or enter")
+            self.output("new step size. Type something else (or ctrl-C) to quit.")
+            self.output("")
+            if np.sign(delta)==-1:
+                a="-"
+            if np.sign(delta)==1:
+                a="+"
+            while a in ('+','-','p','n'):
+                pos=motor.position
+                a=self.input("%s = %s, which way? " % (motor,pos),default_value=a,data_type=Type.String)
+                try:
+                    a1=float(a)
+                    check="True"
+                except:
+                    check="False"
+
+                if a =="p" and np.sign(delta)<0:
+                    a="+"
+                    delta=-delta
+                if a=="n" and np.sign(delta)>0:
+                    a="-"
+                    delta=-delta
+                if a =="+" and np.sign(delta)<0:
+                    delta=-delta
+                if a=="-" and np.sign(delta)>0:
+                    delta=-delta
+
+                if check=="True":
+                    delta = float(a1)
+                    if np.sign(delta)==-1:
+                        a="-"
+                    if np.sign(delta)==1:
+                        a="+"
+                pos+=delta
+                self.mv(motor,pos)
+
+
+        else:
+            self.output("usage: tw motor delta")
+
+class blockprintmove(Macro,_diffrac):
+
+
+    param_def = [
+        ['flagprint', Type.Integer, 0, '1 for printing']
+        ]
+
+    def prepare(self, flagprint):
         _diffrac.prepare(self)
         
-    def run(self):
+    def run(self, flagprint):
         if not self.prepared:
             return     
         moving = 1
@@ -1157,9 +1469,11 @@ class printmove(Macro,_diffrac):
             for angle in self.angle_names:
                 if tmp_dev[angle].state() == 6:
                     moving = 1
+            if flagprint == 1:
+                self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
+                self.flushOutput()
+            time.sleep(1.0)
+        if flagprint == 1:
             self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
             self.flushOutput()
-            time.sleep(1.0)
-        self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
-        self.flushOutput()
   

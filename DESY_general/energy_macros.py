@@ -55,7 +55,7 @@ class escan(Macro):
         
         self.diffrac.write_attribute("wavelength", wavelength)
 
-        macro,pars = self.createMacro("br", self.h_value, self.k_value, self.l_value)
+        macro,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1, 1)
 
         self.runMacro(macro)
         
