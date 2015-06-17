@@ -332,9 +332,9 @@ class pa(Macro, _diffrac):
                 self.output("    H K L : %10.4f %10.4f %10.4f" % (ref[1], ref[2], ref[3]))
                 self.output("    Affinement, Relevance : %d %d" % (ref[4], ref[5]))
                 if len(ref) > 10:
-                    self.output("    mu theta chi phi gamma delta: %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9], ref[10], ref[11]))
+                    self.output("    %s %s %s %s %s %s: %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f" % (self.angle_names[0],self.angle_names[1],self.angle_names[2],self.angle_names[3],self.angle_names[4],self.angle_names[5], ref[6], ref[7], ref[8], ref[9], ref[10], ref[11]))
                 else:
-                    self.output("    omega chi phi theta: %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9]))
+                    self.output("    %s %s %s %s: %10.4f %10.4f %10.4f %10.4f" % (self.angle_names[0],self.angle_names[1],self.angle_names[2],self.angle_names[3],ref[6], ref[7], ref[8], ref[9]))
                 nb_ref = nb_ref + 1
                     
        
