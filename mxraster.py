@@ -70,14 +70,17 @@ class oav_merit_method(Macro):
 
     def run(self, *param_list):
 
+        key = 'MeritMethod'
+
         if param_list is not None:
 
             config = self.getEnv('MXRasterConfig')
 
             for value in param_list:
-            if value not in self.PARAMS_ALLOWED:
-                raise ValueError('The allowed merit methods are %s' % repr(self.PARAMS_ALLOWED))
-            config['MeritMethod'] = value
+                if value not in self.PARAMS_ALLOWED:
+                    raise ValueError('The allowed merit methods are %s' % repr(self.PARAMS_ALLOWED))
+                else:
+                    config[key] = value
 
             self.setEnv('MXRasterConfig', config)
 
