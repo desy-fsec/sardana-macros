@@ -67,6 +67,21 @@ class escan(Macro):
             for i in range(0,len(self.angle_dev)):
                 if self.angle_dev[i] == PyTango.DevState.MOVING:
                     move_flag = 1
+
+    def on_stop(self):
+        try:
+            self.energy_device.StopMove()
+        except:
+            pass
+        try:
+            self.energy_device.Stop()
+        except:
+            pass
+
+        if self.fixq == 'fixq':
+            self.h_device.Stop()
+            self.k_device.Stop()
+            self.l_device.Stop()
         
 
     def run(self,  start_energy, end_energy, nr_interv, integ_time, fixq):
@@ -121,6 +136,7 @@ class escan(Macro):
 
         self.energy_device = energy_device
 
+        self.fixq = fixq
         if fixq == "fixq":
             self.lambda_to_e = 12398.424 # Amstrong * eV
             diffrac_name = self.getEnv('DiffracDevice')
@@ -129,13 +145,13 @@ class escan(Macro):
             for motor in self.diffrac.hklpseudomotorlist:
                 pseudo_motor_names.append(motor.split(' ')[0])
             
-            h_device = self.getDevice(pseudo_motor_names[0])
-            k_device = self.getDevice(pseudo_motor_names[1])
-            l_device = self.getDevice(pseudo_motor_names[2])
+            self.h_device = self.getDevice(pseudo_motor_names[0])
+            self.k_device = self.getDevice(pseudo_motor_names[1])
+            self.l_device = self.getDevice(pseudo_motor_names[2])
 
-            self.h_fix = h_device.Position
-            self.k_fix = k_device.Position
-            self.l_fix = l_device.Position
+            self.h_fix = self.h_device.Position
+            self.k_fix = self.k_device.Position
+            self.l_fix = self.l_device.Position
 
             macro.hooks = [ (self.hkl_pre_move, ["pre-move"]), (self.hkl_post_move, ["post-move"]), ] 
 
