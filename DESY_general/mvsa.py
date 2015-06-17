@@ -37,9 +37,19 @@ class mvsa(Macro):
         var = self.getEnv( "ScanFile")
         lst = []
         if type(var).__name__ == 'list':
-            lst = var[0].split(".")
+            if var[0].find( '.fio') > 0:
+                lst = var[0].split(".")
+            elif var[1].find( '.fio') > 0:
+                lst = var[1].split(".")
+            else:
+                self.output( "mvsa: ScanFile does not contain a .fio file")
+                return None
         else:
-            lst = var.split(".")
+            if var.find( '.fio') > 0:
+                lst = var.split(".")
+            else:
+                self.output( "mvsa: ScanFile does not contain a .fio file")
+                return None
         argout = self.getEnv( 'ScanDir') + "/" + lst[0] + "_" + temp + "." + lst[1]
         return argout
 
@@ -121,6 +131,10 @@ class mvsa(Macro):
             return
 
         fileName = self.getFullPathName()
+        if fileName is None:
+            self.output( "mvsa.run: terminated ")
+            return
+        self.output( "mvsa.run: file %s " % fileName)
         a = HasyUtils.fioReader( fileName)
 
         message = 'undefined'
