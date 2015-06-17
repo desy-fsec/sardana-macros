@@ -7,6 +7,8 @@
 import time
 import math
 import numpy as np 
+import getpass
+import os
 
 from sardana.macroserver.macro import *
 
@@ -1336,6 +1338,67 @@ class savecrystal(Macro,_diffrac):
 
         self.diffrac.write_attribute("SaveCrystal", 1)
                 
+
+class load_crystal(Macro, _diffrac):
+    """
+         load_crystal  - loads crystal information from file
+    """
+
+    param_def = [
+        ]
+
+    interactive=True
+
+    def prepare(self):
+        _diffrac.prepare(self)
+
+    def run( self):
+        if not self.prepared:
+            return
+        active_dir = ""
+        try:
+            files = os.listdir('/home/'+getpass.getuser()+'/crystals/')
+            active_dir = '/home/'+getpass.getuser()+'/crystals/'
+        except:
+            self.output("Directory for loading files /home/%s/crystals does not exist" % getpass.getuser())
+            newdir=self.input("Type new directory") + "/"
+            try:
+                files = os.listdir(newdir)
+                active_dir = newdir
+            except:
+                self.output("New directory %s not found" % newdir)
+                return
+
+        res = filter(lambda x: x.endswith('.txt'), files)
+        i=1
+        for filename in res:
+
+            filename=filename.split('.')[0]
+            self.output("(%s) %s" % (i,filename))
+            i=i+1
+        a0=self.input("Your choice? ")
+        try:
+            a1=int(a0)
+            i=1
+            for filename in res:
+                if i == int(a0) and i<len(res)+1:
+                    file=filename
+                i=i+1
+            if a1<len(res)+1:
+                self.output("")
+                self.output("File to load %s" % active_dir+file)
+            else:
+                self.output("Input out of range!")
+ 
+ 
+            self.diffrac.write_attribute("loadcrystal", active_dir+file)
+            self.diffrac.read_attribute("loadcrystal")
+       
+        except:
+            self.output("Wrong input!")
+
+
+
 
 class lattice_cal(Macro, _diffrac):
     """
