@@ -46,8 +46,52 @@ class oav_raster_config(Macro):
             self.info("[%s] = %s" %(key, config[key]))
             pass
 
+class oav_merit_method(Macro):
+    # TODO: complete merit method descriptions.
+    """
+    This macro is used to set/get the merit method for the mxraster macro.
+    The merit method selected depends on the available methods defined in
+    find_spots.py module:
+
+    * xds: Description?
+    * labelit: (phenix) Description?
+    * random: Only for test purposes. This method 'random' simulates finding
+    spots on an image using a random method from the image filename. Returns
+    a random value between 810 and 1120.
+
+    If the macro is executed without parameters, it shows the current method.
+
+    """
+
+    PARAMS_ALLOWED = ['xds', 'labelit', 'random']
+
+    param_def = [['param_list', ParamRepeat(['MeritMethod', Type.String, None, 'Name of the merit method selected'], min=0, max=1),
+                  None, '']]
+
+    def run(self, *param_list):
+
+        if param_list is not None:
+
+            config = self.getEnv('MXRasterConfig')
+
+            for value in param_list:
+            if value not in self.PARAMS_ALLOWED:
+                raise ValueError('The allowed merit methods are %s' % repr(self.PARAMS_ALLOWED))
+            config['MeritMethod'] = value
+
+            self.setEnv('MXRasterConfig', config)
+
+        config = self.getEnv('MXRasterConfig')
+        self.info('Current merit method:')
+        self.info('=====================')
+        self.info("[%s] = %s" %(key, config[key]))
+
 
 class mxraster_config(Macro):
+    '''
+    Deprecated since 17/06/2015!
+    You MUST use oav_raster_config macro instead.
+    '''
     param_def = [['PhiY', Type.String, None, 'Motor for Y direction'],
                  ['PhiZ', Type.String, None, 'Motor for Z direction'],
                  ['Att', Type.String, None, 'Motor for Beam Attenuation'],
@@ -65,6 +109,10 @@ class mxraster_config(Macro):
 	
 class mxraster(Macro):
     """
+    This macro performs a raster scan for a rectangular grid and returns a
+    value which marks the different spot positions for collecting. The marks
+    are assigned according to the merit method selected.
+    The macro is intended to be used through a graphical user interface.
     """
     env = ('MXRasterConfig',)
     param_def = [['phiy_start_pos', Type.Float, None, 'Starting position'],
