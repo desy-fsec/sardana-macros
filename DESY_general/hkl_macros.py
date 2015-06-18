@@ -178,7 +178,7 @@ class br(Macro, _diffrac):
         _diffrac.on_stop(self)
         
 
-class ubr(Macro):
+class ubr(Macro, _diffrac):
     """
         ubr H K L
     """
@@ -190,6 +190,8 @@ class ubr(Macro):
         ['AnglesIndex', Type.Integer, -1, "Angles index"]
         ]
 
+    def prepare(self, hh, kk, ll, AnglesIndex):
+        _diffrac.prepare(self)
     
     def run( self, hh,kk,ll, AnglesIndex):
 
@@ -1361,7 +1363,7 @@ class load_crystal(Macro, _diffrac):
             active_dir = '/home/'+getpass.getuser()+'/crystals/'
         except:
             self.output("Directory for loading files /home/%s/crystals does not exist" % getpass.getuser())
-            newdir=self.input("Type new directory") + "/"
+            newdir=self.input("Type new directory")
             try:
                 files = os.listdir(newdir)
                 active_dir = newdir
@@ -1540,3 +1542,5 @@ class blockprintmove(Macro,_diffrac):
             self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
             self.flushOutput()
   
+    def on_stop(self):
+        _diffrac.on_stop(self)
