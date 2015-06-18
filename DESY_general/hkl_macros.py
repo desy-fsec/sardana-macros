@@ -1397,7 +1397,10 @@ class load_crystal(Macro, _diffrac):
             self.diffrac.read_attribute("loadcrystal")
        
         except:
-            self.output("Wrong input!")
+            if a0!="":
+                self.output("Wrong input!")
+            else:
+                self.output("An input file has to be given. Nothing done")
 
 
 
@@ -1535,11 +1538,11 @@ class blockprintmove(Macro,_diffrac):
                 if tmp_dev[angle].state() == 6:
                     moving = 1
             if flagprint == 1:
-                self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
+                self.outputBlock(" %7.5f  %7.5f  %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
                 self.flushOutput()
             time.sleep(1.0)
         if flagprint == 1:
-            self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
+            self.outputBlock(" %7.5f  %7.5f  %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
             self.flushOutput()
   
     def on_stop(self):
