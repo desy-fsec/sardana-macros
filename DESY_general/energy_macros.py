@@ -7,6 +7,7 @@ __all__ = ["escan", "me"]
 import os
 from sardana.macroserver.macro import *
 import time
+import math
 
 from PyTango import *
  
@@ -237,7 +238,7 @@ class escanexafs_general(Macro):
         ["scan_regions", ParamRepeat(
                 ['estart', Type.Float, None, 'Start energy region'],
                 ['estop', Type.Float, None, 'Stop energy region'],
-                ['nenergies', Type.Integer, None, 'Number of energies in region']),
+                ['estep', Type.Integer, None, 'Energy step in region']),
          None, 'List of scan regions']
         ]
     
@@ -247,11 +248,13 @@ class escanexafs_general(Macro):
         nregions = len(scan_regions)
 
         for i in range(0, nregions):
-            
+            nenergies = int(math.fabs(scan_regions[i][1]-scan_regions[i][0])/scan_regions[i][2])            
+            if nenergies < 1:
+                nenergies = 1
             macro,pars = self.createMacro('escan',
                                           scan_regions[i][0],         # energy_start
                                           scan_regions[i][1],         # energy_stop
-                                          scan_regions[i][2],         # nenergies
+                                          nenergies,                  # number of steps
                                           integ_time,
                                           "Not", 0)
 
@@ -264,19 +267,19 @@ class escanexafs(Macro):
     param_def = [ 
         ['estart1', Type.Float, -999, 'Start energy region 1'],
         ['estop1', Type.Float, -999, 'Stop energy region 1'],
-        ['nenergies1', Type.Integer, -999, 'Number of energies in region 1'],
+        ['estep1', Type.Integer, -999, 'Energy step in region 1'],
         ['estart2', Type.Float, -999, 'Start energy region 2'],
         ['estop2', Type.Float, -999, 'Stop energy region 2'],
-        ['nenergies2', Type.Integer, -999, 'Number of energies in region 2'],
+        ['estep2', Type.Integer, -999, 'Energy step in region 2'],
         ['estart3', Type.Float, -999, 'Start energy region 3'],
         ['estop3', Type.Float, -999, 'Stop energy region 3'],
-        ['nenergies3', Type.Integer, -999, 'Number of energies in region 3'],
+        ['estep3', Type.Integer, -999, 'Energy step in region 3'],
         ['integ_time', Type.Float, -999, 'Integration time']
         ]
     
-    def run(self, estart1, estop1, nenergies1, estart2, estop2, nenergies2, estart3, estop3, nenergies3, integ_time):
+    def run(self, estart1, estop1, estep1, estart2, estop2, estep2, estart3, estop3, estep3, integ_time):
         
         
-        macro,pars = self.createMacro('escanexafs_general', integ_time, estart1, estop1, nenergies1, estart2, estop2, nenergies2, estart3, estop3, nenergies3)
+        macro,pars = self.createMacro('escanexafs_general', integ_time, estart1, estop1, estep1, estart2, estop2, estep2, estart3, estop3, estep3)
 
         self.runMacro(macro)
