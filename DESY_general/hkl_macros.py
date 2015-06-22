@@ -10,6 +10,8 @@ import numpy as np
 import getpass
 import os
 
+import re
+
 from sardana.macroserver.macro import *
 
 class _diffrac:
@@ -129,7 +131,22 @@ class _diffrac:
                     hkl.append(reflections[1][i])
         
         return hkl
-        
+
+    def fl(self,ch,
+           regx = re.compile(
+            '(?<![\d.])'
+            '(?![1-9]\d*(?![\d.])|\d*\.\d*\.)'
+            '0*(?!(?<=0)\.)'
+            '([\d.]+?)'
+            '\.?0*'
+            '(?![\d.])'
+            ),
+           repl = lambda mat: mat.group(mat.lastindex)
+           if mat.lastindex!=3
+           else '0' + mat.group(3)  ):
+        mat = regx.search(ch)
+        if mat:
+            return regx.sub(repl,ch) 
         
 
 class br(Macro, _diffrac):
@@ -322,7 +339,7 @@ class pa(Macro, _diffrac):
             str_type = "Kappa 4C Vertical"
             
         self.output("%s Geometry, %s" % (str_type, self.diffrac.enginemode))
-        self.output("Sector %s" % "[ToDo]")
+        #self.output("Sector %s" % "[ToDo]")
         self.output("")
 
         reflections = self.diffrac.reflectionlist
@@ -334,38 +351,36 @@ class pa(Macro, _diffrac):
                 else: sf = self.suffix[3]
                 self.output("  %d%s Reflection (index %d): " % (nb_ref+1, sf, ref[0]))
                 self.output("    H K L : %10.4f %10.4f %10.4f" % (ref[1], ref[2], ref[3]))
-                self.output("    Affinement, Relevance : %d %d" % (ref[4], ref[5]))
+                #self.output("    Affinement, Relevance : %d %d" % (ref[4], ref[5]))
                 if len(ref) > 10:
-                    self.output("    %s %s %s %s %s %s: %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f" % (self.angle_names[0],self.angle_names[1],self.angle_names[2],self.angle_names[3],self.angle_names[4],self.angle_names[5], ref[6], ref[7], ref[8], ref[9], ref[10], ref[11]))
+                    self.output("    %s %s %s %s %s %s: %s %s %s %s %s %s" % (self.angle_names[5],self.angle_names[1],self.angle_names[2],self.angle_names[3],self.angle_names[4],self.angle_names[0], _diffrac.fl(self,str(ref[11])), _diffrac.fl(self,str(ref[7])), _diffrac.fl(self,str(ref[8])), _diffrac.fl(self,str(ref[9])), _diffrac.fl(self,str(ref[10])), _diffrac.fl(self,str(ref[6]))))
                 else:
-                    self.output("    %s %s %s %s: %10.4f %10.4f %10.4f %10.4f" % (self.angle_names[0],self.angle_names[1],self.angle_names[2],self.angle_names[3],ref[6], ref[7], ref[8], ref[9]))
+                    self.output("    %s %s %s %s: %s %s %s %s" % (self.angle_names[0],self.angle_names[1],self.angle_names[2],self.angle_names[3], _diffrac.fl(self,str(ref[6])), _diffrac.fl(self,str(ref[7])), _diffrac.fl(self,str(ref[8])), _diffrac.fl(self,str(ref[9]))))
                 nb_ref = nb_ref + 1
+                self.output(" %33s  %s %s %s" % ("H K L =", _diffrac.fl(self,str(ref[1])), _diffrac.fl(self,str(ref[2])), _diffrac.fl(self,str(ref[3]))))
+                self.output("") 
                     
        
-        self.output("")
+#        self.output("")
         self.output("  Lattice Constants (lengths / angles):")
-        self.output("%24s = %s %s %s / %s %s %s" % ("real space", self.diffrac.a, 
-                                                    self.diffrac.b, self.diffrac.c, self.diffrac.alpha, 
-                                                    self.diffrac.beta, self.diffrac.gamma))
+        self.output("%32s = %s %s %s / %s %s %s" % ("real space", self.diffrac.a, 
+                                                    self.diffrac.b, self.diffrac.c, _diffrac.fl(self,str(self.diffrac.alpha)), 
+                                                    _diffrac.fl(self,str(self.diffrac.beta)), _diffrac.fl(self,str(self.diffrac.gamma))))
+
+        self.output("")
+        self.output("  Azimuthal reference:")
+        self.output("%34s %s %s %s " %
+                    ("H K L =",_diffrac.fl(self,str(self.diffrac.psirefh)), _diffrac.fl(self,str(self.diffrac.psirefk)), _diffrac.fl(self,str(self.diffrac.psirefl))))
+
+        self.output("")
+        self.output("  Lambda = %s" %(self.diffrac.WaveLength))
   
         lst = self.diffrac.ubmatrix
         self.output( "  UB-Matrix")
         self.output( "  %15g %15g %15g" % (lst[0][0], lst[0][1], lst[0][2]))
         self.output( "  %15g %15g %15g" % (lst[1][0], lst[1][1], lst[1][2]))
         self.output( "  %15g %15g %15g" % (lst[2][0], lst[2][1], lst[2][2]))
-
-        self.output("")
-        self.output("%8s %9.5f %9.5f %9.5f " % 
-                    ("  Ref   = ",self.diffrac.psirefh, self.diffrac.psirefk,self.diffrac.psirefl))
-        
-        #self.output("  Azimuthal Reference:")
-        #self.output("")
-        #self.output("%24s = %s" %("[ToDo]","[ToDo]"))
-        self.output("")
-        self.output("  Lambda = %s" %(self.diffrac.WaveLength))
-        #self.output("")
-        #self.output(" Cut Points:")
-        #self.output("    [ToDo]")
+  
 
 class wh(Macro, _diffrac):
     """wh - where, principal axes and reciprocal space
