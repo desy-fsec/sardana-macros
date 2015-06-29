@@ -6,7 +6,7 @@ the hooks/conditions are defined in $HOME/sardanaMacros/generalFunctions/general
 the feature is used in gscan.py
 """
 
-__all__ = ["gh_list", "gh_enable", "gh_disable", "gh_setSelector", "gh_getSelector"]
+__all__ = ["gh_list", "gh_enable", "gh_disable", "gh_setSelector", "gh_getSelector", "gc_list", "gc_enable", "gc_disable"]
 
 import PyTango, os, sys
 from sardana.macroserver.macro import *
