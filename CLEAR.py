@@ -63,6 +63,7 @@ class CLEAR(object):
         self.cdz = Device(self.CDZ)
         self.cslx1 = Device(self.CSLX1)
         self.cslx2 = Device(self.CSLX2)
+        self.cslxr = Device(self.CSLXR)
         self.cslz1 = Device(self.CSLZ1)
         self.cslz2 = Device(self.CSLZ2)
         self.cabd = Device(self.CABD)
@@ -70,8 +71,8 @@ class CLEAR(object):
 
         self.physical_motor = [self.caxr, self.cay, self.caz, self.cdmask,
                                self.cdx, self.cdxr, self.cdy, self.cdz,
-                               self.cslx1, self.cslx2, self.cslz1,
-                               self.cslz1, self.cabd, self.cabu]
+                               self.cslx1, self.cslx2, self.cslxr, self.cslz1,
+                               self.cslz2, self.cabd, self.cabu]
 
         self.xtal = Device(self.XTAL)
         self.bragg = Device(self.BRAGG)
@@ -81,8 +82,15 @@ class CLEAR(object):
         self.bragg_ctrl = Device(self.BRAGG_CTRL)
 
     def clear_turn_onoff(self, power):
+        if power == 'ON':
+            pwr = True
+        elif power == 'OFF':
+            pwr = False
+        else:
+            raise ValueError('The value should be ON/OFF')
+
         for motor in self.physical_motor:
-            motor.write_attribute('PowerON', power)
+            motor.write_attribute('PowerON', pwr)
 
     def _find_pos(self, motor, value):
         labels = str(motor.read_attribute('Labels').value).split()
