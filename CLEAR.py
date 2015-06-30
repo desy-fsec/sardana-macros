@@ -1,4 +1,4 @@
-from numpy import linspace
+from numpy import linspace, arange
 from sardana.macroserver.macro import Type, Macro, ParamRepeat
 from taurus import Device
 import PyTango
@@ -106,7 +106,7 @@ class CLEAR(object):
         return pos
 
     def _move_motor(self, motor, pos):
-        mv_macro = self.createMacro ('mv', motor, pos)
+        mv_macro, _ = self.createMacro ('mv', motor, pos)
         self.runMacro(mv_macro)
 
     def set_xtal(self, xtal):
@@ -140,8 +140,9 @@ class CLEAR(object):
     def move_bragg(self, pos):
         current_bragg = self.bragg.read_attribute('Position').value
         prop_name = 'bragg_tolerance'
-        tolerance_prop = self.bragg_ctrl.get_poperty(prop_name)
+        tolerance_prop = self.bragg_ctrl.get_property(prop_name)
         bragg_tolerance = float(tolerance_prop[prop_name][0])
+        
 
         # Verifing if there are software limits
         position_conf = self.bragg.get_attribute_config('Position')
@@ -158,8 +159,13 @@ class CLEAR(object):
             raise ValueError(msg)
 
         # Generate trajectory
-        num_steps = int((abs(current_bragg) - abs(pos)) / bragg_tolerance) + 1
-        positions = linspace(current_bragg, pos, num_steps)
+        num_steps = int(abs(current_bragg - pos) / bragg_tolerance) + 1
+        positions = [pos]
+        if num_steps > 1:
+            # To avoid the aproximation in the linspace and remove current pos
+            num_steps += 1
+            positions = linspace(current_bragg, pos, num_steps)[1:]
+
         for next_position in positions:
             self._move_motor(self.bragg, next_position)
 
@@ -208,13 +214,16 @@ class clearmv(Macro, CLEAR):
 
     def run(self, motor, pos):
         self.init_clear()
-        if motor.name == self.BRAGG:
+        
+        if motor.full_name == self.bragg.getFullName():
             self.move_bragg(pos)
-        elif motor.name == self.ENERGY:
+        elif motor.full_name == self.ENERGY.getFullName():
             self.move_energy(pos)
         else:
+            bragg_name = self.bragg.getDisplayName().split()[0]
+            eout_name = self.energy.getDisplayName().split()[0]
             raise Exception(('This macro only works with: %s and %s' %
-                             (self.BRAGG, self.ENERGY)))
+                             (bragg_name, eout_name)))
 
 
 
