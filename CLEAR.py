@@ -7,7 +7,7 @@ DEV_STATE_ALARM = PyTango._PyTango.DevState.ALARM
 DEV_STATE_MOVING = PyTango._PyTango.DevState.MOVING
 DEV_STATE_ON = PyTango._PyTango.DevState.ON
 
-# TODO: set this variable in the enviroment
+# TODO: set this variable in the environment
 XTAL_BRAGG_LIM = [[20, 75], [20, 75], [0, 130], [0, 130]]
 
 
@@ -24,14 +24,14 @@ class CLEAR(object):
     # (X,Y,Z): Axes translation and with R is rotation
     # (D, U): Down/Up
 
-    # Pyshical motors
+    # Physical motors
     CAXR = 'motor/eh_ipap_ctrl/28'
     CAY = 'motor/eh_ipap_ctrl/26'
     CAZ = 'motor/eh_ipap_ctrl/27'
     CDMASK = 'motor/eh_ipap_ctrl/34'
     CDX = 'motor/eh_ipap_ctrl/35'
     CDXR = 'motor/eh_ipap_ctrl/31'
-    CDY =  'motor/eh_ipap_ctrl/33'
+    CDY = 'motor/eh_ipap_ctrl/33'
     CDZ = 'motor/eh_ipap_ctrl/32'
     CSLX1 = 'motor/eh_ipap_ctrl/21'
     CSLX2 = 'motor/eh_ipap_ctrl/22'
@@ -50,7 +50,6 @@ class CLEAR(object):
 
     #Controllers
     BRAGG_CTRL = 'controller/braggcontroller/clear_bragg_ctrl'
-
 
     def init_clear(self):
         self.caxr = Device(self.CAXR)
@@ -106,7 +105,7 @@ class CLEAR(object):
         return pos
 
     def _move_motor(self, motor, pos):
-        mv_macro, _ = self.createMacro ('mv', motor, pos)
+        mv_macro, _ = self.createMacro('mv', motor, pos)
         self.runMacro(mv_macro)
 
     def set_xtal(self, xtal):
@@ -126,7 +125,7 @@ class CLEAR(object):
         conf_bragg.min_value = str(bragg_min)
         self.bragg.set_attribute_config(conf_bragg)
 
-        #Move to selected crystal
+        # Move to selected crystal
         self._move_motor(self.xtal, pos)
 
     def set_detector(self, det):
@@ -142,7 +141,6 @@ class CLEAR(object):
         prop_name = 'bragg_tolerance'
         tolerance_prop = self.bragg_ctrl.get_property(prop_name)
         bragg_tolerance = float(tolerance_prop[prop_name][0])
-        
 
         # Verifing if there are software limits
         position_conf = self.bragg.get_attribute_config('Position')
@@ -162,7 +160,7 @@ class CLEAR(object):
         num_steps = int(abs(current_bragg - pos) / bragg_tolerance) + 1
         positions = [pos]
         if num_steps > 1:
-            # To avoid the aproximation in the linspace and remove current pos
+            # To avoid the approximation in the linspace and remove current pos
             num_steps += 1
             positions = linspace(current_bragg, pos, num_steps)[1:]
 
@@ -170,7 +168,8 @@ class CLEAR(object):
             self._move_motor(self.bragg, next_position)
 
     def move_energy(self, pos):
-        pass
+        bragg_pos = self.energy.CalcPhysical(pos)
+        self.move_bragg(bragg_pos)
 
 
 ################################################################################
@@ -201,7 +200,6 @@ class clearoff(Macro, CLEAR):
     def run(self):
         self.init_clear()
         self.clear_turn_onoff('OFF')
-
 
 
 class clearmv(Macro, CLEAR):
@@ -310,24 +308,6 @@ class clearconfig(Macro):
         attr_conf.max_value = str(max)
         attr_conf.min_value = str(min)
         self.motor.set_attribute_config(attr_conf)
-
-
-class cleareoutmv(Macro):
-    """Macro to move the Clear Energy"""
-
-    EOUT_CTRL = 'Eout_ctrl' # 'braggctrl_dum' # 'pm_ctrl_clear_bragg'
-
-
-    param_def = [['pos', Type.Float, None, 'Final position.']]
-
-    def run(self, pos):
-
-        ctrl = self.getController(self.EOUT_CTRL)
-        motor = self.getPseudoMotor(ctrl.elementlist[0])
-
-        braggpos = motor.CalcPhysical(pos)
-        self.execMacro('clearbraggmv %f' % braggpos)
-
 
 
 class clearascan(Macro):
