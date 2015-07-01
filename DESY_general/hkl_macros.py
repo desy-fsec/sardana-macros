@@ -160,55 +160,14 @@ class br(Macro, _diffrac):
        ['H', Type.Float, None, "H value"],
        ['K', Type.Float, None, "K value"],
        ['L', Type.Float, None, "L value"],
-       ['AnglesIndex', Type.Integer, -1, "Angles index"]
+       ['AnglesIndex', Type.Integer, -1, "Angles index"],
+       ['FlagNotBlocking', Type.Integer,  0, "If 1 not block. Return without finish movement"]
     ]
 
-    def prepare(self, H, K, L, AnglesIndex):
+    def prepare(self, H, K, L, AnglesIndex, FlagNotBlocking):
         _diffrac.prepare(self)
         
-    def run(self, H, K, L, AnglesIndex):
-        if not self.prepared:
-            return
-
-        if AnglesIndex != -1:
-            sel_tr = AnglesIndex
-        else:
-            sel_tr =  self.diffrac.selectedtrajectory
-
-
-        hkl_values = [H, K, L]
-        self.diffrac.write_attribute("computetrajectoriessim",hkl_values)
-
-        angles_list = self.diffrac.trajectorylist[sel_tr] 
-        
-        i = 0
-        cmd = "mv "
-        for angle in self.angle_names:
-            cmd = cmd + self.angle_device_names[angle] + " " + str(angles_list[i]) + " " 
-            i = i + 1
-        
-        self.execMacro(cmd)
-
-    def on_stop(self):
-        _diffrac.on_stop(self)
-        
-
-class ubr(Macro, _diffrac):
-    """
-        ubr H K L
-    """
-
-    param_def = [
-        [ "H", Type.Float, None, "H position" ],
-        [ "K", Type.Float, None, "K position" ],
-        [ "L", Type.Float, None, "L position" ],
-        ['AnglesIndex', Type.Integer, -1, "Angles index"]
-        ]
-
-    def prepare(self, H, K, L, AnglesIndex):
-        _diffrac.prepare(self)
-    
-    def run( self, H, K, L, AnglesIndex):
+    def run(self, H, K, L, AnglesIndex, FlagNotBlocking):
         if not self.prepared:
             return
 
@@ -228,8 +187,40 @@ class ubr(Macro, _diffrac):
             angle_dev = self.getDevice(self.angle_device_names[angle])
             angle_dev.write_attribute("Position",angles_list[i])
             i = i + 1
-            
-        self.execMacro('blockprintmove')
+            self.checkPoint()
+        
+        self.checkPoint()
+
+        if FlagNotBlocking == 0:
+            self.execMacro('blockprintmove', 0)
+
+    def on_stop(self):
+        _diffrac.on_stop(self)
+        
+
+class ubr(Macro, _diffrac):
+    """
+        ubr H K L
+    """
+
+    param_def = [
+        [ "hh", Type.Float, -999, "H position" ],
+        [ "kk", Type.Float, -999, "K position" ],
+        [ "ll", Type.Float, -999, "L position" ],
+        ['AnglesIndex', Type.Integer, -1, "Angles index"]
+        ]
+
+    def prepare(self, hh, kk, ll, AnglesIndex):
+        _diffrac.prepare(self)
+    
+    def run( self, hh,kk,ll, AnglesIndex):
+
+        if ll != -999:        
+            br, pars = self.createMacro("br", hh, kk, ll, AnglesIndex, 1)
+            self.runMacro(br)
+            self.execMacro('blockprintmove', 1)
+        else:
+            self.output( "usage:  ubr H K L [Trajectory]")
 
     def on_stop(self):
         _diffrac.on_stop(self)
@@ -1544,10 +1535,14 @@ class tw(Macro):
 class blockprintmove(Macro,_diffrac):
 
 
-    def prepare(self):
+    param_def = [
+        ['flagprint', Type.Integer, 0, '1 for printing']
+        ]
+
+    def prepare(self, flagprint):
         _diffrac.prepare(self)
         
-    def run(self):
+    def run(self, flagprint):
         if not self.prepared:
             return     
         moving = 1
@@ -1559,12 +1554,14 @@ class blockprintmove(Macro,_diffrac):
             for angle in self.angle_names:
                 if tmp_dev[angle].state() == 6:
                     moving = 1
+            if flagprint == 1:
+                self.outputBlock(" %7.5f  %7.5f  %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
+                self.flushOutput()
+            self.checkPoint()
+            time.sleep(1.0)
+        if flagprint == 1:
             self.outputBlock(" %7.5f  %7.5f  %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
             self.flushOutput()
-            time.sleep(1.0)
-            
-        self.outputBlock(" %7.5f  %7.5f  %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
-        self.flushOutput()
   
     def on_stop(self):
         _diffrac.on_stop(self)
