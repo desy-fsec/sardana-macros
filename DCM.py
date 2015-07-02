@@ -303,12 +303,56 @@ class dcm_pre_energy_move(Macro):
             self.pmacEth.command_inout("OnlineCmd", "&1#1->X#3->Y")
             self.info("Coordination system reassigned.")
         return
-            
-        
-        
-            
-            
-            
-        
-         
+
+class usebraggonly(Macro):
+    """
+    Macro to set the program 12 of the Pmac to move only the bragg without
+    perpendicular. It's meas that all the movement of the energy will do
+    with the bragg only.
+
+    If you don't pass the parameter the macro shows you the current state.
+
+    """
+    param_def = [['Enabled', Type.String, '', 'Active the bragg only movement']]
+
+    PMAC_ATTR = 'controller/dcmturbopmaccontroller/dcm_pmac_ctrl/movebraggonly'
+    ALLOW_VALUES = ['on', 'off']
+
+    def run(self, value):
+        dev = taurus.Attribute(self.PMAC_ATTR)
+        if value != '':
+            value = value.lower()
+            if value not in self.ALLOW_VALUES:
+                msg = ('You must pass: %s' % repr(self.ALLOW_VALUES))
+                raise ValueError(msg)
+            else:
+                active = (value == 'on')
+                dev.write(active)
+
+        current_value = dev.read().value
+        msg_act = 'Disabled'
+        if current_value:
+            msg_act = 'Enabled'
+        msg = 'The movement of the bragg only is: %s' % msg_act
+        self.info(msg)
+
+
+class configpmac(Macro):
+    """
+    Macro to set the acceleration and velocity by default of the bragg and
+    perpendicular motors.
+
+    """
+
+    param_def = []
+
+    def run(self):
+        bragg = self.getMotor('motor/dcm_pmac_ctrl/1')
+        perp = self.getMotor('motor/dcm_pmac_ctrl/3')
+
+        bragg.write_attribute('Velocity', 2.5)
+        bragg.write_attribute('Acceleration', 0.1)
+
+        perp.write_attribute('Velocity', 0.5)
+        perp.write_attribute('Acceleration', 0.1)
 
