@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 """
-the general hooks/conditions macro interface:
+the general hooks/conditions/on_stop macro interface:
 the hooks/conditions are defined in $HOME/sardanaMacros/generalFunctions/general_functions.py
-the feature is used in gscan.py
+the feature is used in gscan.py, scan.py and macro.py
 """
 
 __all__ = ["gh_list", "gh_enable", "gh_disable", "gh_isEnabled",
