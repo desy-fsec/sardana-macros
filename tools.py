@@ -306,7 +306,7 @@ class FrontEnd(object):
             raise RuntimeError(msg)
 
         self.info('Waiting for opening the Front End')
-        while self.is_fe_close()
+        while self.is_fe_close():
             time.sleep(0.1)
             self.checkPoint()
 
