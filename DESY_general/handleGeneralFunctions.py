@@ -6,7 +6,12 @@ the hooks/conditions are defined in $HOME/sardanaMacros/generalFunctions/general
 the feature is used in gscan.py
 """
 
-__all__ = ["gh_list", "gh_enable", "gh_disable", "gh_setSelector", "gh_getSelector", "gc_list", "gc_enable", "gc_disable"]
+__all__ = ["gh_list", "gh_enable", "gh_disable", "gh_isEnabled",
+           "gh_setSelector", "gh_getSelector",
+           "gc_enable", "gc_enable", "gc_isEnabled",
+	   "gs_enable", "gs_disable", "gs_isEnabled",
+           "gs_setSelector", "gs_getSelector",
+	   ]
 
 import PyTango, os, sys
 from sardana.macroserver.macro import *
@@ -167,6 +172,56 @@ class gc_isEnabled(Macro):
             self.output( "general conditions are enabled")
 
 
+
+class gs_isEnabled(Macro):
+    """return True, if the general on_stop are enabled """    
+
+    param_def = []
+
+    def run(self):            
+        if 'general_functions' in sys.modules:
+            reload( general_functions)
+        else:
+            self.output( "no general_functions")
+            return
+
+        if __builtins__.has_key('gs_flagIsEnabled'):
+            if __builtins__['gs_flagIsEnabled']:
+                self.output( "general on_stop are enabled")
+            else:
+                self.output( "general on_stop are disabled")
+        else:
+            self.output( "general on_stop are enabled")
+
+
+
+class gs_getSelector(Macro):
+    """a selector is a string that may be used in the hooks to 
+       distinguish between alignment, absorber mode, etc.
+       This feature is optional"""
+
+    param_def = []
+
+    def run(self):            
+        if __builtins__.has_key( 'gs_selector'):
+            self.output( "selector %s" % __builtins__['gs_selector'])
+        else:
+            self.output( "selector not set")
+
+class gs_setSelector(Macro):
+    """a selector is a string that may be used in the hooks to 
+       distinguish between alignment, absorber mode, etc.
+       This feature is optional"""
+
+    param_def = [ ["selector", Type.String, "None", "the general hooks selector"],
+                  ]    
+    def run(self, selector):            
+        if 'general_functions' in sys.modules:
+            reload( general_functions)
+        __builtins__['gs_selector'] = selector
+        self.output( "gs_setSelector to %s" % selector)
+
+        
 
         
 
