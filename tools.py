@@ -209,7 +209,7 @@ class FrontEnd(object):
     def is_fe_close(self):
         return not self.is_fe_open()
 
-    def is_fe_ctr_desabled(self):
+    def is_fe_ctr_disabled(self):
         return bool(self.eps.read_attribute(self.FE_CTRL_ATTR).value)
 
     # def is_fe_pss_permits(self):
@@ -290,7 +290,7 @@ class FrontEnd(object):
         # FE control room permits
         msg = 'has'
         stream = self.info
-        if self.is_fe_ctr_desabled():
+        if self.is_fe_ctr_disabled():
             msg = 'has not'
             stream = self.warning
             flg_warn = True
@@ -368,8 +368,8 @@ class feauto(Macro, FrontEnd):
     param_def = [['Active', Type.String, '', '1/0 or Yes/No' ]]
 
     def run(self, active):
-        TRUE_VALUES = ['1','yes','true']
-        FALSE_VALUES = ['0','no','false']
+        TRUE_VALUES = ['1', 'yes', 'true']
+        FALSE_VALUES = ['0', 'no', 'false']
 
         if active not in TRUE_VALUES + FALSE_VALUES+['']:
             msg = 'Wrong value. See the help for more information.'
