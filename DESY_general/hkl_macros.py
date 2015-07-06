@@ -187,7 +187,10 @@ class br(Macro, _diffrac):
             angle_dev = self.getDevice(self.angle_device_names[angle])
             angle_dev.write_attribute("Position",angles_list[i])
             i = i + 1
+            self.checkPoint()
         
+        self.checkPoint()
+
         if FlagNotBlocking == 0:
             self.execMacro('blockprintmove', 0)
 
@@ -1554,6 +1557,7 @@ class blockprintmove(Macro,_diffrac):
             if flagprint == 1:
                 self.outputBlock(" %7.5f  %7.5f  %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
                 self.flushOutput()
+            self.checkPoint()
             time.sleep(1.0)
         if flagprint == 1:
             self.outputBlock(" %7.5f  %7.5f  %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
