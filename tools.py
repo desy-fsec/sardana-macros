@@ -178,10 +178,11 @@ class FrontEnd(object):
     Class to control the front end
     """
 
-    FE_OPEN_ATTR = 'open_fe'
+    FE_OPEN_ATTR = 'fe_open'
+    FE_OPEN_ATTR_W = 'open_fe'
     FE_CLOSE_ATTR = 'close_fe'
     FE_AUTO_ATTR = 'fe_auto'
-    FE_CTRL_ATTR = 'FE_CONTROL_DISABLED'
+    FE_CTRL_ATTR = 'fe_control_disabled'
     FE_PSS_ATTR = ''
     BL_READY = 'bl_ready'
     CLOSE = 1
@@ -206,33 +207,34 @@ class FrontEnd(object):
         return bool(self.eps.read_attribute(self.FE_OPEN_ATTR).value)
 
     def is_fe_close(self):
-        return bool(self.eps.read_attribute(self.FE_CLOSE_ATTR).value)
+        return not self.is_fe_open()
 
-    def is_fe_ctr_permits(self):
+    def is_fe_ctr_desabled(self):
         return bool(self.eps.read_attribute(self.FE_CTRL_ATTR).value)
 
     # def is_fe_pss_permits(self):
     #     return bool(self.eps.read_attribute(self.))
 
     def is_fe_auto(self):
-        return bool(self.eps.read_attribute(self.FE_AUTO_ATTR))
+        return bool(self.eps.read_attribute(self.FE_AUTO_ATTR).value)
 
     def _write_value(self, value):
         if value == self.CLOSE:
             attr = self.FE_CLOSE_ATTR
             is_ready = self.is_fe_close
         else:
-            attr = self.FE_OPEN_ATTR
+            attr = self.FE_OPEN_ATTR_W
             is_ready = self.is_fe_open
 
         self.eps.write_attribute(attr, True)
         t1 = time.time()
-        msg_to = 'Timeout Error: Could not open the Front End'
+        msg_to = 'Timeout Error: Could not open the Front End.\n'
         if value == self.CLOSE:
-            msg_to = 'Timeout Error: Could not close the Front End'
+            msg_to = 'Timeout Error: Could not close the Front End.\n'
         while not is_ready():
             t = time.time() - t1
             if t > self.fe_timeout:
+                msg_to += 'Run macro festatus to see the status'
                 raise RuntimeError(msg_to)
             time.sleep(0.1)
             self.checkPoint()
@@ -246,16 +248,17 @@ class FrontEnd(object):
         self.info('FE is closed.')
 
     def fe_open(self):
-        if self.is_fe_close():
+        if self.is_fe_open():
             self.info('The Front End was open')
             return
         self.info('Opening Front End...')
         self._write_value(self.OPEN)
-        self.info('FE is closed.')
+        self.info('FE is open.')
 
     def fe_auto(self, value=None):
         if value != None:
             self.eps.write_attribute(self.FE_AUTO_ATTR, int(value))
+            time.sleep(0.1)
         auto_state = bool(self.eps.read_attribute(self.FE_AUTO_ATTR).value)
 
         st_msg = 'disable'
@@ -269,7 +272,7 @@ class FrontEnd(object):
         # FE state
         msg = 'open'
         stream = self.info
-        if self.is_fe_close():
+        if not self.is_fe_open():
             msg = 'close'
             stream = self.warning
             flg_warn = True
@@ -287,17 +290,17 @@ class FrontEnd(object):
         # FE control room permits
         msg = 'has'
         stream = self.info
-        if not self.is_fe_ctr_permits():
+        if self.is_fe_ctr_desabled():
             msg = 'has not'
             stream = self.warning
             flg_warn = True
-        stream('The beamline %s permits from the controls room.')
+        stream('The beamline %s permits from the controls room.', msg)
 
         if flg_warn:
             msg = ('You should check if you have permits from the controls '
                    'room. You should check if the optical hatch is closed. '
                    'You should check if there are interlocks.')
-            self.erros(msg)
+            self.error(msg)
 
     def fe_wait(self):
         if not self.is_fe_auto():
@@ -362,7 +365,7 @@ class feauto(Macro, FrontEnd):
     Other macros: feclose, feopen, festatus, fewait
     """
 
-    param_def = ['Active', Type.String, '', '1/0, Yes/No or True/False' ]
+    param_def = [['Active', Type.String, '', '1/0 or Yes/No' ]]
 
     def run(self, active):
         TRUE_VALUES = ['1','yes','true']
@@ -379,7 +382,7 @@ class feauto(Macro, FrontEnd):
             self.fe_auto(False)
         else:
             self.fe_auto()
-
+            
 
 class fewait(Macro, FrontEnd):
     """
