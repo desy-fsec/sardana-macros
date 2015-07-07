@@ -118,7 +118,7 @@ class gh_enable(Macro):
             self.output( "no general_functions")
             return
         __builtins__['gh_flagIsEnabled'] = True
-        self.output( "enable general hooks")
+        self.output( "enable general hooks feature")
 
 class gh_disable(Macro):
     """disable general hooks """
@@ -132,7 +132,7 @@ class gh_disable(Macro):
             self.output( "no general_functions")
             return
         __builtins__['gh_flagIsEnabled'] = False
-        self.output( "disable general hooks")
+        self.output( "disable general hooks feature")
 
 class gh_isEnabled(Macro):
     """return True, if the general hooks feature is enabled """    
