@@ -7,6 +7,10 @@
 import time
 import math
 import numpy as np 
+import getpass
+import os
+
+import re
 
 from sardana.macroserver.macro import *
 
@@ -127,7 +131,22 @@ class _diffrac:
                     hkl.append(reflections[1][i])
         
         return hkl
-        
+
+    def fl(self,ch,
+           regx = re.compile(
+            '(?<![\d.])'
+            '(?![1-9]\d*(?![\d.])|\d*\.\d*\.)'
+            '0*(?!(?<=0)\.)'
+            '([\d.]+?)'
+            '\.?0*'
+            '(?![\d.])'
+            ),
+           repl = lambda mat: mat.group(mat.lastindex)
+           if mat.lastindex!=3
+           else '0' + mat.group(3)  ):
+        mat = regx.search(ch)
+        if mat:
+            return regx.sub(repl,ch) 
         
 
 class br(Macro, _diffrac):
@@ -168,7 +187,10 @@ class br(Macro, _diffrac):
             angle_dev = self.getDevice(self.angle_device_names[angle])
             angle_dev.write_attribute("Position",angles_list[i])
             i = i + 1
+            self.checkPoint()
         
+        self.checkPoint()
+
         if FlagNotBlocking == 0:
             self.execMacro('blockprintmove', 0)
 
@@ -176,7 +198,7 @@ class br(Macro, _diffrac):
         _diffrac.on_stop(self)
         
 
-class ubr(Macro):
+class ubr(Macro, _diffrac):
     """
         ubr H K L
     """
@@ -188,6 +210,8 @@ class ubr(Macro):
         ['AnglesIndex', Type.Integer, -1, "Angles index"]
         ]
 
+    def prepare(self, hh, kk, ll, AnglesIndex):
+        _diffrac.prepare(self)
     
     def run( self, hh,kk,ll, AnglesIndex):
 
@@ -318,7 +342,7 @@ class pa(Macro, _diffrac):
             str_type = "Kappa 4C Vertical"
             
         self.output("%s Geometry, %s" % (str_type, self.diffrac.enginemode))
-        self.output("Sector %s" % "[ToDo]")
+        #self.output("Sector %s" % "[ToDo]")
         self.output("")
 
         reflections = self.diffrac.reflectionlist
@@ -329,39 +353,36 @@ class pa(Macro, _diffrac):
                 if nb_ref < len(self.suffix): sf = self.suffix[nb_ref]
                 else: sf = self.suffix[3]
                 self.output("  %d%s Reflection (index %d): " % (nb_ref+1, sf, ref[0]))
-                self.output("    H K L : %10.4f %10.4f %10.4f" % (ref[1], ref[2], ref[3]))
-                self.output("    Affinement, Relevance : %d %d" % (ref[4], ref[5]))
+                #self.output("    Affinement, Relevance : %d %d" % (ref[4], ref[5]))
                 if len(ref) > 10:
-                    self.output("    mu theta chi phi gamma delta: %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9], ref[10], ref[11]))
+                    self.output("    %s %s %s %s %s %s: %s %s %s %s %s %s" % (self.angle_names[5],self.angle_names[1],self.angle_names[2],self.angle_names[3],self.angle_names[4],self.angle_names[0], _diffrac.fl(self,str(ref[11])), _diffrac.fl(self,str(ref[7])), _diffrac.fl(self,str(ref[8])), _diffrac.fl(self,str(ref[9])), _diffrac.fl(self,str(ref[10])), _diffrac.fl(self,str(ref[6]))))
                 else:
-                    self.output("    omega chi phi theta: %10.4f %10.4f %10.4f %10.4f" % (ref[6], ref[7], ref[8], ref[9]))
+                    self.output("    %s %s %s %s: %s %s %s %s" % (self.angle_names[0],self.angle_names[1],self.angle_names[2],self.angle_names[3], _diffrac.fl(self,str(ref[6])), _diffrac.fl(self,str(ref[7])), _diffrac.fl(self,str(ref[8])), _diffrac.fl(self,str(ref[9]))))
                 nb_ref = nb_ref + 1
+                self.output(" %33s  %s %s %s" % ("H K L =", _diffrac.fl(self,str(ref[1])), _diffrac.fl(self,str(ref[2])), _diffrac.fl(self,str(ref[3]))))
+                self.output("") 
                     
        
-        self.output("")
+#        self.output("")
         self.output("  Lattice Constants (lengths / angles):")
-        self.output("%24s = %s %s %s / %s %s %s" % ("real space", self.diffrac.a, 
-                                                    self.diffrac.b, self.diffrac.c, self.diffrac.alpha, 
-                                                    self.diffrac.beta, self.diffrac.gamma))
+        self.output("%32s = %s %s %s / %s %s %s" % ("real space", self.diffrac.a, 
+                                                    self.diffrac.b, self.diffrac.c, _diffrac.fl(self,str(self.diffrac.alpha)), 
+                                                    _diffrac.fl(self,str(self.diffrac.beta)), _diffrac.fl(self,str(self.diffrac.gamma))))
+
+        self.output("")
+        self.output("  Azimuthal reference:")
+        self.output("%34s %s %s %s " %
+                    ("H K L =",_diffrac.fl(self,str(self.diffrac.psirefh)), _diffrac.fl(self,str(self.diffrac.psirefk)), _diffrac.fl(self,str(self.diffrac.psirefl))))
+
+        self.output("")
+        self.output("  Lambda = %s" %(self.diffrac.WaveLength))
   
         lst = self.diffrac.ubmatrix
         self.output( "  UB-Matrix")
         self.output( "  %15g %15g %15g" % (lst[0][0], lst[0][1], lst[0][2]))
         self.output( "  %15g %15g %15g" % (lst[1][0], lst[1][1], lst[1][2]))
         self.output( "  %15g %15g %15g" % (lst[2][0], lst[2][1], lst[2][2]))
-
-        self.output("")
-        self.output("%8s %9.5f %9.5f %9.5f " % 
-                    ("  Ref   = ",self.diffrac.psirefh, self.diffrac.psirefk,self.diffrac.psirefl))
-        
-        #self.output("  Azimuthal Reference:")
-        #self.output("")
-        #self.output("%24s = %s" %("[ToDo]","[ToDo]"))
-        self.output("")
-        self.output("  Lambda = %s" %(self.diffrac.WaveLength))
-        #self.output("")
-        #self.output(" Cut Points:")
-        #self.output("    [ToDo]")
+  
 
 class wh(Macro, _diffrac):
     """wh - where, principal axes and reciprocal space
@@ -1337,6 +1358,70 @@ class savecrystal(Macro,_diffrac):
         self.diffrac.write_attribute("SaveCrystal", 1)
                 
 
+class load_crystal(Macro, _diffrac):
+    """
+         load_crystal  - loads crystal information from file
+    """
+
+    param_def = [
+        ]
+
+    interactive=True
+
+    def prepare(self):
+        _diffrac.prepare(self)
+
+    def run( self):
+        if not self.prepared:
+            return
+        active_dir = ""
+        try:
+            files = os.listdir('/home/'+getpass.getuser()+'/crystals/')
+            active_dir = '/home/'+getpass.getuser()+'/crystals/'
+        except:
+            self.output("Directory for loading files /home/%s/crystals does not exist" % getpass.getuser())
+            newdir=self.input("Type new directory")
+            try:
+                files = os.listdir(newdir)
+                active_dir = newdir
+            except:
+                self.output("New directory %s not found" % newdir)
+                return
+
+        res = filter(lambda x: x.endswith('.txt'), files)
+        i=1
+        for filename in res:
+
+            filename=filename.split('.')[0]
+            self.output("(%s) %s" % (i,filename))
+            i=i+1
+        a0=self.input("Your choice? ")
+        try:
+            a1=int(a0)
+            i=1
+            for filename in res:
+                if i == int(a0) and i<len(res)+1:
+                    file=filename
+                i=i+1
+            if a1<len(res)+1:
+                self.output("")
+                self.output("File to load %s" % active_dir+file)
+            else:
+                self.output("Input out of range!")
+ 
+ 
+            self.diffrac.write_attribute("loadcrystal", active_dir+file)
+            self.diffrac.read_attribute("loadcrystal")
+       
+        except:
+            if a0!="":
+                self.output("Wrong input!")
+            else:
+                self.output("An input file has to be given. Nothing done")
+
+
+
+
 class lattice_cal(Macro, _diffrac):
     """
         lattice_cal - calibrate lattice parameters a, b or c to current 2theta value
@@ -1470,10 +1555,13 @@ class blockprintmove(Macro,_diffrac):
                 if tmp_dev[angle].state() == 6:
                     moving = 1
             if flagprint == 1:
-                self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
+                self.outputBlock(" %7.5f  %7.5f  %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
                 self.flushOutput()
+            self.checkPoint()
             time.sleep(1.0)
         if flagprint == 1:
-            self.output("H = %7.5f  K = %7.5f L = %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
+            self.outputBlock(" %7.5f  %7.5f  %7.5f" % (self.h_device.position, self.k_device.position, self.l_device.position)) 
             self.flushOutput()
   
+    def on_stop(self):
+        _diffrac.on_stop(self)

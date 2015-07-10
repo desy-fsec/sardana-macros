@@ -29,7 +29,7 @@
                      ascan_repeat
 """
 
-__all__ = ["ascan_repeat"]
+__all__ = ["ascan_repeat","dscan_repeat", "a2scan_repeat", "a3scan_repeat"]
 
 __docformat__ = 'restructuredtext'
 
@@ -127,7 +127,6 @@ class aNscanRepeat(Hookable):
         step["post-acq-hooks"] = self.getHooks('post-acq') + self.getHooks('_NOHINTS_')
         step["post-step-hooks"] = self.getHooks('post-step')
         
-        step["check_func"] = []
         point_id = 0
         for point_no in xrange(self.nr_points):
             for rep in xrange(self.nb_repeat):
@@ -223,6 +222,61 @@ class ascan_repeat(aNscanRepeat, Macro):
                 **opts):
         self._prepare([motor], [start_pos], [final_pos], nr_interv, integ_time, nb_repeat,  **opts)
        
+
+class a2scan_repeat(aNscanRepeat, Macro): 
+    """two-motor scan.
+    a2scan scans two motors, as specified by motor1 and motor2.
+    Each motor moves the same number of intervals with starting and ending
+    positions given by start_pos1 and final_pos1, start_pos2 and final_pos2,
+    respectively. The step size for each motor is (start_pos-final_pos)/nr_interv.
+    The number of data points collected will be nr_interv+1.
+    Count time is given by time which if positive, specifies seconds and
+    if negative, specifies monitor counts."""
+    param_def = [
+       ['motor1',      Type.Moveable,   None, 'Moveable 1 to move'],
+       ['start_pos1',  Type.Float,   None, 'Scan start position 1'],
+       ['final_pos1',  Type.Float,   None, 'Scan final position 1'],
+       ['motor2',      Type.Moveable,   None, 'Moveable 2 to move'],
+       ['start_pos2',  Type.Float,   None, 'Scan start position 2'],
+       ['final_pos2',  Type.Float,   None, 'Scan final position 2'],
+       ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
+       ['integ_time', Type.Float,   None, 'Integration time'],
+       ['nb_repeat',  Type.Integer, None, 'Number of repetitions per point']
+    ]
+
+    def prepare(self, motor1, start_pos1, final_pos1, motor2, start_pos2, final_pos2, nr_interv, integ_time, nb_repeat,
+                **opts):
+        self._prepare([motor1,motor2], [start_pos1,start_pos2], [final_pos1,final_pos2], nr_interv, integ_time, nb_repeat, **opts)
+
+
+class a3scan_repeat(aNscanRepeat, Macro): 
+    """three-motor scan .
+    a3scan scans three motors, as specified by motor1, motor2 and motor3.
+    Each motor moves the same number of intervals with starting and ending
+    positions given by start_pos1 and final_pos1, start_pos2 and final_pos2,
+    start_pos3 and final_pos3, respectively.
+    The step size for each motor is (start_pos-final_pos)/nr_interv.
+    The number of data points collected will be nr_interv+1.
+    Count time is given by time which if positive, specifies seconds and
+    if negative, specifies monitor counts."""
+    param_def = [
+       ['motor1',      Type.Moveable,   None, 'Moveable 1 to move'],
+       ['start_pos1',  Type.Float,   None, 'Scan start position 1'],
+       ['final_pos1',  Type.Float,   None, 'Scan final position 1'],
+       ['motor2',      Type.Moveable,   None, 'Moveable 2 to move'],
+       ['start_pos2',  Type.Float,   None, 'Scan start position 2'],
+       ['final_pos2',  Type.Float,   None, 'Scan final position 2'],
+       ['motor3',      Type.Moveable,   None, 'Moveable 3 to move'],
+       ['start_pos3',  Type.Float,   None, 'Scan start position 3'],
+       ['final_pos3',  Type.Float,   None, 'Scan final position 3'],
+       ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
+       ['integ_time', Type.Float,   None, 'Integration time'],
+       ['nb_repeat',  Type.Integer, None, 'Number of repetitions per point']
+    ]
+
+    def prepare(self, m1, s1, f1,  m2, s2, f2, m3, s3, f3, nr_interv, integ_time, nb_repeat,
+                **opts):
+        self._prepare([m1,m2,m3], [s1,s2,s3], [f1,f2,f3], nr_interv, integ_time, nb_repeat, **opts)
 
 
 class dscan_repeat(dNscanRepeat, Macro): 

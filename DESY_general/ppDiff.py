@@ -9,25 +9,36 @@ import os, shutil
 class ppDiff(Macro):
     """
     post-processing for diffraction measurements:
-    - removes doubles from /ScanDir/prefix_01234.fio and /ScanDir/prefix_01234
-    - saves the original files in /ScanDir/saves
+    - removes doubles from /ScanDir/prefix_01234.fio and /ImageRootDir/prefix_01234/<imageFiles>
+    - saves the original files in /ScanDir/saves and /ImageRootDir/saves
     - processes the most recent files, if scanID is not specified
+
+    Environment variables: ScanDir, ImageRootDir, ScanFile, ScanID
     """
     param_def = [
-        ['detector',   Type.String,  None, 'Detector: mythen (so far)'],
+        ['detector',   Type.String,  None, 'Detector: none, mythen, pilatus300k, pilatus1m'],
         ['scanID',   Type.Integer,  -1, 'Overrides the env-variable ScanID (optional)'],
         ]
 
     def run(self, detector, scanID):
 
-        if detector != 'mythen':
-            self.output( "ppDiff: detector has to be mythen")
+        detectors = ['none', 'mythen', 'pilatus300k', 'pilatus1m']
+
+        if detector not in detectors:
+            self.output( "ppDiff: failed to identify detector, can be %s " % str(detectors))
             return
 
+        imageRootDir = self.getEnv( 'ImageRootDir')
+        if imageRootDir is None: 
+            self.output( "ppDiff: no ImageRootDir")
+            return
+            
         scanDir = self.getEnv( 'ScanDir')
         scanFile = self.getEnv( 'ScanFile')
-        if type( scanFile) is list: 
-            scanFile = scanFile[0]
+        if type( scanFile) is list:
+            for f in scanFile:
+                if f.find( '.fio') > 0:
+                    scanFile = f
 
         if scanID == -1: 
             scanID = int(self.getEnv( 'ScanID'))
@@ -35,7 +46,7 @@ class ppDiff(Macro):
         prefix, ext = scanFile.split( '.')
 
         if ext != 'fio':
-            self.output( "scanFile %s has the wrong extenions (NOT fio)")
+            self.output( "scanFile %s has the wrong extension (NOT fio)")
             return
 
         fioFile = "%s/%s_%05d.fio" % ( scanDir, prefix, scanID)
@@ -43,7 +54,7 @@ class ppDiff(Macro):
             self.output( "%s does not exist" % fioFile)
             return
 
-        imageDir = "%s/%s_%05d_%s" % ( scanDir, prefix, scanID, detector)
+        imageDir = "%s/%s_%05d_%s" % ( imageRootDir, prefix, scanID, detector)
         #
         # if the fioFiles has already been saved, assume that the work is done
         #
@@ -52,16 +63,23 @@ class ppDiff(Macro):
             self.output( "%s exists already, nothing to be done" % fioFileSaved)
             return
         #
-        # save the files
+        # save the .fio files
         #
-        savesDir = "%s/saved" % ( scanDir)
-        if not os.path.isdir( savesDir):
-            os.mkdir( savesDir)
-        shutil.copy( fioFile, savesDir)
-        self.output( "saved %s in %s" % (fioFile, savesDir))
-        if os.path.isdir( imageDir):
-            shutil.copytree( imageDir, "%s/%s_%05d_%s" % (savesDir, prefix, scanID, detector))
-            self.output( "saved images in %s" % (savesDir))
+        savesFioDir = "%s/saved" % ( scanDir)
+        if not os.path.isdir( savesFioDir):
+            os.mkdir( savesFioDir)
+        shutil.copy( fioFile, savesFioDir)
+        self.output( "saved %s in %s" % (fioFile, savesFioDir))
+        #
+        # save the image files
+        #
+        if detector != 'none':
+            savesImageDir = "%s/saved" % ( imageRootDir)
+            if not os.path.isdir( savesImageDir):
+                os.mkdir( savesImageDir)
+            if os.path.isdir( imageDir):
+                shutil.copytree( imageDir, "%s/%s_%05d_%s" % (savesImageDir, prefix, scanID, detector))
+                self.output( "saved images in %s" % (savesImageDir))
 
         fioObj = HasyUtils.fioReader( fioFile)
         #
@@ -95,6 +113,10 @@ class ppDiff(Macro):
 
         if not os.path.isdir( imageDir):
             self.output( "No images need to be processed")
+            return
+
+        if detector == 'none': 
+            self.output( "No detector specified")
             return
         #
         # remove the images that belong to the superfluous points

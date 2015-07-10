@@ -7,6 +7,7 @@ __all__ = ["escan", "me"]
 import os
 from sardana.macroserver.macro import *
 import time
+import math
 
 from PyTango import *
  
@@ -40,7 +41,8 @@ class escan(Macro):
         ['end_energy',  Type.Float,   -999, 'Scan final energy'],
         ['nr_interv',  Type.Integer, -999, 'Number of scan intervals'],
         ['integ_time', Type.Float,   -999, 'Integration time'],
-        ['fixq', Type.String, "Not", 'Add fixq  as argument if q has to be kept fixed' ]
+        ['fixq', Type.String, "Not", 'Add fixq  as argument if q has to be kept fixed' ],
+        ['return_flag', Type.Integer, 1, 'If 1, motor returns to start position' ]
         ]
     
 
@@ -67,9 +69,24 @@ class escan(Macro):
             for i in range(0,len(self.angle_dev)):
                 if self.angle_dev[i] == PyTango.DevState.MOVING:
                     move_flag = 1
+
+    def on_stop(self):
+        try:
+            self.energy_device.StopMove()
+        except:
+            pass
+        try:
+            self.energy_device.Stop()
+        except:
+            pass
+
+        if self.fixq == 'fixq':
+            self.h_device.Stop()
+            self.k_device.Stop()
+            self.l_device.Stop()
         
 
-    def run(self,  start_energy, end_energy, nr_interv, integ_time, fixq):
+    def run(self,  start_energy, end_energy, nr_interv, integ_time, fixq, return_flag):
         
         if start_energy == -999:
             self.output("Usage:")
@@ -121,6 +138,7 @@ class escan(Macro):
 
         self.energy_device = energy_device
 
+        self.fixq = fixq
         if fixq == "fixq":
             self.lambda_to_e = 12398.424 # Amstrong * eV
             diffrac_name = self.getEnv('DiffracDevice')
@@ -129,22 +147,23 @@ class escan(Macro):
             for motor in self.diffrac.hklpseudomotorlist:
                 pseudo_motor_names.append(motor.split(' ')[0])
             
-            h_device = self.getDevice(pseudo_motor_names[0])
-            k_device = self.getDevice(pseudo_motor_names[1])
-            l_device = self.getDevice(pseudo_motor_names[2])
+            self.h_device = self.getDevice(pseudo_motor_names[0])
+            self.k_device = self.getDevice(pseudo_motor_names[1])
+            self.l_device = self.getDevice(pseudo_motor_names[2])
 
-            self.h_fix = h_device.Position
-            self.k_fix = k_device.Position
-            self.l_fix = l_device.Position
+            self.h_fix = self.h_device.Position
+            self.k_fix = self.k_device.Position
+            self.l_fix = self.l_device.Position
 
             macro.hooks = [ (self.hkl_pre_move, ["pre-move"]), (self.hkl_post_move, ["post-move"]), ] 
 
         self.runMacro(macro)
 
         # Return the energy to the initial value
-        
-        self.output("Returning the energy to the value before the scan ...")
-        self.execMacro("mv %s %f" % (energy_device_name, saved_initial_position))
+
+        if return_flag:
+            self.output("Returning the energy to the value before the scan ...")
+            self.execMacro("mv %s %f" % (energy_device_name, saved_initial_position))
 
 class me(Macro):
     """Move energy. Diffractometer wavelength is set"""
@@ -209,3 +228,58 @@ class me(Macro):
         diffrac_device.write_attribute("wavelength", wavelength)
 
         self.execMacro("mv", energy_device, energy)
+
+
+class escanexafs_general(Macro):
+    """ Energy regions scan"""
+
+    param_def = [ 
+        ['integ_time', Type.Float, -999, 'Integration time'],
+        ["scan_regions", ParamRepeat(
+                ['estart', Type.Float, None, 'Start energy region'],
+                ['estop', Type.Float, None, 'Stop energy region'],
+                ['estep', Type.Integer, None, 'Energy step in region']),
+         None, 'List of scan regions']
+        ]
+    
+    def run(self,  integ_time, *scan_regions):
+        
+        # calculate number of regions
+        nregions = len(scan_regions)
+
+        for i in range(0, nregions):
+            nenergies = int(math.fabs(scan_regions[i][1]-scan_regions[i][0])/scan_regions[i][2])            
+            if nenergies < 1:
+                nenergies = 1
+            macro,pars = self.createMacro('escan',
+                                          scan_regions[i][0],         # energy_start
+                                          scan_regions[i][1],         # energy_stop
+                                          nenergies,                  # number of steps
+                                          integ_time,
+                                          "Not", 0)
+
+            self.runMacro(macro)
+
+           
+class escanexafs(Macro):
+    """ Energy regions scan"""
+
+    param_def = [ 
+        ['estart1', Type.Float, -999, 'Start energy region 1'],
+        ['estop1', Type.Float, -999, 'Stop energy region 1'],
+        ['estep1', Type.Integer, -999, 'Energy step in region 1'],
+        ['estart2', Type.Float, -999, 'Start energy region 2'],
+        ['estop2', Type.Float, -999, 'Stop energy region 2'],
+        ['estep2', Type.Integer, -999, 'Energy step in region 2'],
+        ['estart3', Type.Float, -999, 'Start energy region 3'],
+        ['estop3', Type.Float, -999, 'Stop energy region 3'],
+        ['estep3', Type.Integer, -999, 'Energy step in region 3'],
+        ['integ_time', Type.Float, -999, 'Integration time']
+        ]
+    
+    def run(self, estart1, estop1, estep1, estart2, estop2, estep2, estart3, estop3, estep3, integ_time):
+        
+        
+        macro,pars = self.createMacro('escanexafs_general', integ_time, estart1, estop1, estep1, estart2, estop2, estep2, estart3, estop3, estep3)
+
+        self.runMacro(macro)

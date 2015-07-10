@@ -22,14 +22,9 @@
 ##############################################################################
 
 """
-    Macro library containning scan macros reapiting points for the macros server Tango device 
-    server as part of the Sardana project.
-   
-   Available Macros are:
-                     ascan_checkabs
+    Macro library containing the basic class for repeating depending on
+    an user defined condition
 """
-
-__all__ = ["ascan_checkabs"]
 
 __docformat__ = 'restructuredtext'
 
@@ -174,7 +169,6 @@ class aNscanCheck(Hookable):
 
         elif mode == ContinuousMode:
             total_time = gScan.waypoint_estimation()
-        #TODO: add time estimation for ContinuousHwTimeMode
         return total_time
                         
     def getIntervalEstimation(self):
@@ -211,32 +205,3 @@ class dNscanCheck(aNscanCheck):
         self._motion.move(self.originalPositions)
         
 
-
-class ascan_checkabs(aNscanCheck, Macro): 
-    """Do an absolute scan of the specified motor.
-    ascan scans one motor, as specified by motor. The motor starts at the
-    position given by start_pos and ends at the position given by final_pos.
-    The step size is (start_pos-final_pos)/nr_interv. The number of data points collected
-    will be nr_interv+1. Count time is given by time which if positive,
-    specifies seconds and if negative, specifies monitor counts. """
-
-    param_def = [
-       ['motor',      Type.Moveable,   None, 'Moveable to move'],
-       ['start_pos',  Type.Float,   None, 'Scan start position'],
-       ['final_pos',  Type.Float,   None, 'Scan final position'],
-       ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
-       ['integ_time', Type.Float,   None, 'Integration time']
-    ]
-
-    def prepare(self, motor, start_pos, final_pos, nr_interv, integ_time, 
-                **opts):
-        self._prepare([motor], [start_pos], [final_pos], nr_interv, integ_time,  **opts)
- 
-    def check_condition(self):
-
-        check_flag = 0
-
-        # Define here your condition.
-        # Set check_flag to 1 if the condition requires repetion of the point
-
-        return check_flag
