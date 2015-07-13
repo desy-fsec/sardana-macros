@@ -92,12 +92,11 @@ class sweep_p02(Macro):
 
             sweep_time = nb_intervals * sample_time
             sweep_full_distance = sweep_distance + 2 * sweep_offset
-            move_time_orig = math.fabs((sweep_full_distance *
-                                        motor_device.Conversion) / slew_orig)
+            move_time_orig = math.fabs(sweep_full_distance / slew_orig)
             self.output("sweep_time %g move_time_orig %g " %
                         (sweep_time, move_time_orig))
 
-            slew_sweep = int(move_time_orig *slew_orig / sweep_time)
+            slew_sweep = move_time_orig *slew_orig / sweep_time
 #            self.output("SLEW %g %g %g" % (slew_sweep, sweep_full_distance, sweep_time))
             self.output("slewRate %d slewSweep %d " % (slew_orig, slew_sweep))
 
