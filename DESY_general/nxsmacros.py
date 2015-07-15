@@ -15,9 +15,10 @@ from taurus.console import Alignment
 
 Left, Right, HCenter = Alignment.Left, Alignment.Right, Alignment.HCenter
 
+
 def device_groups(self):
     """ Return device groups """
-    if hasattr(self.selector, "deviceGroups"):         
+    if hasattr(self.selector, "deviceGroups"):
         return json.loads(self.selector.deviceGroups)
     else:
         return {
@@ -30,12 +31,47 @@ def device_groups(self):
             }
 
 
+@macro([["mode", Type.String, '',
+         "interface mode, i.e. simple, user, advanced, expert"],
+        ["selector", Type.String, '', "Selector server"],
+        ["door", Type.String, '', "Door"]])
+def nxselector(self, mode, selector, door):
+    """ Run NeXus Component Selector """
+    args = ["nxscomp_selector"]
+    if mode:
+        args.append("-m%s" % mode)
+    if selector:
+        args.append("-s%s" % selector)
+    if door:
+        args.append("-d%s" % door)
+    my_env = os.environ.copy()
+    if not 'DISPLAY' in my_env.keys():
+        my_env['DISPLAY'] = ':0.0'
+    subprocess.Popen(args, env=my_env)
+
+
+@macro([["selector", Type.String, '', "Selector server"],
+        ["door", Type.String, '', "Door"]])
+def nxsmacrogui(self, selector, door):
+    """ Run NeXus MacroGUI """
+    args = ["nxsmacrogui"]
+    if selector:
+        args.append("-s%s" % selector)
+    if door:
+        args.append("-d%s" % door)
+    my_env = os.environ.copy()
+    if not 'DISPLAY' in my_env.keys():
+        my_env['DISPLAY'] = ':0.0'
+    subprocess.Popen(args, env=my_env)
+
+
 class nxsprof(Macro):
     """ List the current profile """
 
     def run(self):
         server = set_selector(self)
         printProfile(self, server)
+
 
 @macro()
 def lsprof(self):
@@ -46,10 +82,11 @@ def lsprof(self):
     for line in mout.genOutput():
         self.output(line)
 
+
 @macro()
 def nxslscp(self):
     """ List configuration server components.
-        The result includes only components 
+        The result includes only components
         stored in the configuration server
         """
 
@@ -154,14 +191,14 @@ class nxsettimers(Macro):
 
 
 class nxsadd(Macro):
-    """ Add the given detector components 
+    """ Add the given detector components
         Available components can be listed by
         'nxsls', 'nxslscp' or 'nxslsds' macros
     """
 
     param_def = [
         ['component_list',
-         ParamRepeat(['component', Type.String, None, 
+         ParamRepeat(['component', Type.String, None,
                       'detector component to add']),
          None, 'List of detector components to add'],
     ]
@@ -185,14 +222,15 @@ class nxsadd(Macro):
 
 class nxsrm(Macro):
     """ Deselect the given detector components.
-        Selected detector components 
+        Selected detector components
         and other detector channels can be listed by
         'nxsprof' or 'lsprof' macros
     """
 
     param_def = [
         ['component_list',
-         ParamRepeat(['component', Type.String, None, 'detector component to remove']),
+         ParamRepeat(['component', Type.String, None,
+                      'detector component to remove']),
          None, 'List of components to show'],
     ]
 
@@ -311,7 +349,7 @@ class nxsetappentry(Macro):
 
 class nxsetudata(Macro):
     """Set the given user data.
-       Typical user data are: 
+       Typical user data are:
        title, sample_name, beamtime_id, chemical_formula, ...
 """
 
@@ -333,7 +371,7 @@ class nxsusetudata(Macro):
     """Unset the given user data.
        The currently set user data can be shown by
        'nxsprof' or 'lsprof' macros
-       Typical user data are: 
+       Typical user data are:
        title, sample_name, beamtime_id, chemical_formula, ...
 """
 
@@ -366,7 +404,7 @@ class nxsupdatedesc(Macro):
         of component tango (motor) devices.
         Selected description components can be listed by
         'nxsprof' or 'lsprof' macros.
-        Description component group can be changed by 
+        Description component group can be changed by
         'nxsadddesc' and 'nxsrmdesc' macros.
     """
 
@@ -492,10 +530,9 @@ class nxshow(Macro):
                         break
                     if found:
                         break
-        if dslist:            
-            self.output("\n    Component: %s\n" % name)            
+        if dslist:
+            self.output("\n    Component: %s\n" % name)
             printTable(self, dslist)
-            
 
         dslist = []
         if name in fullpool.keys():
@@ -505,8 +542,8 @@ class nxshow(Macro):
 #                        "dsname": name,
 #                        "dstype": "POOL",
                         "source": fullpool[name]})
-        if dslist:            
-            self.output("\n    PoolDevice: %s\n" % name)            
+        if dslist:
+            self.output("\n    PoolDevice: %s\n" % name)
             printTable(self, dslist)
         dslist = []
 
@@ -522,8 +559,8 @@ class nxshow(Macro):
                     md.pop("dstype")
                 dslist.append(md)
 
-        if dslist:            
-            self.output("\n    DataSource: %s\n" % name)            
+        if dslist:
+            self.output("\n    DataSource: %s\n" % name)
             printTable(self, dslist)
 
 
@@ -544,14 +581,15 @@ def wait_for_device(proxy, counter=100):
                 raise
         cnt += 1
 
+
 def printProfile(mcr, server, outflag=False):
     out = None
     if outflag:
-        out = List(["Profile (MntGrp): %s" 
-                    % str(getString(mcr,"MntGrp")), ""], 
+        out = List(["Profile (MntGrp): %s"
+                    % str(getString(mcr, "MntGrp")), ""],
                    text_alignment=(Right, Right),
-                   max_col_width=(-1,60), 
-                   )   
+                   max_col_width=(-1, 60),
+                   )
     if not out:
         printString(mcr, "MntGrp", "Profile (and MntGrp)", out=out)
         mcr.output("")
@@ -568,7 +606,8 @@ def printProfile(mcr, server, outflag=False):
               True, out=out)
     if not out:
         mcr.output("")
-    printList(mcr, "AutomaticComponents", False, "Description Components", out=out)
+    printList(mcr, "AutomaticComponents", False, "Description Components",
+              out=out)
     if not out:
         mcr.output("")
     printConfList(mcr, "InitDataSources", True,
@@ -580,7 +619,7 @@ def printProfile(mcr, server, outflag=False):
         mcr.output("")
     #        printDict(mcr, "ConfigVariables", True, "ConfigServer Variables")
 #        mcr.output("")
-    printString(mcr, "AppendEntry",out=out)
+    printString(mcr, "AppendEntry", out=out)
     if not out:
         mcr.output("")
         mcr.output("SelectorServer:  %s" % str(server))
@@ -590,30 +629,30 @@ def printProfile(mcr, server, outflag=False):
     printString(mcr, "WriterDevice", "WriterServer", out=out)
     return out
 
+
 def printDict(mcr, name, decode=True, label=None, out=None):
     """ Print the given server dictionary """
 
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
-    title =  "%s" % (name if label is None else label)
+    title = "%s" % (name if label is None else label)
     try:
         mname = str(name)[0].lower() + str(name)[1:]
         data = getattr(mcr.selector, mname)
         if decode:
             data = json.loads(data)
-        if data is None:    
+        if data is None:
             data = {}
         else:
             data = dict(
-                [str(k), (str(v) if isinstance(v, unicode) else v)] \
-                    for k,v in data.items())
+                [str(k), (str(v) if isinstance(v, unicode) else v)]
+                for k, v in data.items())
     except Exception:
         pass
-    if not out:   
+    if not out:
         mcr.output("%s:  %s" % (title, str(data)))
     else:
         out.appendRow([title, str(data)])
-
 
 
 def printConfDict(mcr, name, decode=True, label=None, out=None):
@@ -628,15 +667,15 @@ def printConfDict(mcr, name, decode=True, label=None, out=None):
         data = conf[name]
         if decode:
             data = json.loads(data)
-        if data is None:    
+        if data is None:
             data = {}
         else:
             data = dict(
-                [str(k), (str(v) if isinstance(v, unicode) else v)] \
-                    for k,v in data.items())
+                [str(k), (str(v) if isinstance(v, unicode) else v)]
+                for k, v in data.items())
     except Exception:
         pass
-    if not out:   
+    if not out:
         mcr.output("%s:  %s" % (title, str(data)))
     else:
         out.appendRow([title, str(data)])
@@ -654,20 +693,21 @@ def printConfList(mcr, name, decode=True, label=None, out=None):
         data = conf[name]
         if decode:
             data = json.loads(data)
-        if data is None:    
+        if data is None:
             data = []
         else:
             data = [
-                (str(v) if isinstance(v, unicode) else v) \
-                    for v in data]
+                (str(v) if isinstance(v, unicode) else v)
+                for v in data]
     except Exception as e:
         mcr.output(str(e))
-    if not out:   
-        mcr.output("%s:  %s" % (title, 
-                                ", ".join(data) if data else "< None >"))
+    if not out:
+        mcr.output("%s:  %s" % (
+                title,
+                ", ".join(data) if data else "< None >"))
     else:
         out.appendRow([title, ", ".join(data) if data else "< None >"])
-        
+
 
 def printList(mcr, name, decode=True, label=None, command=False, out=None):
     """ Print the given server list """
@@ -687,19 +727,20 @@ def printList(mcr, name, decode=True, label=None, command=False, out=None):
                 data = getattr(mcr.selector, mname)()
         if decode:
             data = json.loads(data)
-        if data is None:    
+        if data is None:
             data = []
         else:
             data = [
-                (str(v) if isinstance(v, unicode) else v) \
-                    for v in data]
+                (str(v) if isinstance(v, unicode) else v)
+                for v in data]
     except Exception as e:
         mcr.output(str(e))
-    if not out:   
-        mcr.output("%s:  %s" % (title, 
+    if not out:
+        mcr.output("%s:  %s" % (title,
                                ", ".join(data) if data else "< None >"))
     else:
         out.appendRow([title, ", ".join(data) if data else "< None >"])
+
 
 def printConfString(mcr, name, label=None):
     """ Print the given server variable from Configuration """
@@ -709,10 +750,11 @@ def printConfString(mcr, name, label=None):
     conf = json.loads(mcr.selector.configuration)
     data = conf[name]
     title = name if label is None else label
-    if not out:   
+    if not out:
         mcr.output("%s:  %s" % (title, data))
     else:
         out.appendRow([title, data])
+
 
 def getString(mcr, name, command=False):
     if not hasattr(mcr, "selector"):
@@ -727,15 +769,15 @@ def getString(mcr, name, command=False):
             data = getattr(mcr.selector, mname)()
     return data
 
+
 def printString(mcr, name, label=None, command=False, out=None):
     """ Print the given server attribute """
     data = getString(mcr, name, command)
     title = name if label is None else label
-    if not out:   
+    if not out:
         mcr.output("%s:  %s" % (title, data))
     else:
         out.appendRow([title, data])
-        
 
 
 def orderedKeys(lst):
@@ -748,18 +790,19 @@ def orderedKeys(lst):
     ikeys = list(headers)
     if ikeys:
         okeys = [k for k in dorder if k in ikeys]
-        okeys.extend(list(sorted(set(ikeys)- set(okeys))))
+        okeys.extend(list(sorted(set(ikeys) - set(okeys))))
     else:
         okeys = []
-    return okeys    
+    return okeys
+
 
 def printTable(mcr, lst):
     """ Print adjusted list """
     headers = orderedKeys(lst)
-    out = List(headers, 
-               text_alignment=tuple([Right]*len(headers)),
-               max_col_width=tuple([-1]*len(headers)), 
-               ) 
+    out = List(headers,
+               text_alignment=tuple([Right] * len(headers)),
+               max_col_width=tuple([-1] * len(headers)),
+               )
     for dct in lst:
         row = [(dct[key] if key in dct else 'None') for key in headers]
         out.appendRow(row)
@@ -776,7 +819,7 @@ def set_selector(mcr):
         mcr.debug(str(e))
         servers = db.get_device_exported_for_class(
             "NXSRecSelector").value_string
-        
+
     if servers and servers[0] != 'module':
         mcr.selector = PyTango.DeviceProxy(str(servers[0]))
         return str(servers[0])
@@ -784,12 +827,14 @@ def set_selector(mcr):
         from nxsrecconfig import Settings
         mcr.selector = Settings.Settings()
 
+
 def update_configuration(mcr):
     """ Synchonize profile with mntgrp """
     mcr.selector.updateMntGrp()
     mcr.selector.importMntGrp()
     if not isinstance(mcr.selector, PyTango.DeviceProxy):
         mcr.selector.exportAllEnv()
+
 
 def update_description(mcr):
     """ Update selection of description components """
@@ -800,4 +845,3 @@ def update_description(mcr):
             wait_for_device(mcr.selector)
         else:
             raise
-
