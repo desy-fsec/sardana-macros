@@ -2,7 +2,7 @@
 
 """continuous scan macros"""
 
-__all__ = ["c2dscan_zebra_xia_postrigger", "c2dscan_zebra_xia_senv"]
+__all__ = ["c2dscan_zebra_xia_postrigger", "c2dscan_zebra_xia_postrigger_senv"]
 
 import PyTango
 from sardana.macroserver.macro import *
@@ -31,9 +31,8 @@ class c2dscan_zebra_xia_postrigger(Macro):
     result_def = [ [ "result", Type.String, None, "the cscan object" ]]
 
     def run(self, motor, start_pos, final_pos, nb_triggers, trigger_interval, motor_ext, start_pos_ext, final_pos_ext, nb_scans):
-
         zebra_device_name = self.getEnv('ZebraDevice')
-        self.output("Using zebra device " + zebra_device_name)
+        self.output("Using Zebra device " + zebra_device_name)
 #        mcs_device_name         = self.getEnv('MCSDevice')
         xia_device_name   = self.getEnv('XIADevice')
         self.output("Using xia device " + xia_device_name)
@@ -50,7 +49,7 @@ class c2dscan_zebra_xia_postrigger(Macro):
 
         zebra_device.NbTriggers = nb_triggers
         zebra_device.TriggerInterval = trigger_interval
-        zebra_device.TriggerPosWidth = 4000. # Be sure it will never be reached
+        zebra_device.TriggerPosWidth = 40000. # Be sure it will never be reached
     
         # Set MCS
         
@@ -93,8 +92,33 @@ class c2dscan_zebra_xia_postrigger(Macro):
         if old_slewrate == 0.:
             old_slewrate = 1.
 
-        scan_slewrate = abs((final_pos - start_pos)/motor_device.Conversion)/(trigger_interval * (nb_triggers - 1))
+        scan_slewrate = abs((final_pos - start_pos))/(trigger_interval * (nb_triggers - 1))
         
+        
+	pos_deb=1
+	t=numpy.arange(5*(nb_scans+1)).reshape(5,(nb_scans+1))*0. # Time for debugging
+        if motor_device.Velocity == 0.:
+            motor_device.Velocity = 1.
+	
+#       pos_offset = 0.1
+	pos_offset=((scan_slewrate**2)/20.0*1.05)
+	if pos_offset <0.002 :
+		pos_offset=0.002 
+	if start_pos < final_pos:
+		pos_offset = pos_offset
+#                pos_offset = 0.1
+        else:
+		pos_offset = pos_offset*(-1)
+#                pos_offset = -0.1
+	if (-1+1)%2 == 0:
+		destpos = start_pos - pos_offset
+	else:
+		destpos = final_pos + pos_offset
+	if pos_deb==1:self.output('moving to '+str(destpos))
+	while motor_device.state() == PyTango.DevState.MOVING:
+		time.sleep(.001)
+	motor_device.Position=destpos
+	
         if scan_slewrate > 0:
             motor_device.Velocity = float(scan_slewrate) 
         else:
@@ -102,53 +126,50 @@ class c2dscan_zebra_xia_postrigger(Macro):
 
         if motor_device.Velocity == 0.:
             motor_device.Velocity = 1.
-        
-	t=numpy.arange(5*(nb_scans+1)).reshape(5,(nb_scans+1))*0. # Time for debugging
-	pos_deb=1
-        for i in range(0, nb_scans + 1):
+	
+	
+	
+	for i in range(0, nb_scans + 1):
 
 	    t[0,i]=time.time()
-            while motor_ext_device.State() == PyTango.DevState.MOVING:
+            while motor_ext_device.state() == PyTango.DevState.MOVING:
                 time.sleep(0.001)
+#		self.output('sleeping 1')
 
-            while motor_device.State() == PyTango.DevState.MOVING:
+#	    self.output('1st wait '+str(time.time()-t[0,i]))
+            while motor_device.state() == PyTango.DevState.MOVING:
                 time.sleep(0.001)
+#		self.output('sleeping 2')
 
-            self.output('Current Line: '+str(i))
+#	    self.output('2nd wait '+str(time.time()-t[0,i]))
+#            self.output('Current Line: '+str(i))
             if pos_deb ==1: self.output("Start XIA Mapping")
             xia_device.StartMapping()
+	    self.output('Start Mapping '+str(time.time()-t[0,i]))
 
             
             # Set Gate Trigger to start position and move motor to start position minus an offset
-#            pos_offset = 0.1
-            pos_offset=((scan_slewrate**2)/20.0*1.5)
-            if pos_offset <0.01 :
-              pos_offset=0.001 
 #            self.output('Position Offset: '+str(pos_offset))
-            if start_pos < final_pos:
-                pos_offset = pos_offset
-#                pos_offset = 0.1
-            else:
-                pos_offset = pos_offset*(-1)
-#                pos_offset = -0.1
             
             if i%2 == 0:
                 zebra_device.TriggerPosStart = start_pos
-                motor_device.Position = start_pos - pos_offset
-                #self.output('Start Position + Offset: '+str(start_pos - pos_offset))
+                pass
+                self.output('Start Position + Offset: '+str(start_pos - pos_offset))
             else:
                 zebra_device.TriggerPosStart = final_pos
-                motor_device.Position = final_pos + pos_offset
-#                self.output('Final Position + Offset: '+str(final_pos + pos_offset))
+                self.output('Final Position + Offset: '+str(final_pos + pos_offset))
                 
-            while motor_device.State() == PyTango.DevState.MOVING:
+#	    self.output('Before 3rd wait '+str(time.time()-t[0,i]))
+            while motor_device.state() == PyTango.DevState.MOVING:
                 time.sleep(0.001)
+#	    self.output('3rd wait '+str(time.time()-t[0,i]))
 
             # Start zebra triggering 
 
             if pos_deb ==1: self.output("Start zebra triggering")
             zebra_device.Arm = 1
 	    t[1,i]=time.time()
+#	    self.output('t1 '+str(time.time()-t[0,i]))
 
             # Store starttime
 
@@ -156,95 +177,101 @@ class c2dscan_zebra_xia_postrigger(Macro):
             self.starttime = amsterdam.localize(datetime.datetime.now())
 
             # Start motor movement to final position (the macro mv can not be used because it blocks)
+#	    self.output(motor_device.state())
  
+	    while motor_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+
             if i%2 == 0:
                 motor_device.Position = final_pos + pos_offset
-#                self.output('Final Position + Offset: '+str(final_pos + pos_offset))
+                self.output('Final Position + Offset: '+str(final_pos + pos_offset))
             else:
                 motor_device.Position = start_pos - pos_offset
-                #self.output('Start Position + Offset: '+str(start_pos - pos_offset))
+                self.output('Start Position + Offset: '+str(start_pos - pos_offset))
   
             # Check when the triggering is done
-
+#	    self.output('alive2')
+#	    self.output(zebra_device.state())
+#	    self.output('alive2')
             # Check that the XIA is done
             if pos_deb ==1: self.output("Waiting for XIA")
-            while xia_device.State() == PyTango.DevState.MOVING:
-                time.sleep(0.01)
+            while xia_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
             if pos_deb ==1: self.output("XIA is done")
 
             # Move ext motor to next position, except for the last point
 
             if i < nb_scans:
                 motor_ext_device.Position = start_pos_ext + (i+1) * pos_inc_ext
-	    t[2,i]=time.time()
-#                self.output(start_pos_ext + (i+1) * pos_inc_ext)        
-
             if pos_deb ==1: self.output("Waiting for Zebra")
-#            self.output(amsterdam.localize(datetime.datetime.now()))
-            while zebra_device.State() == PyTango.DevState.MOVING:
-                time.sleep(0.01)
+	    
+	    while motor_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+                           
+	    t[2,i]=time.time( )
+	    
+	    while zebra_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+            
 
             if pos_deb ==1: self.output("Zebra if done, saving data")
- #           self.output(amsterdam.localize(datetime.datetime.now()))
 
-
+            self.output("Zebra wait time:"+str(time.time() -  t[2,i]))
             # Zebra encoder Data
 
 #            self.zebra_data = zebra_device.EncoderSpectrum
           
             # Open the nexus file for saving data
             if pos_deb ==1: self.output("before opening NEXUS")
-#            self.output(amsterdam.localize(datetime.datetime.now()))
 	    t[3,i]=time.time()
 
             self._openNxFile()
-                        
             if pos_deb ==1: self.output("after opening NEXUS")
-#            self.output(amsterdam.localize(datetime.datetime.now()))
-
             if i%2 == 0:
                 self._openNxEntry(motor.getName(), start_pos, final_pos, nb_triggers, trigger_interval, nb_xia_channels)
             else:
                 self._openNxEntry(motor.getName(), final_pos, start_pos, nb_triggers, trigger_interval, nb_xia_channels)
-
             # Close NeXus file
             if pos_deb ==1: self.output("after writing to NEXUS")
-#            self.output(amsterdam.localize(datetime.datetime.now()))
-
             self._closeNxEntry()
             self._closeNxFile()
     	    t[4,i]=time.time()
+	    
 	    t[:,i]-=t[0,i]
-            
-#            self.output("after closing NEXUS")
-#            self.output(amsterdam.localize(datetime.datetime.now()))
+            self.output('Line Done: '+str(i)+' '+str(t[:,i]))
 
         # End of loop in external scans
 
 
         # Reset motor slewrate
             
-        motor_device.Velocity = old_slewrate
+        t=t[:,1:]
+	motor_device.Velocity = old_slewrate
 	tfo=numpy.arange(5.)*0.
 	for i in range(0,5):
 		tfo[i]=numpy.average(t[i,:])
 	
-	tf=numpy.arange(5.)*0.
-#	tf[4]=tfo[-1]
+	tf=numpy.arange(6.)*0.
+	tf[0]=tfo[-1]
 	tfo=tfo[1:]-tfo[:-1]
 	
-	tf[0]=numpy.sum(tfo)
+#	tf[0]=numpy.sum(tfo)
 	tf[1]=numpy.sum(nb_triggers*trigger_interval)
 	tf[2]=tfo[0]
-	tf[3]=tfo[2]
-	tf[4]=tfo[3]
+	tf[3]=tfo[1]
+	tf[4]=tfo[2]
+	tf[5]=tfo[3]
 	
-	self.output(['Total IS','Total Should','Loss Hardware Before','Loss Hardware After','Loss HDF5'])
+#	self.output(['Total IS','Total Should','Loss Hardware Before','Loss Hardware After','Loss HDF5'])
+	self.output(['Total IS','Total Should','Start 2 Trigger','Trigger 2 XIA stop','XIA stop 2 Zebra stop','HDF5 write'])
 	self.output(tf)#,'seconds')
 	self.output((tf)/(nb_triggers*1.))#,'seconds/pixel')
 	self.output(1./((tf)/(nb_triggers*1.)))#,'Hz')
 #	nb_triggers, trigger_interval
-        result = "Esto es un test"
+	filets='/data/2014/1408p06/zebra_test/'+str(nb_triggers)+'_'+str(trigger_interval)+'_'+str(final_pos-start_pos)+'.txt'
+	numpy.savetxt(filets,t.T)
+        
+	result = "Esto es un test"
         return result 
 
     def _openNxFile(self):
@@ -295,6 +322,7 @@ class c2dscan_zebra_xia_postrigger(Macro):
         self.nexusconfig_device.CreateConfiguration(cmp_list)
         xmlconfig = self.nexusconfig_device.XMLString
         self.nexuswriter_device.XMLSettings = str(xmlconfig)
+	self.output(cmp_list)
 #        try:
 #            self.nexuswriter_device.OpenEntry()
 #        except:
@@ -303,9 +331,10 @@ class c2dscan_zebra_xia_postrigger(Macro):
         try:
             self.nexuswriter_device.OpenEntryAsynch()
         except:
+            self.output("Entry not opend")
             pass
 
-        while self.nexuswriter_device.State() == PyTango.DevState.RUNNING:
+        while self.nexuswriter_device.state() == PyTango.DevState.RUNNING:
             time.sleep(0.01)
 
 
@@ -363,22 +392,459 @@ class c2dscan_zebra_xia_postrigger(Macro):
         self.nexuswriter_device.Record(mstr)
         return 1
 
-class c2dscan_zebra_xia_senv(Macro):
+
+
+
+
+
+class c2dscan_zebra_xia_postrigger_faster2(Macro):
+    """Perfoms a 2d continuous scan with the zebra triggering the xia"""
+
+    param_def = [
+       ['motor',            Type.Motor,   None, 'Motor to move'],
+       ['start_pos',        Type.Float,   None, 'Scan start position'],
+       ['final_pos',        Type.Float,   None, 'Scan final position'],
+       ['nb_triggers',      Type.Integer, None, 'Nb of triggers generated by the zebra'],
+       ['trigger_interval', Type.Float,   None, 'Time between consecutive triggers'],
+       ['motor_ext',            Type.Motor,   None, 'Motor to move'],
+       ['start_pos_ext',        Type.Float,   None, 'Scan start position'],
+       ['final_pos_ext',        Type.Float,   None, 'Scan final position'],
+       ['nb_scans',      Type.Integer, None, 'Nb of triggers generated by the zebra']
+    ]
+
+    result_def = [ [ "result", Type.String, None, "the cscan object" ]]
+
+    def run(self, motor, start_pos, final_pos, nb_triggers, trigger_interval, motor_ext, start_pos_ext, final_pos_ext, nb_scans):
+        zebra_device_name = self.getEnv('ZebraDevice')
+        self.output("Using zebra device " + zebra_device_name)
+#        mcs_device_name         = self.getEnv('MCSDevice')
+        xia_device_name   = self.getEnv('XIADevice')
+        self.output("Using xia device " + xia_device_name)
+        nexusconfig_device_name = self.getEnv('NeXusConfigDevice')   # class XMLConfigServer
+        nexuswriter_device_name = self.getEnv('NeXusWriterDevice') # class TangoDataServer
+        zebra_device       = PyTango.DeviceProxy(zebra_device_name)
+ #       mcs_device         = PyTango.DeviceProxy(mcs_device_name)
+        xia_device         = PyTango.DeviceProxy(xia_device_name)
+        xia_device.set_timeout_millis(25000)
+
+        motor_device       = PyTango.DeviceProxy(motor.getName())
+        motor_ext_device   = PyTango.DeviceProxy(motor_ext.getName())
+        self.nexusconfig_device = PyTango.DeviceProxy(nexusconfig_device_name)
+        self.nexuswriter_device = PyTango.DeviceProxy(nexuswriter_device_name)
+        # Set the zebra device
+
+        zebra_device.NbTriggers = nb_triggers
+        zebra_device.TriggerInterval = trigger_interval
+        zebra_device.TriggerPosWidth = 4000. # Be sure it will never be reached
+    
+        # Set MCS
+        
+#        mcs_device.NbAcquisitions = 0 # Continuous mode
+#        mcs_device.NbChannels     = nb_mcs_channels
+
+        # Clear and setup mcs
+
+#        mcs_device.ClearSetupMCS()
+
+        # Set XIA
+        xia_device.InputLogicPolarity=1
+        xia_device.MappingMode = 1
+        xia_device.GateMaster = 1
+        xia_device.NumberMcaChannels = 2048
+        xia_device.NumMapPixels = nb_triggers
+        var = '{"xia1d":"%s", "xia2d":"%s"}' % (
+            xia_device.NumberMcaChannels, xia_device.NumMapPixels )
+        self.nexusconfig_device.Variables = str(var)
+#        if nb_triggers%2 == 0:
+#          xia_device.NumMapPixelsPerBuffer = nb_triggers/2
+#        else:
+#            xia_device.NumMapPixelsPerBuffer = (nb_triggers + 1)/2
+        xia_device.NumMapPixelsPerBuffer = -1
+        xia_device.MaskMapChannels = 1 # change if one wants to work with more XIA channels
+
+        nb_xia_channels = xia_device.NumberMcaChannels
+
+
+        # Compute position increment for external motor
+
+        pos_inc_ext = abs(final_pos_ext - start_pos_ext)/nb_scans
+
+        # Move ext motor to start position
+
+        motor_ext_device.Position = start_pos_ext
+
+            
+        # Compute motor slewrate for the continuous scan
+            
+        old_slewrate = motor_device.Velocity
+        
+        if old_slewrate == 0.:
+            old_slewrate = 1.
+
+        scan_slewrate = abs((final_pos - start_pos)/(trigger_interval * (nb_triggers - 1))
+        
+        
+	pos_deb=1
+	t=numpy.arange(5*(nb_scans+1)).reshape(5,(nb_scans+1))*0. # Time for debugging
+        if motor_device.Velocity == 0.:
+            motor_device.Velocity = 1.
+
+	
+#       pos_offset = 0.1
+	pos_offset=((scan_slewrate**2)/20.0*1.05)
+	if pos_offset <0.002 :
+		pos_offset=0.002 
+	if start_pos < final_pos:
+		pos_offset = pos_offset
+#                pos_offset = 0.1
+        else:
+		pos_offset = pos_offset*(-1)
+#                pos_offset = -0.1
+	if (-1+1)%2 == 0:
+		destpos = start_pos - pos_offset
+	else:
+		destpos = final_pos + pos_offset
+	if pos_deb==1:self.output('moving to '+str(destpos))
+	while motor_device.state() == PyTango.DevState.MOVING:
+		time.sleep(.001)
+
+	motor_device.Position=destpos
+	
+        if scan_slewrate > 0:
+            motor_device.Velocity = float(scan_slewrate) 
+        else:
+            motor_device.Velocity = 1.
+#        self.output("motor7 %s" % motor_device.state())
+
+        if motor_device.Velocity == 0.:
+            motor_device.Velocity = 1.
+	
+	
+
+        self._openNxFile()
+        if pos_deb ==1: self.output("after opening NEXUS")
+        self._openNxEntry(motor.getName(), nb_triggers, trigger_interval, nb_xia_channels)
+	
+	for i in range(0, nb_scans + 1):
+            self.output("loop %s " % i)
+	    t[0,i]=time.time()
+            while motor_ext_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+#		self.output('sleeping 1')
+
+#	    self.output('1st wait '+str(time.time()-t[0,i]))
+            while motor_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+#		self.output('sleeping 2')
+
+#	    self.output('2nd wait '+str(time.time()-t[0,i]))
+#            self.output('Current Line: '+str(i))
+            if pos_deb ==1: self.output("Start XIA Mapping")
+            xia_device.StartMapping()
+	    self.output('Start Mapping '+str(time.time()-t[0,i]))
+
+            
+            # Set Gate Trigger to start position and move motor to start position minus an offset
+#            self.output('Position Offset: '+str(pos_offset))
+            
+         #   if i%2 == 0:
+                #zebra_device.TriggerPosStart = start_pos
+         #       pass
+                #self.output('Start Position + Offset: '+str(start_pos - pos_offset))
+          #  else:
+           #     zebra_device.TriggerPosStart = final_pos
+#                self.output('Final Position + Offset: '+str(final_pos + pos_offset))
+                
+	    self.output('Before 3rd wait '+str(time.time()-t[0,i]))
+            while motor_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+	    self.output('3rd wait '+str(time.time()-t[0,i]))
+
+            # Start zebra triggering 
+
+            if pos_deb ==1: self.output("Start zebra triggering")
+            zebra_device.Arm = 1
+	    t[1,i]=time.time()
+	    self.output('t1 '+str(time.time()-t[0,i]))
+
+            # Store starttime
+
+
+            # Start motor movement to final position (the macro mv can not be used because it blocks)
+ 
+            if i%2 == 0:
+                motor_device.Position = final_pos + pos_offset
+                self.output('Final Position + Offset: '+str(final_pos + pos_offset))
+            else:
+                motor_device.Position = start_pos - pos_offset
+                #self.output('Start Position + Offset: '+str(start_pos - pos_offset))
+  
+            # Check when the triggering is done
+
+	    self.output(zebra_device.state())
+            # Check that the XIA is done
+            if pos_deb ==1: self.output("Waiting for XIA")
+            while xia_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+            if pos_deb ==1: self.output("XIA is done")
+
+            # Move ext motor to next position, except for the last point
+
+            if i < nb_scans:
+                motor_ext_device.Position = start_pos_ext + (i+1) * pos_inc_ext
+            if pos_deb ==1: self.output("Waiting for Zebra")
+	    
+	    t[2,i]=time.time( )
+
+	    while motor_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+                
+	    self.output(zebra_device.state())
+            
+	    
+	    while zebra_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+            
+
+            if pos_deb ==1: self.output("Zebra if done, saving data")
+
+            self.output(time.time() -  t[2,i])
+            # Zebra encoder Data
+
+#            self.zebra_data = zebra_device.EncoderSpectrum
+          
+            # Open the nexus file for saving data
+            if pos_deb ==1: self.output("before opening NEXUS")
+	    t[3,i]=time.time()
+
+            
+            if i%2 == 0:
+                self.record(start_pos, final_pos)
+                self.output("r1")
+            else:
+                self.record(final_pos, start_pos)
+                self.output("r2")
+            # Close NeXus file
+            if pos_deb ==1: self.output("after writing to NEXUS")
+    	    t[4,i]=time.time()
+	    
+	    t[:,i]-=t[0,i]
+            self.output('Line Done: '+str(i)+' '+str(t[:,i]))
+
+        # End of loop in external scans
+
+        self._closeNxEntry()
+        self._closeNxFile()
+
+        # Reset motor slewrate
+            
+        t=t[:,1:]
+	motor_device.Velocity = old_slewrate
+	tfo=numpy.arange(5.)*0.
+	for i in range(0,5):
+		tfo[i]=numpy.average(t[i,:])
+	
+	tf=numpy.arange(6.)*0.
+	tf[0]=tfo[-1]
+	tfo=tfo[1:]-tfo[:-1]
+	
+#	tf[0]=numpy.sum(tfo)
+	tf[1]=numpy.sum(nb_triggers*trigger_interval)
+	tf[2]=tfo[0]
+	tf[3]=tfo[1]
+	tf[4]=tfo[2]
+	tf[5]=tfo[3]
+	
+#	self.output(['Total IS','Total Should','Loss Hardware Before','Loss Hardware After','Loss HDF5'])
+	self.output(['Total IS','Total Should','Start 2 Trigger','Trigger 2 XIA stop','XIA stop 2 Zebra stop','HDF5 write'])
+	self.output(tf)#,'seconds')
+	self.output((tf)/(nb_triggers*1.))#,'seconds/pixel')
+	self.output(1./((tf)/(nb_triggers*1.)))#,'Hz')
+#	nb_triggers, trigger_interval
+        cscan_id = self.getEnv('CScanID')
+
+	filets='/data/2014/1408p06/zebra_test/'+str(nb_triggers)+'_'+str(trigger_interval)+'_'+str(final_pos-start_pos)+'.txt'
+#	filets='/home/jkotan/tmp/c4fst2_'+ str(cscan_id) +'_' +str(nb_triggers)+'_'+str(trigger_interval)+'_'+str(final_pos-start_pos)+'.txt'
+	numpy.savetxt(filets,t.T)
+        
+	result = "Esto es un test"
+        return result 
+
+    def _openNxFile(self):
+        cscan_id = self.getEnv('CScanID')
+        fileNameNx = self.getEnv('CScanFileName') + "_" + str(cscan_id) + ".h5"
+        self.setEnv("CScanID", cscan_id + 1)
+        self.nexuswriter_device.Init()
+        self.nexuswriter_device.FileName = str(fileNameNx)
+        self.nexuswriter_device.OpenFile()
+        return 1
+
+    def _openNxEntry(self, motor_name, nb_triggers, trigger_interval, xia_spec_length):
+        
+        self._sendGlobalDictionaryBefore(motor_name, nb_triggers, trigger_interval, xia_spec_length)
+        
+        self.nexusconfig_device.Open()
+        cmps = self.nexusconfig_device.AvailableComponents()
+        cmp_list = []
+        if "zebra_init" not in cmps:
+            self.output("_openNxEntry: zebra_init not in configuration server")
+        else:
+            cmp_list.append("zebra_step")
+
+#        for i in range (1,nb_mcs_channels + 1):
+#            if i < 10:
+#                cmp_ch = "mcs_ch0" + str(i)
+#            else:
+#                cmp_ch = "mcs_ch" + str(i)
+#            if cmp_ch not in cmps:
+#                self.output("_openNxEntry: %s not in configuration server" %  cmp_ch)
+#            else:
+#                cmp_list.append(cmp_ch)
+
+        # Add component for the XIA.
+
+        if "xia2d_init" not in cmps:
+            self.output("_openNxEntry: xia2d_init not in configuration server")
+        else:
+            cmp_list.append("xia2d_step")
+
+        # Add the default component
+
+        if "default" not in cmps:
+            self.output("_openNxEntry: default not in configuration server")
+        else:
+            cmp_list.append("default")
+
+        self.nexusconfig_device.CreateConfiguration(cmp_list)
+        xmlconfig = self.nexusconfig_device.XMLString
+        self.nexuswriter_device.XMLSettings = str(xmlconfig)
+#        try:
+#            self.nexuswriter_device.OpenEntry()
+#        except:
+#            pass
+
+        try:
+            self.nexuswriter_device.OpenEntryAsynch()
+        except:
+            pass
+
+        while self.nexuswriter_device.state() == PyTango.DevState.RUNNING:
+            time.sleep(0.01)
+
+
+        return 1
+
+
+    def _closeNxFile(self):
+        self.nexuswriter_device.CloseFile()
+        return 1
+
+
+    def _closeNxEntry(self):
+        self._sendGlobalDictionaryAfter()
+        self.nexuswriter_device.CloseEntry()
+        return 1
+
+    def _sendGlobalDictionaryBefore(self, motor_name, nb_triggers, trigger_interval, xia_spec_length):
+        amsterdam = pytz.timezone('Europe/Amsterdam')
+        self.starttime = amsterdam.localize(datetime.datetime.now())
+        hsh = {}
+        hshSub = {}
+        hshSub['motor_name'] = str(motor_name)
+        hshSub['nb_triggers'] = nb_triggers
+        hshSub['sample_time'] = trigger_interval
+        fmt = '%Y-%m-%dT%H:%M:%S.%f%z'
+        hshSub['start_time'] = str(self.starttime.strftime(fmt))
+        hshSub['title'] = ""
+        hshSub['sample_name'] = ""
+        hshSub['chemical_formula'] = ""
+        hshSub['beamtime_id'] = ""
+#        hshSub["encoder_pos"] = list(self.zebra_data)
+        hsh['data'] = hshSub
+        self._setParameter( hsh)
+        return 1
+
+
+    def record(self, start_pos, final_pos):
+        hsh = {}
+        hshSub = {}
+        hshSub['start_pos'] = start_pos
+        hshSub['final_pos'] = final_pos
+        hsh['data'] = hshSub
+        try:
+            self.nexuswriter_device.RecordAsynch(json.dumps(hsh))
+        except:
+            pass
+
+        state = PyTango.DevState.RUNNING
+        ct = 0
+        while state == PyTango.DevState.RUNNING:
+            try:
+                ct =+1
+                
+                state = self.nexuswriter_device.state()
+                if ct >1:
+                    time.sleep(0.01)
+            except Exception as e:
+                print str(e)
+
+
+    def _sendGlobalDictionaryAfter(self):
+        hsh = {}
+        hshSub = {}
+        amsterdam = pytz.timezone('Europe/Amsterdam')
+        fmt = '%Y-%m-%dT%H:%M:%S.%f%z'
+        starttime = amsterdam.localize(datetime.datetime.now())
+        hshSub['end_time'] = str(starttime.strftime(fmt))
+        hshSub['comments'] = "some comment"
+        hsh['data'] = hshSub
+        self._setParameter( hsh)
+        return 1
+
+    def _setParameter(self, hsh):
+        jsondata = json.dumps( hsh)
+        self.nexuswriter_device.JSONRecord = str(jsondata)
+        return 1
+
+    def _sendRecordToNxWriter(self, hsh):
+        mstr = json.dumps( hsh)
+        self.nexuswriter_device.Record(mstr)
+        return 1
+
+
+
+
+
+
+
+
+class c2dscan_zebra_xia_postrigger_senv(Macro):
     """ Sets default environment variables """
 
     def run(self):
-        self.setEnv("ZebraDevice", "p06/zebra/exp.01")
-        self.output("Setting ZebraDevice to p06/zebra/exp.01")
-        self.setEnv("XIADevice", "haspp06:10000/test/xia/01")
-        self.output("Setting XIADevice to hasp06xmap:10000/test/xia/01")
-        self.setEnv("CScanFileName", "/data/2013/1311p06/zebra/slow_scan")
-        self.output("Setting CScanFileName to /data/2013/1311p06/zebra/slow_scan")
-        self.setEnv("NeXusConfigDevice", "p06/xmlconfigserver/exp.01")
-        self.output("Setting NeXusConfigDevice to p06/xmlconfigserver/exp.01")
-        self.setEnv("NeXusWriterDevice", "p06/tangodataserver/exp.01")
-        self.output("Setting NeXusWriterDevice to p06/tangodataserver/exp.01")
-        self.setEnv("CScanID", 0)
-        self.output("Setting CScanID to 0")
+#        self.setEnv("ZebraDevice", "p06/zebra/exp.01")
+#        self.output("Setting ZebraDevice to p06/zebra/exp.01")
+#        self.setEnv("XIADevice", "haspp06:10000/test/xia/01")
+#        self.output("Setting XIADevice to hasp06xmap:10000/test/xia/01")
+	ZebraDevice="haspp06:10000/p06/zebra/mc01.01"
+	ZebraDevice="haspp06:10000/p06/zebra/exp.01"
+	XIADevice="haspp06:10000/p06/xia/p06.1"
+	CScanFileName="/data/2014/1410p06/zebra/forreal"
+	NeXusConfigDevice="p06/nxsconfigserver/haspp06ctrl"
+	NeXusWriterDevice="p06/nxsdatawriter/haspp06ctrl"
+	CScanID=0
+        self.setEnv("ZebraDevice", ZebraDevice)
+        self.output("Setting ZebraDevice to "+ZebraDevice)
+        self.setEnv("XIADevice", XIADevice)
+        self.output("Setting XIADevice to "+XIADevice)
+        self.setEnv("CScanFileName", CScanFileName)
+        self.output("Setting CScanFileName to "+CScanFileName)
+        self.setEnv("NeXusConfigDevice", NeXusConfigDevice)
+        self.output("Setting NeXusConfigDevice to "+NeXusConfigDevice)
+        self.setEnv("NeXusWriterDevice", NeXusWriterDevice)
+        self.output("Setting NeXusWriterDevice to "+NeXusWriterDevice)
+        self.setEnv("CScanID", CScanID)
+        self.output("Setting CScanID to "+str(CScanID))
 
 #        self.setEnv("MCSDevice", "haso107klx:10000/p09/mcs/exp.01")
 #        self.output("Setting MCSDevice to ")
@@ -388,9 +854,9 @@ class c2dscan_zebra_xia_senv(Macro):
 #        self.output("Setting XIADevice to hasp029rack:10000/test/xia/01")
 #        self.setEnv("CScanFileName", "/home/tnunez/nexus_zebra_files/test_cscan_output")
 #        self.output("Setting CScanFileName to /home/tnunez/nexus_zebra_files/test_cscan_output")
-#        self.setEnv("NeXusConfigDevice", "haso111tb:10000/test/xmlconfigserver/01")
-#        self.output("Setting NeXusConfigDevice to haso111tb:10000/test/xmlconfigserver/01")
-#        self.setEnv("NeXusWriterDevice", "haso111tb:10000/test/tangodataserver/01")
-#        self.output("Setting NeXusWriterDevice to haso111tb:10000/test/tangodataserver/01")
+#        self.setEnv("NeXusConfigDevice", "haso111tb:10000/test/nxsconfigserver/01")
+#        self.output("Setting NeXusConfigDevice to haso111tb:10000/test/nxsconfigserver/01")
+#        self.setEnv("NeXusWriterDevice", "haso111tb:10000/test/nxsdatawriter/01")
+#        self.output("Setting NeXusWriterDevice to haso111tb:10000/test/nxsdatawriter/01")
 #        self.setEnv("CScanID", 0)
 #        self.output("Setting CScanID to 0")

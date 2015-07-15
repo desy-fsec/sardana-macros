@@ -81,7 +81,7 @@ class cscan_zebra_xia(Macro):
 
         old_slewrate = motor_device.Velocity
 
-        scan_slewrate = abs((final_pos - start_pos)/motor_device.Conversion)/(trigger_interval * (nb_triggers - 1))
+        scan_slewrate = abs(final_pos - start_pos)/(trigger_interval * (nb_triggers - 1))
 
         motor_device.Velocity = scan_slewrate 
 
@@ -279,9 +279,9 @@ class cscan_zebra_xia_senv(Macro):
         self.output("Setting XIADevice to hasp029rack:10000/test/xia/01")
         self.setEnv("CScanFileName", "/home/experiment/test_cscan_output")
         self.output("Setting CScanFileName to /home/experiment/test_cscan_output")
-        self.setEnv("NeXusConfigDevice", "p06/xmlconfigserver/exp.01")
-        self.output("Setting NeXusConfigDevice to p06/xmlconfigserver/exp.01")
-        self.setEnv("NeXusWriterDevice", "p06/tangodataserver/exp.01")
-        self.output("Setting NeXusWriterDevice to p06/tangodataserver/exp.01")
+        self.setEnv("NeXusConfigDevice", "p06/nxsconfigserver/haspp06ctrl")
+        self.output("Setting NeXusConfigDevice to p06/nxsconfigserver/haspp06ctrl")
+        self.setEnv("NeXusWriterDevice", "p06/nxsdatawriter/haspp06ctrl")
+        self.output("Setting NeXusWriterDevice to p06/nxsdatawriter/haspp06ctrl")
         self.setEnv("CScanID", 0)
         self.output("Setting CScanID to 0")
