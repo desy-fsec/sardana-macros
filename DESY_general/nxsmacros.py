@@ -7,6 +7,8 @@ import json
 import fnmatch
 import pprint
 import StringIO
+import os
+import subprocess
 from sardana.macroserver.macro import (
     Macro, Type, macro, ParamRepeat)
 
@@ -47,6 +49,12 @@ def nxselector(self, mode, selector, door):
     my_env = os.environ.copy()
     if not 'DISPLAY' in my_env.keys():
         my_env['DISPLAY'] = ':0.0'
+    if not 'USER' in my_env.keys():
+        if 'TANGO_USER' in my_env.keys():
+            my_env['USER'] = my_env['TANGO_USER']
+        else:
+            import getpass
+            my_env['USER'] = getpass.getuser()
     subprocess.Popen(args, env=my_env)
 
 
@@ -62,6 +70,12 @@ def nxsmacrogui(self, selector, door):
     my_env = os.environ.copy()
     if not 'DISPLAY' in my_env.keys():
         my_env['DISPLAY'] = ':0.0'
+    if not 'USER' in my_env.keys():
+        if 'TANGO_USER' in my_env.keys():
+            my_env['USER'] = my_env['TANGO_USER']
+        else:
+            import getpass
+            my_env['USER'] = getpass.getuser()
     subprocess.Popen(args, env=my_env)
 
 
