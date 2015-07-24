@@ -1254,8 +1254,11 @@ class luppsi(Macro, _diffrac):
             l = self.l_device.position
 
             psi_positions = []
-            
-            psi_save = self.psidevice.Position
+
+            try:
+                psi_save = self.psidevice.Position
+            except:
+                self.error("Not able to read psi. Check if environment Psi is defined")
 
             angle_interv = abs(rel_final_angle - rel_start_angle)/nr_interv
             
