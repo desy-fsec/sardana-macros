@@ -67,7 +67,7 @@ class escan(Macro):
             move_flag = 0
             time.sleep(1)
             for i in range(0,len(self.angle_dev)):
-                if self.angle_dev[i] == PyTango.DevState.MOVING:
+                if self.angle_dev[i].state() == DevState.MOVING:
                     move_flag = 1
 
     def on_stop(self):
@@ -103,7 +103,7 @@ class escan(Macro):
         if integ_time == -999:
             self.error("integ_time not specified")
             return
-            
+
         energy_device = self.getObj("mnchrmtr")
         energy_device_name = "mnchrmtr"
         try: # if the device exists gives error if comparing to None
@@ -146,7 +146,11 @@ class escan(Macro):
             pseudo_motor_names = []
             for motor in self.diffrac.hklpseudomotorlist:
                 pseudo_motor_names.append(motor.split(' ')[0])
-            
+                
+            self.angle_dev = []
+            for motor in self.diffrac.motorlist:
+                self.angle_dev.append(self.getDevice(motor.split(' ')[0]))
+
             self.h_device = self.getDevice(pseudo_motor_names[0])
             self.k_device = self.getDevice(pseudo_motor_names[1])
             self.l_device = self.getDevice(pseudo_motor_names[2])
