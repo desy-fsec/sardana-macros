@@ -1219,7 +1219,7 @@ def hook_pre_move(self, hook_pars):
     global count_scan
 
     self.execMacro('freeze', 'psi', hook_pars.psi_save + count_scan*hook_pars.angle_interv)
-    self.execMacro('ubr', hooks_pars.h, hooks_pars.k, hooks_pars.l)
+    self.execMacro('ubr', hook_pars.h, hook_pars.k, hook_pars.l)
 
     count_scan = count_scan + 1
 
