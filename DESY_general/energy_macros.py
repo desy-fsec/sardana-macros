@@ -50,10 +50,11 @@ class escan(Macro):
         global flag_no_first
         self.info("\tCalling move hkl hook")
     
-        pos_to_set = self.energy_device.Position + flag_no_first * self.step
+        pos_to_set = self.energy_device.read_attribute("Position").value + flag_no_first * self.step
         flag_no_first = 1
 
-        wavelength = self.lambda_to_e/(self.energy_device.Position + self.step)
+        wavelength = self.lambda_to_e/pos_to_set
+        
         
         self.diffrac.write_attribute("wavelength", wavelength)
 
@@ -125,20 +126,12 @@ class escan(Macro):
 
         # store the current position from the energy device to return to it after the scan
 
-        saved_initial_position = energy_device.Position
+        saved_initial_position = energy_device.read_attribute("Position").value
 
-        # set the motor to the initial position for having the right position at the first hook
-
-        self.output("Moving energy to the start value ...")
-        self.execMacro("mv %s %f" % (energy_device_name, start_energy))
-
-        macro,pars = self.createMacro("ascan", energy_device, start_energy, end_energy, nr_interv, integ_time)
-
-        self.step = abs(end_energy - start_energy)/nr_interv
+        
 
         self.energy_device = energy_device
 
-        self.fixq = fixq
         if fixq == "fixq":
             self.lambda_to_e = 12398.424 # Amstrong * eV
             diffrac_name = self.getEnv('DiffracDevice')
@@ -155,10 +148,30 @@ class escan(Macro):
             self.k_device = self.getDevice(pseudo_motor_names[1])
             self.l_device = self.getDevice(pseudo_motor_names[2])
 
-            self.h_fix = self.h_device.Position
-            self.k_fix = self.k_device.Position
-            self.l_fix = self.l_device.Position
+            self.h_fix = self.h_device.read_attribute("Position").value
+            self.k_fix = self.k_device.read_attribute("Position").value
+            self.l_fix = self.l_device.read_attribute("Position").value
+            
+            wavelength = self.lambda_to_e/self.energy_device.read_attribute("Position").value
+            self.diffrac.write_attribute("wavelength", wavelength)
 
+            
+        # set the motor to the initial position for having the right position at the first hook
+
+        self.output("Moving energy to the start value ...")
+        self.execMacro("mv %s %f" % (energy_device_name, start_energy))
+
+        macro,pars = self.createMacro("ascan", energy_device, start_energy, end_energy, nr_interv, integ_time)
+
+        self.step = abs(end_energy - start_energy)/nr_interv
+
+        self.fixq = fixq
+        if fixq == "fixq":
+            
+            macro_hkl,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1)
+    
+            self.runMacro(macro_hkl)
+        
             macro.hooks = [ (self.hkl_pre_move, ["pre-move"]), (self.hkl_post_move, ["post-move"]), ] 
 
         self.runMacro(macro)
@@ -167,7 +180,16 @@ class escan(Macro):
 
         if return_flag:
             self.output("Returning the energy to the value before the scan ...")
-            self.execMacro("mv %s %f" % (energy_device_name, saved_initial_position))
+            self.energy_device.Position = saved_initial_position
+            if fixq == "fixq":
+                wavelength = self.lambda_to_e/saved_initial_position
+                
+                self.diffrac.write_attribute("wavelength", wavelength)
+                macro_hkl,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1, 1)
+                
+                self.runMacro(macro_hkl)
+            while self.energy_device.state() == DevState.MOVING:
+                time.sleep(1)
 
 class me(Macro):
     """Move energy. Diffractometer wavelength is set"""
