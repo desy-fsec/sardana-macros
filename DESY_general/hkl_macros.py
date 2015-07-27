@@ -1218,7 +1218,7 @@ class HookPars:
 def hook_pre_move(self, hook_pars):
     global count_scan
 
-    self.execMacro('freeze', 'psi', hook_pars.psi_save + count_scan*hook_pars.angle_interv)
+    self.execMacro('freeze', 'psi', hook_pars.psi_save + + hook_pars.angle_start +(count_scan-1)*hook_pars.angle_interv)
     self.execMacro('ubr', hook_pars.h, hook_pars.k, hook_pars.l)
 
     count_scan = count_scan + 1
@@ -1278,6 +1278,7 @@ class luppsi(Macro, _diffrac):
             hook_pars = HookPars()
             hook_pars.psi_save = psi_save
             hook_pars.angle_interv = angle_interv
+            hook_pars.angle_start = rel_start_angle
             hook_pars.h = h
             hook_pars.k = k
             hook_pars.l = l
