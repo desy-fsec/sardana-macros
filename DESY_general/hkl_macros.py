@@ -1218,7 +1218,8 @@ class HookPars:
 def hook_pre_move(self, hook_pars):
     global count_scan
 
-    self.execMacro('freeze', 'psi', hook_pars.psi_save + count_scan*hook_pars.angle_interv)
+    self.execMacro('freeze', 'psi', hook_pars.psi_save + + hook_pars.angle_start +(count_scan-1)*hook_pars.angle_interv)
+    self.execMacro('ubr', hook_pars.h, hook_pars.k, hook_pars.l)
 
     count_scan = count_scan + 1
 
@@ -1251,17 +1252,18 @@ class luppsi(Macro, _diffrac):
             h = self.h_device.position
             k = self.k_device.position
             l = self.l_device.position
-            
-            self.execMacro('setaz', h, k, l)
 
             psi_positions = []
-            
-            psi_save = self.psidevice.Position
+
+            try:
+                psi_save = self.psidevice.Position
+            except:
+                self.error("Not able to read psi. Check if environment Psi is defined")
+                return
 
             angle_interv = abs(rel_final_angle - rel_start_angle)/nr_interv
             
             # Construct scan macro
-
 
             self.output(self.psidevice.alias())
             psi_motor  = self.getMotor(self.psidevice.alias())
@@ -1276,6 +1278,10 @@ class luppsi(Macro, _diffrac):
             hook_pars = HookPars()
             hook_pars.psi_save = psi_save
             hook_pars.angle_interv = angle_interv
+            hook_pars.angle_start = rel_start_angle
+            hook_pars.h = h
+            hook_pars.k = k
+            hook_pars.l = l
             f = lambda : hook_pre_move(self, hook_pars)
             macro.hooks = [
                 (f, ["pre-move"]),
@@ -1290,6 +1296,7 @@ class luppsi(Macro, _diffrac):
 
             self.info("Return to start position " + str(psi_save))
             self.execMacro('freeze', 'psi', psi_save)
+            self.execMacro('ubr', h, k, l)
             self.psidevice.write_attribute("Position", psi_save)
                 
         else:
