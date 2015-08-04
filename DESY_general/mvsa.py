@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #
 # 
-#
 from sardana.macroserver.macro import *
 from sardana.macroserver.macro import macro
 import PyTango
