@@ -4,7 +4,8 @@ Update_files.pl <hostName>
   used for a single host or from DoAll.pl 
 
 DoAll.pl 
-  invokes Update_files.pl for all hosts in SardanaHosts.lis
+  invokes Update_files.pl for all hosts in
+    /afs/desy.de/group/hasylab/Tango/HostLists/SardanaHosts.lis
 
 Files.lis
   contains the files to be updated, used by Update_files.pls
@@ -12,6 +13,4 @@ Files.lis
 Files.db
   contains info about the update state of each file, used by Updata_files.pl
 
-SardanaHosts.lis 
-  contains the host to be updated, used by DoAll.pl
  

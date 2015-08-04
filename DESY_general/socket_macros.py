@@ -1,10 +1,10 @@
 #!/bin/env python
-
+  
 """
 macros that communicate to the SardanaMonitor and the SardanaMessageWindow via sockets
 """
 
-__all__ = ["socketIO", "smOpen", "smPost", "mwOpen", "mwOutput"]
+__all__ = ["socketIO", "smOpen", "smPost", "mwOutput"]
 
 from sardana.macroserver.macro import Macro, Type
 import socket 
@@ -31,50 +31,62 @@ class socketIO(Macro):
 
     result_def = [[ "result", Type.Boolean, None, "completion status" ]]
 
+    def findServer( self, host, port):
+        global scktDct
+        hp = "%s:%-d" % (host, port)
+        sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #
+        #  find the server
+        #
+        for i in range(10):
+            try:
+                sckt.connect((host, port))
+            except Exception, e:
+                port = port + 1
+                continue
+            break
+        else:
+            sckt.close()
+            self.output("findServer: failed to find the server")
+            self.output("Consider to: '! SardanaMessageWindow.py &'")
+            return False
+        self.output("findServer: connect() via port %d" % port)
+        scktDct[ hp] = sckt
+        return True
+
     def run(self, host, port, msg):
         global scktDct
         hp = "%s:%-d" % (host, port)
         result = False
         if not scktDct.has_key( hp):
-            sckt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            #
-            #  find the server
-            #
-            for i in range(10):
-                try:
-                    sckt.connect((host, port))
-                except Exception, e:
-                    port = port + 1
-                    continue
-                break
-            else:
-                sckt.close()
+            if not self.findServer( host, port):
                 return result
-            self.output("new socket: connect() via port %d" % port)
-            scktDct[ hp] = sckt
-
+        if msg == "":
+            msg = "_"
         lenOut = scktDct[ hp].send( msg)
         data = scktDct[ hp].recv(1024)
+        #
+        # scktDct lives in the MacroServer. The contents may very 
+        # be out-dated, because we may have restarted the MessageWindow 
+        # for each spock session. Therefore we delete the dictionary 
+        # entry and try to find the server
+        #
         if len(data) == 0:
-            self.output( "socketIO: lost connection, resetting things")
             del scktDct[hp]
-            return result
+            if not self.findServer( host, port):
+                return result
+            lenOut = scktDct[ hp].send( msg)
+            data = scktDct[ hp].recv(1024)
+            if len(data) > 0:
+                return True
+            else:
+                return False
         # self.output( "%s -> %s ", msg, str(data).strip())
         result = True
         return result
 #
 # the SardanaMonitor macros
 #
-class smStart(Macro):
-    """
-    launches the SardanaMonitor
-    """
-    param_def = []
-
-    def run(self):
-        self.output( "launching the SardanaMonitor")
-        os.system( "export DISPLAY=:0;/usr/bin/SardanaMonitor.py &")
-
 class smPost(Macro):
     """
     sends a postscript command, 'post/print/nocon', to the SardanaMonitor
@@ -88,7 +100,7 @@ class smPost(Macro):
         if printer.find( 'default') == 0:
             printer = os.getenv( 'PRINTER')
             if printer is None:
-                self.output( "smPost: shell-environment variable PRINTER not defined")
+                self.output( "smPost: shell-environment variable PRINTER not defined and no parameter supplied")
                 return
 
         a = self.socketIO( socket.gethostname(), 7650, "post/print/nocon/lp=%s" % printer)
@@ -99,25 +111,33 @@ class smPost(Macro):
 #
 class mwOutput(Macro):
     """
-    send a message to the message window
+    Send a message to the message window. 
+    To launch the message window from spock:
+      p10/door/haspp10e2.01 [6]: ! SardanaMessageWindow.py &
     """
     param_def = [
-        [ "msg", Type.String, None,  "message to the message window" ],
+        [ "msg", Type.String, "",  "message to the message window" ],
         ]
     def run(self, msg):
         a = self.socketIO( socket.gethostname(), 7660, msg)
-        if not a.getResult():
-            os.system( "export DISPLAY=:0;/usr/bin/SardanaMessageWindow.py &")
-            time.sleep(2)
-            a = self.socketIO( socket.gethostname(), 7660, msg)
-            if not a.getResult():
-                self.output( "mwOutput: something's wrong")
 
-
-
-
-
-
+class mwTest(Macro):
+    """
+    Send a test message to the message windowto see whether it exists. 
+    To launch the message window from spock, e.g.:
+      p10/door/haspp10e2.01 [6]: ! SardanaMessageWindow.py &
+    """
+    param_def = []
+    result_def = [[ "result", Type.Boolean, None, "server exists" ]]
+    def run(self):
+        result = False
+        #
+        # testMessage will not be printed
+        #
+        a = self.socketIO( socket.gethostname(), 7660, "testMessage")
+        if a.getResult():
+            result = True
+        return result
 
 
 
