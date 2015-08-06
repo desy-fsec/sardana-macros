@@ -14,7 +14,8 @@ class mvsa(Macro):
 
           Used environment variables: 
               ScanDir, ScanFile, ScanID  -> file name
-              ScanHistory                -> motor name and scan type
+              ScanHistory                -> motor name and scan type, 
+                                            supported: ascan, a2scan, a3scan, dscan, d2scan, d3scan
               SignalCounter              -> counter name   
           'mvsa show' shows the results, no move """
     param_def = [ 
@@ -98,6 +99,29 @@ class mvsa(Macro):
             endPos   = float( lst[6])
             dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
             argout.append( dct)
+        elif lst[0].lower() == "a3scan":
+            dct = {}
+            dct[ 'motorName'] = lst[1]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            dct[ 'targetPos'] = xpos
+            startPos = float( lst[2])
+            endPos   = float( lst[3])
+            ratio = (xpos - startPos)/(endPos - startPos)
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[4]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = float( lst[5])
+            endPos   = float( lst[6])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[7]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = float( lst[8])
+            endPos   = float( lst[9])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
         elif lst[0].lower() == "d2scan":
             dct = {}
             dct[ 'motorName'] = lst[1]
@@ -114,6 +138,29 @@ class mvsa(Macro):
             endPos   = dct['proxy'].Position + float(lst[6])
             dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
             argout.append( dct)
+        elif lst[0].lower() == "d3scan":
+            dct = {}
+            dct[ 'motorName'] = lst[1]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            dct[ 'targetPos'] = xpos
+            startPos = dct['proxy'].Position + float(lst[2])
+            endPos   = dct['proxy'].Position + float(lst[3])
+            ratio = (xpos - startPos)/(endPos - startPos)
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[4]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = dct['proxy'].Position + float( lst[5])
+            endPos   = dct['proxy'].Position + float(lst[6])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[7]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = dct['proxy'].Position + float( lst[8])
+            endPos   = dct['proxy'].Position + float(lst[9])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
         else:
             return None
         return argout
@@ -126,7 +173,7 @@ class mvsa(Macro):
         # mvsa only for ascan, dscan, a2scan, d2scan
         #
         scanType = self.getEnv( "ScanHistory")[-1]['title'].split()[0]
-        if not scanType.lower()  in ['ascan', 'dscan', 'a2scan', 'd2scan']:
+        if not scanType.lower()  in ['ascan', 'dscan', 'a2scan', 'd2scan', 'a3scan', 'd3scan']:
             self.output( "mvsa: scanType %s not in ['ascan', 'dscan', 'a2scan', 'd2scan']" % scanType)
             return result
 
