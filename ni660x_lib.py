@@ -50,7 +50,7 @@ class ni660x_configure_collect(Macro):
 class ni660x_unconfigure_collect(Macro):
     """ Removes the configuration of the ni6602 card."""
 
-        def run(self):
+    def run(self):
         # some values do not need to be passed through the macro...
         ni_dev = taurus.Device('BL13/IO/ibl1302-dev1')
         ni_poschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr0')
