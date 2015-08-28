@@ -10,18 +10,35 @@ DET_HIGH = 'det_high'
 DET_LOW = 'det_low'
 TRIGGERS_COUNT = 'triggers_count'
 
-class ni660x_configure_collect(Macro):
-    """ Configures the ni6602 card to generate triggers for the shutter and the detector at given position. """
-    param_def = [['shutter_delay_time', Type.Float, None, 'Time for shutter to be opened (seconds).'],
-               ['det_trigger_pos', Type.Float, None, 'Position to trigger the detector.'],
-               ['pulse_high_width', Type.Float, None, 'Pulse high width in relative position units.'],
-               ['pulse_low_width', Type.Float, None, 'Pulse low width in relative position units.'],
-               ['triggers_count', Type.Integer, 1, 'Number of repetitions of the trigger. Default is 1.']]
 
-    def run(self, shutter_delay_time, det_trigger_pos, pulse_high_width, pulse_low_width, triggers_count):
-    # some values do not need to be passed through the macro...
+class ni660x_configure_collect(Macro):
+    """
+    Category: Configuration
+    Configures the ni6602 card to generate triggers for the fast shutter and
+    the pilatus detector. Implememts a trigger by position scheme.
+    The NI card to generate a single trigger gate at a given position. It is
+    specific for the collect macro i.e. the trigger generated is the starting
+    point for the collection of images, while omega motor is movin at constant
+    velocity and pilatus takes images every certain time configured via Lima
+    controller. In such a way, a synchronization between omega positions and
+    pilatus images is guarantied."""
+    param_def = [['shutter_delay_time', Type.Float, None,
+                  'Time for shutter to be opened (seconds).'],
+               ['det_trigger_pos', Type.Float, None,
+                'Position to trigger the detector.'],
+               ['pulse_high_width', Type.Float, None,
+                'Pulse high width in relative position units.'],
+               ['pulse_low_width', Type.Float, None,
+                'Pulse low width in relative position units.'],
+               ['triggers_count', Type.Integer, 1,
+                'Number of repetitions of the trigger. Default is 1.']]
+
+    def run(self, shutter_delay_time, det_trigger_pos, pulse_high_width,
+            pulse_low_width, triggers_count):
+
+        ni_name = 'BL13/IO/ibl1302-dev1'
         omega = self.getDevice('omega')
-        ni_dev = taurus.Device('BL13/IO/ibl1302-dev1')
+        ni_dev = taurus.Device(ni_name)
         ni_poschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr0')
         ni_shutterchan = taurus.Device('BL13/IO/ibl1302-dev1-ctr2')
         ni_pilatuschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr4')
@@ -37,11 +54,18 @@ class ni660x_configure_collect(Macro):
         x_rel_low = pulse_low_width
 
         try:
-            ni_cfg_dict = ni660x_build_position_trigger_config(vel_0, vel, t_acc, t_shutter, enc_resolution_X4, x_abs_0, x_abs_trigger, x_rel_high, x_rel_low, triggers_count)
-            self.info('before collect!!!')
-            self.info("%s, %s, %s, %s" % (ni_dev, ni_poschan, ni_shutterchan, ni_cfg_dict))
-            ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan, ni_pilatuschan, ni_cfg_dict)
-            self.info('NI card configure. Remember to unconfigure it at the end of the collect macro.')
+            self.info('Creating configuration dictionary for %s' % ni_name)
+            ni_cfg_dict = build_trigger_config(vel_0, vel,t_acc, t_shutter,
+                                               enc_resolution_X4, x_abs_0,
+                                               x_abs_trigger, x_rel_high,
+                                               x_rel_low, triggers_count)
+            self.info("%s, %s, %s, %s" % (ni_dev, ni_poschan, ni_shutterchan,
+                                          ni_cfg_dict))
+            self.info('Applying configuration to the DS.')
+            ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
+                                           ni_pilatuschan, ni_cfg_dict)
+            self.info('Remember to unconfigure the card at the end of the'
+                      'collection.')
         except Exception, e:
             self.error('Not possible to configure NI card, exception is:')
             self.error(str(e))
@@ -57,10 +81,12 @@ class ni660x_unconfigure_collect(Macro):
         ni_shutterchan = taurus.Device('BL13/IO/ibl1302-dev1-ctr2')
         ni_pilatuschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr4')
 
-        ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan, ni_pilatuschan)
+        ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan,
+                                         ni_pilatuschan)
 
 class ni660x_shutter_open_close(Macro):
-    param_def = [['open_close', Type.String, None, 'open/close keywords allowed.']]
+    param_def = [['open_close', Type.String, None,
+                  'open/close keywords allowed.']]
 
     def run(self, open_close):
         open_close = open_close.lower()
@@ -81,8 +107,12 @@ class ni660x_shutter_open_close(Macro):
 def positionToX1counts(position, resolution):
     return int((position * resolution) / 4)
 
-def ni660x_build_position_trigger_config(vel_0, vel, t_acc, t_shutter, enc_resolution_X4, x_abs_0, x_abs_trigger, x_rel_high, x_rel_low, triggers_count):
-    """X4, X2 and X1 encoding is explained here:   http://www.ni.com/white-paper/7109/en#toc2
+def build_trigger_config(vel_0, vel, t_acc, t_shutter, enc_resolution_X4,
+                         x_abs_0, x_abs_trigger, x_rel_high, x_rel_low,
+                         triggers_count):
+    """
+    X4, X2 and X1 encoding is explained here:
+    http://www.ni.com/white-paper/7109/en#toc2
     """
     acc = (vel - vel_0)/(1.*t_acc)
     x_constant_vel = vel_0 * t_acc + 1/2. * (acc) * (t_acc**2)
@@ -104,7 +134,7 @@ def ni660x_build_position_trigger_config(vel_0, vel, t_acc, t_shutter, enc_resol
         msg += '\nStart Position: %f' % x_abs_0
         msg += '\nConstant Speed: %f' % x_abs_constant_vel
         msg += '\nMin Shutter Trigger: %f' % x_min_abs_trig_shutter
-        msg += '\nMin Detector Trigger: %f (Shutter opened)' % x_min_abs_trig_det
+        msg += '\nMin Detector Trigger: %f (Shutter open)' % x_min_abs_trig_det
         msg += '\nTrigger requested: %f' % x_abs_trigger
         raise Exception(msg)
 
@@ -142,7 +172,8 @@ def ni660x_build_position_trigger_config(vel_0, vel, t_acc, t_shutter, enc_resol
     return ni_cfg_dict
 
 
-def ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan, ni_pilatuschan):
+def ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan,
+                                     ni_pilatuschan):
     # output of ctr4 to output of ctr1
     ni_dev.command_inout('DisconnectTerms',['/Dev1/PFI20', '/Dev1/PFI32'])
     # indexer X4 phase A
@@ -156,10 +187,12 @@ def ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan, ni_pila
     ni_pilatuschan.command_inout('Stop')
 
 
-def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan, ni_pilatuschan, ni_cfg_dict):
+def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
+                                   ni_pilatuschan, ni_cfg_dict):
 
     # JUST TO MAKE SURE IT IS UNCONFIGURED
-    ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan, ni_pilatuschan)
+    ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan,
+                                     ni_pilatuschan)
 
     # CONFIGURE POSITION CHANNEL
 
@@ -236,7 +269,8 @@ def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan, ni_pilatu
     # CONFIGURE NI 660X INTERNAL CONNECTIONS
     # CRYPTIC RIGHT NOW...
     # output of ctr4 to output of ctr1
-    ni_dev.command_inout('ConnectTerms',['/Dev1/PFI20', '/Dev1/PFI32', 'DoNotInvertPolarity'])
+    ni_dev.command_inout('ConnectTerms',['/Dev1/PFI20', '/Dev1/PFI32',
+                                         'DoNotInvertPolarity'])
     # indexer X4 phase A
     # ni_dev.command_inout('ConnectTerms',['/Dev1/PFI39', '/Dev1/PFI12', 'DoNotInvertPolarity'])
     # timebase
