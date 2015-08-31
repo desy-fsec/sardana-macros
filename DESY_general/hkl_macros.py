@@ -274,9 +274,9 @@ class caa(Macro, _diffrac):
     operation mode (all trajectories)"""
     
     param_def = [
-       ['H', Type.Float, None, "H value for the azimutal vector"],
-       ['K', Type.Float, None, "K value for the azimutal vector"],
-       ['L', Type.Float, None, "L value for the azimutal vector"],
+        ['H', Type.Float, None, "H value for the azimutal vector"],
+        ['K', Type.Float, None, "K value for the azimutal vector"],
+        ['L', Type.Float, None, "L value for the azimutal vector"],
     ]    
     
     def prepare(self, H, K , L):
@@ -317,6 +317,41 @@ class caa(Macro, _diffrac):
             self.output("%10s %11s %12s %11s %10s %11s" % 
                         (str_pos1, str_pos2, str_pos3, str_pos4, str_pos5, str_pos6))
 
+class ci(Macro, _diffrac):
+    """ Calculate hkl for given angle values """
+
+    
+    param_def = [
+        ['mu', Type.Float, None, "Mu value"],
+        ['theta', Type.Float, None, "Theta value"],
+        ['chi', Type.Float, None, "Chi value"],
+        ['phi', Type.Float, None, "Phi value"],
+        ['gamma', Type.Float, -999, "Gamma value"],
+        ['delta', Type.Float, -999, "Delta value"],
+    ]   
+    
+    def prepare(self, mu, theta, chi, phi, gamma, delta):
+        _diffrac.prepare(self)    
+    
+    def run(self, mu, theta, chi, phi, gamma, delta):
+        if not self.prepared:
+            return
+
+        if delta == -999 and self.nb_motors == 6:
+            self.error("Six angle values are need as argument")
+        else:
+            
+            angles = [mu, theta, chi, phi, gamma, delta]
+            
+            self.diffrac.write_attribute("computehkl", angles)
+            
+            hkl_values = self.diffrac.computehkl
+            
+            self.output("h %f k %f l %f" % 
+                        (hkl_values[0], hkl_values[1], hkl_values[2]))
+
+    
+    
 
 class pa(Macro, _diffrac):
     """Prints information about the active diffractometer."""
