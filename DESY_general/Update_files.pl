@@ -26,7 +26,7 @@ if( ! -e "${dir_local}/Files.lis")
     $status = 0;
     goto finish;
 }
-
+ 
 my @files = `cat ${dir_local}/Files.lis`;
 @files = grep !/^#/, @files;
 

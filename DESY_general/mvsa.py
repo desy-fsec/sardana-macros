@@ -14,14 +14,15 @@ class mvsa(Macro):
 
           Used environment variables: 
               ScanDir, ScanFile, ScanID  -> file name
-              ScanHistory                -> motor name and scan type
+              ScanHistory                -> motor name and scan type, 
+                                            supported: ascan, a2scan, a3scan, dscan, d2scan, d3scan
               SignalCounter              -> counter name   
           'mvsa show' shows the results, no move """
     param_def = [ 
         ['mode', Type.String  , 'peak', "Options: 'show','peak','cms','cen','dip','dipm','dipc','slit', 'slitm', 'slitc', 'step','stepm' and 'stepc'"],
         ['interactiveFlag', Type.Integer , 1, " '1' query before move (def.) "]
         ]
-
+    result_def = [[ "result", Type.Boolean, None, "True, if a peak has been detected and the motor(s) were moved." ]]
     interactive = True
 
     def getFullPathName( self): 
@@ -98,6 +99,29 @@ class mvsa(Macro):
             endPos   = float( lst[6])
             dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
             argout.append( dct)
+        elif lst[0].lower() == "a3scan":
+            dct = {}
+            dct[ 'motorName'] = lst[1]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            dct[ 'targetPos'] = xpos
+            startPos = float( lst[2])
+            endPos   = float( lst[3])
+            ratio = (xpos - startPos)/(endPos - startPos)
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[4]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = float( lst[5])
+            endPos   = float( lst[6])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[7]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = float( lst[8])
+            endPos   = float( lst[9])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
         elif lst[0].lower() == "d2scan":
             dct = {}
             dct[ 'motorName'] = lst[1]
@@ -114,6 +138,29 @@ class mvsa(Macro):
             endPos   = dct['proxy'].Position + float(lst[6])
             dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
             argout.append( dct)
+        elif lst[0].lower() == "d3scan":
+            dct = {}
+            dct[ 'motorName'] = lst[1]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            dct[ 'targetPos'] = xpos
+            startPos = dct['proxy'].Position + float(lst[2])
+            endPos   = dct['proxy'].Position + float(lst[3])
+            ratio = (xpos - startPos)/(endPos - startPos)
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[4]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = dct['proxy'].Position + float( lst[5])
+            endPos   = dct['proxy'].Position + float(lst[6])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
+            dct = {}
+            dct[ 'motorName'] = lst[7]
+            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
+            startPos = dct['proxy'].Position + float( lst[8])
+            endPos   = dct['proxy'].Position + float(lst[9])
+            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
+            argout.append( dct)
         else:
             return None
         return argout
@@ -121,19 +168,19 @@ class mvsa(Macro):
     def run(self, mode, interactiveFlag):
 
         signalCounter = self.getEnv( "SignalCounter")
-
+        result = False
         #
         # mvsa only for ascan, dscan, a2scan, d2scan
         #
         scanType = self.getEnv( "ScanHistory")[-1]['title'].split()[0]
-        if not scanType.lower()  in ['ascan', 'dscan', 'a2scan', 'd2scan']:
+        if not scanType.lower()  in ['ascan', 'dscan', 'a2scan', 'd2scan', 'a3scan', 'd3scan']:
             self.output( "mvsa: scanType %s not in ['ascan', 'dscan', 'a2scan', 'd2scan']" % scanType)
-            return
+            return result
 
         fileName = self.getFullPathName()
         if fileName is None:
             self.output( "mvsa.run: terminated ")
-            return
+            return result
         self.output( "mvsa.run: file %s " % fileName)
         a = HasyUtils.fioReader( fileName)
 
@@ -154,12 +201,12 @@ class mvsa(Macro):
             self.output( "Column %s not found in %s" % ( signalCounter, fileName))
             for col in a.columns:
                 self.output( "%s" % col.name)
-            return
+            return result
 
         if message != 'success':
             self.output( "mvsa: failed to find the maximum for %s" % ( a.fileName))
             self.output( "mvsa: reason %s" % ( message))
-            return
+            return result
 
         if mode.lower() == 'show':
             self.output( "File name: %s " % fileName)
@@ -169,11 +216,11 @@ class mvsa(Macro):
             self.output( "ssa: status %d, reason %d" % (ssaDct['status'], ssaDct['reason']))
             self.output( "ssa: xpeak %g, cms %g midp %g" % (ssaDct['peak_x'], ssaDct['cms'], ssaDct['midpoint']))
             self.output( "ssa: l_back %g, r_back %g" % (ssaDct['l_back'], ssaDct['r_back']))
-            return
+            return result
 
         motorArr = self.getMotorInfo( xpos)
         if motorArr is None:
-            return
+            return result
         #
         # prompt the user for confirmation, unless we have an uncoditional 'go'
         #
@@ -184,7 +231,7 @@ class mvsa(Macro):
             answer = self.input( "Exec move(s) [Y/N], def. 'N': ")
             if not (answer.lower() == "yes" or answer.lower() == "y"):
                 self.output( "Motor(s) not moved!")
-                return
+                return result
 
         for elm in ( motorArr):
             elm[ 'proxy'].write_attribute( "Position", elm[ 'targetPos'])
@@ -198,4 +245,5 @@ class mvsa(Macro):
             time.sleep( 0.1)
         for elm in ( motorArr):
             self.output( "Motor %s is now at %g" % ( elm[ 'motorName'], elm[ 'proxy'].Position))
-        return
+        result = True
+        return result
