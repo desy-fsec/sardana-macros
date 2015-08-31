@@ -226,6 +226,10 @@ def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
 
     # CONFIGURE SHUTTER TRIGGER
 
+    # Present in previous configuration with DS v0.0
+    if (ni_cfg_dict[SHUT_LOW] == 0): 
+        ni_cfg_dict[SHUT_LOW] = 2
+
     # use position measurement overflow pulses as source of trigger
     ni_shutterchan.write_attribute('SourceTerminal', '/Dev1/PFI36')
     # configuring nr of pulses (it has to be a long type)
@@ -246,6 +250,11 @@ def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
 
 
     # CONFIGURE DETECTOR TRIGGER
+
+    # Present in previous configuration with DS v0.0
+    if (ni_cfg_dict[DET_LOW] == 0): 
+        ni_cfg_dict[DET_LOW] = 2
+
 
     # use position measurement overflow pulses as source of trigger
     ni_pilatuschan.write_attribute('SourceTerminal', '/Dev1/PFI36')
