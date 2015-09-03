@@ -8,7 +8,7 @@ import time
 
 class timedMacro(Macro):
     """
-    measures the execution time of another macro, e.g.: 
+    Measures the execution time of another macro, e.g.: 
       timedMacro 'ascan exp_dmy01 0 10 100 0.1'
     """
     

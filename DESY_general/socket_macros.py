@@ -47,13 +47,11 @@ class socketIO(Macro):
             break
         else:
             sckt.close()
-            self.output("findServer: failed to find the server")
-            self.output("Consider to: '! SardanaMessageWindow.py &'")
             return False
         self.output("findServer: connect() via port %d" % port)
         scktDct[ hp] = sckt
         return True
-
+ 
     def run(self, host, port, msg):
         global scktDct
         hp = "%s:%-d" % (host, port)

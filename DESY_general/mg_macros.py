@@ -580,8 +580,21 @@ class create_delete_mg(Macro):
         self.output("Done")
 
 class change_mg(Macro):
-    """Change  a  measurement group"""
-    
+    """
+    change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer>
+              -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>
+
+    All options are optional (except timer if -a is False (clear and create MG)
+    If MG is not supplied, the active one is changed
+    If addFlag (true or false) is not given, the MG will be cleared (addFlag False by default) 
+    and created with the given elements
+
+    Elements in a list have to be given separated by ,: eg. -c exp_ct01,exp_ct02
+
+    Example: 
+      change_mg -g mg_ivp -t exp_t01 -c exp_c01,vc_pilatus300k,vc_pilatus1m -m d1_mca01
+
+    """
     param_def = [ 
         ["options_list",
          ParamRepeat(['option', Type.String, None, 'option'],
