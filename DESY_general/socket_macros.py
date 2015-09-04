@@ -48,7 +48,6 @@ class socketIO(Macro):
         else:
             sckt.close()
             return False
-        self.output("findServer: connect() via port %d" % port)
         scktDct[ hp] = sckt
         return True
  
