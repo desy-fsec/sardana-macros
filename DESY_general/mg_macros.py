@@ -125,7 +125,7 @@ class MgConf:
         if argout is None:
             print("Error with device")
             print(device)
-            raise Exception( 'MgUtils.findFullDeviceName', "failed to find  %s" % device)
+            raise Exception( 'MgUtils.findFullDeviceName, %s' % device, "failed to find  %s" % device)
         return argout
 
 
