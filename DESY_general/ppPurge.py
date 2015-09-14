@@ -15,7 +15,6 @@ class ppPurge(Macro):
     - purges /<ScanDir>/prefix_01234.fio
     - purges MCA files /<ScanDir>/<scanName>
     - purges images in /<ScanDir>/<scanName>/<detector>
-    - saves the original files in /<ScanDir>/saved
     - processes the most recent files, if scanID is not specified
 
     Environment variables: ScanDir, ScanFile, ScanID
@@ -86,33 +85,6 @@ class ppPurge(Macro):
 
         return True
         
-    def _saveAllFiles( self): 
-        """
-        save the files: .fio, MCA, images
-        """
-        #
-        # if the fioFile has already been saved, assume that the work is done
-        #
-        fioFileSaved = "%s/saved/%s.fio" % ( self.scanDir, self.scanName)
-        if os.path.exists( fioFileSaved):
-            self._writer( "ppPurge._saveAllFiles:\n  %s exists already,\n  nothing to be done" % fioFileSaved)
-            return False
-
-        fioFile = "%s/%s.fio" % ( self.scanDir, self.scanName)
-        saveDir = "%s/saved" % ( self.scanDir)
-        if not os.path.isdir( saveDir):
-            os.mkdir( saveDir)
-        shutil.copy( fioFile, saveDir)
-        self._writer( "ppPurge: saved %s in\n  %s" % (fioFile, saveDir))
-        #
-        # save the mca and image files
-        #
-        if os.path.isdir( "%s/%s" % (self.scanDir, self.scanName)):
-            shutil.copytree( "%s/%s" % (self.scanDir, self.scanName),
-                             "%s/saved/%s" % (self.scanDir, self.scanName))
-            self._writer( "ppPurge: saved mca and image files in\n  %s/saved/%s" % (self.scanDir, self.scanName))
-        return True
-
     def _findDoubles( self):
         """
         find doubles in, e.g., /<ScanDir>/<scanName>.fio
@@ -250,13 +222,8 @@ class ppPurge(Macro):
 
         if not hasattr( self, 'writer'):
             #
-            # do we have an open message window?
-            #
-            res = self.mwTest()
-            if res.getResult():
-                self.writer = self.mwOutput
-            else:
-                self.writer = self.output
+            # send the output to the info stream
+            self.writer = self.info
             #
             # do not overwrite an existing log file
             #
@@ -279,11 +246,6 @@ class ppPurge(Macro):
         fioFile = "%s/%s.fio" % ( self.scanDir, self.scanName)
         if not os.path.exists( fioFile):
             self._writer( "ppPurge: %s does not exist" % fioFile)
-            return False
-
-        if not self._saveAllFiles():
-            if not self.log is None:
-                self.log.close()
             return False
 
         if not self._findDoubles():
