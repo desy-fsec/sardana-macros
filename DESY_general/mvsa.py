@@ -22,7 +22,7 @@ class mvsa(Macro):
         ['mode', Type.String  , 'peak', "Options: 'show','peak','cms','cen','dip','dipm','dipc','slit', 'slitm', 'slitc', 'step','stepm' and 'stepc'"],
         ['interactiveFlag', Type.Integer , 1, " '1' query before move (def.) "]
         ]
-    result_def = [[ "result", Type.Boolean, None, "True, if a peak has been detected and the motor(s) were moved." ]]
+    result_def = [[ "result", Type.String, None, "'status=False' or 'status=True,mot1=12,...'" ]]
     interactive = True
 
     def getFullPathName( self): 
@@ -168,7 +168,7 @@ class mvsa(Macro):
     def run(self, mode, interactiveFlag):
 
         signalCounter = self.getEnv( "SignalCounter")
-        result = False
+        result = "status=False"
         #
         # mvsa only for ascan, dscan, a2scan, d2scan
         #
@@ -243,7 +243,8 @@ class mvsa(Macro):
                     moving = True
                     break
             time.sleep( 0.1)
+        result = "status=True"
         for elm in ( motorArr):
             self.output( "Motor %s is now at %g" % ( elm[ 'motorName'], elm[ 'proxy'].Position))
-        result = True
+            result = result + ",%s=%s" % (elm[ 'motorName'], str(elm[ 'proxy'].Position))
         return result
