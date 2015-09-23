@@ -152,6 +152,9 @@ class escan(Macro):
             self.k_fix = self.k_device.read_attribute("Position").value
             self.l_fix = self.l_device.read_attribute("Position").value
             
+            self.initial_autoenergy = self.diffrac.read_attribute("autoenergyupdate").value
+            self.diffrac.write_attribute("autoenergyupdate", 0)
+
             wavelength = self.lambda_to_e/self.energy_device.read_attribute("Position").value
             self.diffrac.write_attribute("wavelength", wavelength)
 
@@ -180,14 +183,15 @@ class escan(Macro):
 
         if return_flag:
             self.output("Returning the energy to the value before the scan ...")
-            self.energy_device.Position = saved_initial_position
+            self.energy_device.write_atribute("Position", saved_initial_position)
             if fixq == "fixq":
                 wavelength = self.lambda_to_e/saved_initial_position
                 
                 self.diffrac.write_attribute("wavelength", wavelength)
-                macro_hkl,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1, 1)
+                macro_hkl,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1, 0)
                 
                 self.runMacro(macro_hkl)
+                self.diffrac.write_attribute("autoenergyupdate", self.initial_autoenergy)
             while self.energy_device.state() == DevState.MOVING:
                 time.sleep(1)
 
@@ -249,12 +253,17 @@ class me(Macro):
 
         diffrac_name = self.getEnv('DiffracDevice')
         diffrac_device = self.getDevice(diffrac_name)
+            
+        initial_autoenergy = diffrac_device.read_attribute("autoenergyupdate").value
+        diffrac_device.write_attribute("autoenergyupdate", 0)
+
         lambda_to_e = 12398.424 # Amstrong * eV
         wavelength = lambda_to_e/energy        
         diffrac_device.write_attribute("wavelength", wavelength)
 
         self.execMacro("mv", energy_device, energy)
 
+        diffrac_device.write_attribute("autoenergyupdate", initial_autoenergy)
 
 class escanexafs_general(Macro):
     """ Energy regions scan"""
