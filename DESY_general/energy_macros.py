@@ -132,6 +132,10 @@ class escan(Macro):
 
         self.energy_device = energy_device
 
+
+            
+        self.initial_autoenergy = self.diffrac.read_attribute("autoenergyupdate").value
+
         if fixq == "fixq":
             self.lambda_to_e = 12398.424 # Amstrong * eV
             diffrac_name = self.getEnv('DiffracDevice')
@@ -151,12 +155,13 @@ class escan(Macro):
             self.h_fix = self.h_device.read_attribute("Position").value
             self.k_fix = self.k_device.read_attribute("Position").value
             self.l_fix = self.l_device.read_attribute("Position").value
-            
-            self.initial_autoenergy = self.diffrac.read_attribute("autoenergyupdate").value
+
             self.diffrac.write_attribute("autoenergyupdate", 0)
 
             wavelength = self.lambda_to_e/self.energy_device.read_attribute("Position").value
             self.diffrac.write_attribute("wavelength", wavelength)
+        else:
+            self.diffrac.write_attribute("autoenergyupdate", 1)
 
             
         # set the motor to the initial position for having the right position at the first hook
@@ -191,7 +196,8 @@ class escan(Macro):
                 macro_hkl,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1, 0)
                 
                 self.runMacro(macro_hkl)
-                self.diffrac.write_attribute("autoenergyupdate", self.initial_autoenergy)
+             
+            self.diffrac.write_attribute("autoenergyupdate", self.initial_autoenergy)   
             while self.energy_device.state() == DevState.MOVING:
                 time.sleep(1)
 
