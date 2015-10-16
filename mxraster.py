@@ -5,6 +5,7 @@ import datetime
 import taurus
 from find_spots import find_spots
 
+
 class oav_raster_config(Macro):
     """
     This macro is used to set/get the raster macro configuration.
@@ -346,6 +347,7 @@ class mxraster(Macro):
 
     def process_one(self):
         self.debug("      - processing %s ... " % self.last_image )
+        self.debug("      - merith metod: %s" % self.merit_method)
         self.last_result = find_spots( self.last_image, self.merit_method)
         self.debug("        * result is: %s " % self.last_result )
 
