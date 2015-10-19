@@ -2,12 +2,16 @@ from sardana.macroserver.macro import macro, iMacro, Macro, Type, ParamRepeat
 import os
 
 
-class test_find_spots(Macro):
+class which_user(Macro):
     '''
-    Testing
+    Category: Test
     '''
-    param_def = [[]]
+    param_def = []
  
-    def run(self, image, method):
-        self.info("user %s" % os.environ['USER'])
+    def run(self):
+
+        if 'USER' in os.environ.keys():
+            self.info("user %s" % os.environ['USER'])
+        else:
+            self.warning("USER is not defined in this host!")
 
