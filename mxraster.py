@@ -8,6 +8,7 @@ from find_spots import find_spots
 
 class oav_raster_config(Macro):
     """
+    Category: Configuration
     This macro is used to set/get the raster macro configuration.
     There are 4 possible parameters to configure:
 
@@ -50,6 +51,7 @@ class oav_raster_config(Macro):
 class oav_merit_method(Macro):
     # TODO: complete merit method descriptions.
     """
+    Category: Configuration
     This macro is used to set/get the merit method for the mxraster macro.
     The merit method selected depends on the available methods defined in
     find_spots.py module:
@@ -93,6 +95,7 @@ class oav_merit_method(Macro):
 
 class mxraster_config(Macro):
     '''
+    Category: Deprecated
     Deprecated since 17/06/2015!
     You MUST use oav_raster_config macro instead.
     '''
@@ -110,9 +113,33 @@ class mxraster_config(Macro):
                       }
         self.setEnv('MXRasterConfig', config_dir)
         #self.execMacro('senv', 'MXRasterConfig',  config_dir)
-	
+
+
+class spots_finder(Macro):
+    '''
+    Category: Post-Processing
+    Calculate the number of diffraction spots from a given image file.
+    Two methods are available: xds (default) and labelit.
+
+    '''
+    param_def = [['image', Type.String, None, 'Image to process'],
+                 ['method', Type.String, 'xds', 'Method for figure of merit'],
+                 ]
+
+    def run(self, image, method):
+        if method not in ['labelit', 'xds']:
+            self.error('Invalid method value. Aborting...')
+            self.abort()
+
+        self.info("      - processing %s ... " % image )
+        self.info("      - merith metod: %s" % method)
+        result = find_spots( image, method)
+        self.info("        * result is: %s " % result )
+
+
 class mxraster(Macro):
     """
+    Category: Experiments
     This macro performs a raster scan for a rectangular grid and returns a
     value which marks the different spot positions for collecting. The marks
     are assigned according to the merit method selected.
