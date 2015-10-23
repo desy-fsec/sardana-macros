@@ -83,9 +83,9 @@ class region_scans(Macro):
     param_def = [ 
         ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
         ["scan_regions", ParamRepeat(
-                ['estart', Type.Float, None, 'Start position'],
-                ['estop', Type.Float, None, 'Stop position'],
-                ['estep', Type.Integer, None, 'Step size'],
+                ['start', Type.Float, None, 'Start position'],
+                ['stop', Type.Float, None, 'Stop position'],
+                ['nbstep', Type.Integer, None, 'Nb of steps'],
                 ['integ_time', Type.Float, None, 'Integration time']),
          None, 'List of scan regions']
         ]
@@ -94,15 +94,13 @@ class region_scans(Macro):
         
         # calculate number of regions
         nregions = len(scan_regions)
+        posOld = motor.getPosition()
         for i in range(0, nregions):
-            nenergies = int(math.fabs(scan_regions[i][1]-scan_regions[i][0])/scan_regions[i][2])     
-            if nenergies < 1:
-                nenergies = 1
-
             macro,pars = self.createMacro('ascan', motor,
-                                          scan_regions[i][0],         # energy_start
-                                          scan_regions[i][1],         # energy_stop
-                                          nenergies,                  # number of steps
+                                          posOld+scan_regions[i][0],         # energy_start
+                                          posOld+scan_regions[i][1],         # energy_stop
+                                          scan_regions[i][2],                  # number of steps
                                           scan_regions[i][3])
 
             self.runMacro(macro)
+        self.mv( motor, posOld)  
