@@ -76,15 +76,40 @@ class scan_loop(Macro):
                 self.execMacro('ascan', motor.getName(), start_pos, final_pos, nr_interv, integ_time)
 
 
- 
-class region_scans(Macro):
-    """ Region scans """
+class ascan_regions(Macro):
+    """ Absolute scan in regions """
 
     param_def = [ 
         ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
         ["scan_regions", ParamRepeat(
                 ['start', Type.Float, None, 'Start position'],
                 ['stop', Type.Float, None, 'Stop position'],
+                ['nbstep', Type.Integer, None, 'Nb of steps'],
+                ['integ_time', Type.Float, None, 'Integration time']),
+         None, 'List of scan regions']
+        ]
+    
+    def run(self, motor, *scan_regions):      
+        # calculate number of regions
+        nregions = len(scan_regions)
+        for i in range(0, nregions):
+            macro,pars = self.createMacro('ascan', motor,
+                                          scan_regions[i][0],         # start
+                                          scan_regions[i][1],         # stop
+                                          scan_regions[i][2],         # number of steps
+                                          scan_regions[i][3])         # integration time
+
+            self.runMacro(macro)
+
+ 
+class dscan_regions(Macro):
+    """ Relative scan in regions """
+
+    param_def = [ 
+        ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
+        ["scan_regions", ParamRepeat(
+                ['start', Type.Float, None, 'Relative start position'],
+                ['stop', Type.Float, None, 'Relative stop position'],
                 ['nbstep', Type.Integer, None, 'Nb of steps'],
                 ['integ_time', Type.Float, None, 'Integration time']),
          None, 'List of scan regions']
@@ -97,10 +122,10 @@ class region_scans(Macro):
         posOld = motor.getPosition()
         for i in range(0, nregions):
             macro,pars = self.createMacro('ascan', motor,
-                                          posOld+scan_regions[i][0],         # energy_start
-                                          posOld+scan_regions[i][1],         # energy_stop
-                                          scan_regions[i][2],                  # number of steps
-                                          scan_regions[i][3])
+                                          posOld+scan_regions[i][0],         # start
+                                          posOld+scan_regions[i][1],         # stop
+                                          scan_regions[i][2],                # number of steps
+                                          scan_regions[i][3])                # integration time
 
             self.runMacro(macro)
         self.mv( motor, posOld)  
