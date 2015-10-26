@@ -46,6 +46,18 @@ class escan(Macro):
         ]
     
 
+    def energy_pre_move(self):
+        global flag_no_first
+        self.info("\tCalling move energy hook")
+    
+        pos_to_set = self.energy_device.read_attribute("Position").value + flag_no_first * self.step
+        flag_no_first = 1
+
+        wavelength = self.lambda_to_e/pos_to_set
+        
+        
+        self.diffrac.write_attribute("wavelength", wavelength)
+
     def hkl_pre_move(self):
         global flag_no_first
         self.info("\tCalling move hkl hook")
@@ -131,13 +143,20 @@ class escan(Macro):
         
 
         self.energy_device = energy_device
-
-
             
         self.initial_autoenergy = self.diffrac.read_attribute("autoenergyupdate").value
 
+        self.diffrac_defined = 0
+        try:
+            diffrac_name = self.getEnv('DiffracDevice')
+            self.diffrac = self.getDevice(diffrac_name)
+            self.diffrac_defined = 1
+        except:
+            self.debug("DiffracDevice not defined or not found")
+
         if fixq == "fixq":
             self.lambda_to_e = 12398.424 # Amstrong * eV
+            # Repeat it here for getting an eror if fixq mode
             diffrac_name = self.getEnv('DiffracDevice')
             self.diffrac = self.getDevice(diffrac_name)
             pseudo_motor_names = []
@@ -181,6 +200,9 @@ class escan(Macro):
             self.runMacro(macro_hkl)
         
             macro.hooks = [ (self.hkl_pre_move, ["pre-move"]), (self.hkl_post_move, ["post-move"]), ] 
+        else:
+            if self.diffrac_defined:
+                macro.hooks = [ (self.energy_pre_move, ["pre-move"]), ] 
 
         self.runMacro(macro)
 
