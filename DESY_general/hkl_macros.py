@@ -376,7 +376,7 @@ class pa(Macro, _diffrac):
         elif self.type == 'K4CV':
             str_type = "Kappa 4C Vertical"
             
-        self.output("%s Geometry, %s" % (str_type, self.diffrac.enginemode))
+        self.output("%s Geometry (%s), %s" % (str_type, self.type, self.diffrac.enginemode))
         #self.output("Sector %s" % "[ToDo]")
         self.output("")
 
