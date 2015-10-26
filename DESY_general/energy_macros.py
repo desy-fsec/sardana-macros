@@ -188,7 +188,7 @@ class escan(Macro):
 
         if return_flag:
             self.output("Returning the energy to the value before the scan ...")
-            self.energy_device.write_atribute("Position", saved_initial_position)
+            self.energy_device.write_attribute("Position", saved_initial_position)
             if fixq == "fixq":
                 wavelength = self.lambda_to_e/saved_initial_position
                 
