@@ -279,19 +279,25 @@ class me(Macro):
         except:
             pass
 
-        diffrac_name = self.getEnv('DiffracDevice')
-        diffrac_device = self.getDevice(diffrac_name)
+        try:
+            diffrac_name = self.getEnv('DiffracDevice')
+            diffrac_device = self.getDevice(diffrac_name)
             
-        initial_autoenergy = diffrac_device.read_attribute("autoenergyupdate").value
-        diffrac_device.write_attribute("autoenergyupdate", 0)
+            initial_autoenergy = diffrac_device.read_attribute("autoenergyupdate").value
+            diffrac_device.write_attribute("autoenergyupdate", 0)
 
-        lambda_to_e = 12398.424 # Amstrong * eV
-        wavelength = lambda_to_e/energy        
-        diffrac_device.write_attribute("wavelength", wavelength)
+            flag_diffrac = 1
+
+            lambda_to_e = 12398.424 # Amstrong * eV
+            wavelength = lambda_to_e/energy        
+            diffrac_device.write_attribute("wavelength", wavelength)
+        except:
+            pass
 
         self.execMacro("mv", energy_device, energy)
 
-        diffrac_device.write_attribute("autoenergyupdate", initial_autoenergy)
+        if flag_diffrac:
+            diffrac_device.write_attribute("autoenergyupdate", initial_autoenergy)
 
 class escanexafs_general(Macro):
     """ Energy regions scan"""
