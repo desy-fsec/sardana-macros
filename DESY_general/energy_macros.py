@@ -278,7 +278,8 @@ class me(Macro):
             fmb_tango_device.write_attribute("PseudoChannelCutMode", 0)
         except:
             pass
-
+        
+        flag_diffrac = 0
         try:
             diffrac_name = self.getEnv('DiffracDevice')
             diffrac_device = self.getDevice(diffrac_name)
