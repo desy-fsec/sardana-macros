@@ -4,10 +4,11 @@
 Specific Alba BL29 XMCD end station util macros
 """
 
-__all__=['xmcd_4kpot_set_refill', 'xmcd_sample_temp_control']
+__all__=['xmcd_4kpot_set_refill', 'xmcd_sample_temp_control', 'xmcd_sample_align']
 
 import PyTango
 import time
+import numpy
 
 #@todo: REMOVE ParamRepeat when fixed bug:
 #    https://sourceforge.net/tracker/?func=detail&atid=484769&aid=3608704&group_id=57612
@@ -413,6 +414,239 @@ class xmcd_sample_temp_control(Macro):
             msg = 'Error while checking written parameter %s with %s value' % (param_name, str(param_value))
             self.output(msg)
             raise Exception(msg)
+
+
+class xmcd_sample_align(Macro):
+    """
+    Macro for automatic sample positioning by moving xmcd vertical motor.
+    The macro will perform the following steps:
+        - perform the specified alignment scan
+        - divide the specified channel2 / channel1, compute its derivate and find the peak
+        - move the motor specified in the align scan to the peak+offset position
+
+    The macro can be run simply typing this command (note the absence of parameters):
+        xmcd_align
+
+    The macro will ask the user for confirmation, but if after a given time it gets no
+    answer then it will assume that the confirmation is received.
+
+    The macro needs some environment parameters that must be set prior to its first
+    execution. These parameters are then permanently stored and can be modified at
+    any moment.
+
+    These parameters can be inspected by typing the command \'get\' followed by the
+    parameters names to be get (or the special keyword \'all\' to see all). Examples:
+        xmcd_sample_align get all
+        xmcd_sample_align get offset
+
+    These parameters can be set by typing the command \'set\' followed by the pairs
+    consisting on parameters names to be set and its values. Examples:
+        xmcd_sample_align set offset 100 channel2 adc1_i2
+        xmcd_sample_align set align_scan 'ascanc xmcd_z 0 10.0 0.1 0.2'
+
+    The environment parameters are:
+        - align_scan: scan to be run in order to obtain data for alignment
+            * it must be typed between brackets (e.g. 'ascanc xmcd_z 0 10.0 0.1 0.2')
+            * note that the second string typed will be assumed as the motor to be moved ('xmcd_z' in this example)
+        - channel1: the channel name of the measurement group to be used as channel 1 (e.g. adc1_i2)
+        - channel2: the channel name of the measurement group to be used as channel 2 (e.g. adc1_i1)
+        - offset: the offset to be summed to the found peak value for motor positioning
+    """
+
+    arguments = {'align_scan' : None,
+                 'channel1'    : None,
+                 'channel2'    : None,
+                 'offset'      : None }
+
+    param_def = [
+        ['get_set', Type.String, '', 'get for getting parameters, set for setting parameters or empty to run'],
+        ['params', ParamRepeat(['param_name',  Type.String, None, 'parameter name']), [''],
+            'parameters: it may be a list of param names to retrieve or a list of param_nam param_value to stored']
+    ]
+
+    interactive = True
+
+    def prepare(self, *args, **kwargs):
+        """"""
+        pass
+
+    def run(self, *args, **kwargs):
+        """"""
+        #prepare environment
+        env_prefix = 'Macros.%s.' % self.__class__.__name__
+        environment = self.getGlobalEnv() 
+
+        #check first argument
+        get_set = args[0]
+        if not args[0] in ('get','set',''):
+            msg = 'Invalid argument %s (it should be get, set or none)' % args[0]
+            self.error(msg)
+            return
+
+        #requested to set environment parameters
+        if get_set == 'set':
+            if len(args[1:]) % 2 != 0:
+                msg = 'When setting environment parameters you must provide pairs consisting on name and value'
+                self.error(msg)
+                return
+            for arg, value in zip(args[1::2], args[2::2]):
+                try:
+                    self.setEnv(env_prefix+arg, value)
+                    self.output('%s correctly set to %s' % (arg,value))
+                except Exception, e:
+                    msg = 'Unable to set %s with value %s' % (str(arg), str(value))
+                    self.error(msg)
+                    self.debug('%s:\n\n%s' % (msg,str(e)))
+                    break
+            return
+
+        #requested to get environment parameters
+        if get_set == 'get':
+            if 'all' in args:
+                args = sorted(self.arguments.keys())
+            else:
+                args = args[1:]
+            for arg in args:
+                try:
+                    value = environment[env_prefix+arg]
+                    self.arguments[arg] = value
+                    self.output('%s: %s' % (arg,value))
+                except Exception, e:
+                    msg = 'Unable to get --%s' % str(arg)
+                    self.error(msg)
+                    self.debug('%s:\n\n%s' % (msg,str(e)))
+                    break
+            return
+
+        #get all environment parameters
+        self.output('Using the following parameters:')
+        for arg in self.arguments.keys():
+            try:
+                value = environment[env_prefix+arg]
+                self.arguments[arg] = value
+                self.output('\t%s: %s' % (arg,value))
+            except Exception, e:
+                msg = 'Unable to get %s environment parameter' % str(env_prefix+arg)
+                self.error(msg)
+                self.debug('%s:\n\n%s' % (msg,str(e)))
+                return
+        #get motor name from align_scan
+        try:
+            motor_name = self.arguments['align_scan'].split()[1]
+        except Exception, e:
+            msg = 'Unable to determine the motor involved in align_scan'
+            self.error(msg)
+            self.debug('%s:\n%s' % (msg,str(e)))
+            return
+        #get offset
+        try:
+            offset = float(self.arguments['offset'])
+        except Exception, e:
+            msg = 'Unable to determine offset'
+            self.error(msg)
+            self.debug('%s:\n%s' % (msg,str(e)))
+            return
+
+        #prepare alignment scan
+        ret = self.createMacro(self.arguments['align_scan'])
+        seek_scan, _ = ret
+
+        #check if requested channels are available in active measurement group
+        ch1_name = self.arguments['channel1']
+        ch2_name = self.arguments['channel2']
+        try:
+            meas_name = environment['ActiveMntGrp']
+            meas = seek_scan.getMeasurementGroup(meas_name).getObj()
+            meas_channels = meas.getChannelNames()
+        except Exception, e:
+            msg = 'Unable to get measurement group details'
+            self.error(msg)
+            self.debug('%s:\n%s' % (msg,str(e)))
+            return
+        if not ch1_name in meas_channels:
+            msg = '%s cannot be found in active measurement group' % self.arguments['channel1']
+            self.error(msg)
+            return
+        if not ch2_name in meas_channels:
+            msg = '%s cannot be found in active measurement group' % ch2_name
+            self.error(msg)
+            return
+
+        #run alignment scan
+        self.runMacro(seek_scan)
+
+        #find target channels in measurement group
+        try:
+            ch1_name_scan = None
+            ch2_name_scan = None
+            scan_channels = seek_scan.data[0].data.keys()
+            ch1_name_device = PyTango.Database().get_device_alias(ch1_name)
+            ch2_name_device = PyTango.Database().get_device_alias(ch2_name)
+            for scan_channel in scan_channels:
+                if (scan_channel.find(ch1_name) != -1):
+                    ch1_name_scan = scan_channel
+                if (scan_channel.find(ch1_name_device) != -1):
+                    ch1_name_scan = scan_channel
+                if (scan_channel.find(ch2_name) != -1):
+                    ch2_name_scan = scan_channel
+                if (scan_channel.find(ch2_name_device) != -1):
+                    ch2_name_scan = scan_channel
+            msg = 'Unable to find the necessary data channels in the data obtained from the scan: '
+            if ch1_name_scan == None:
+                msg+= ch1_name
+            if ch2_name_scan == None:
+                msg+= ch2_name
+            if ch1_name_scan == None or ch2_name_scan == None:
+                self.error(msg)
+                return
+        except Exception, e:
+            msg = 'Unable to find the necessary data channels in the data obtained from the scan'
+            self.error(msg)
+            self.debug('%s:\n%s' % (msg,str(e)))
+            return
+
+        #extract channels data from scan
+        ch1 = []
+        ch2 = []
+        z_positions = []
+        for i in range(len(seek_scan.data)):
+            record = seek_scan.data[i]
+            ch1.append(record.data[ch1_name_scan])
+            ch2.append(record.data[ch2_name_scan])
+            z_positions.append(record.data[motor_name])
+
+        ch1 = numpy.array(ch1)
+        ch2 = numpy.array(ch2)
+        try:
+            derivative = numpy.gradient(ch2/ch1, z_positions)
+        except Exception, e:
+            msg = 'Unable to perform the necessary operations. Please check scan data validity!'
+            self.error(msg)
+            self.debug('%s:\n%s' % (msg,str(e)))
+            return
+
+        if False:
+            import matplotlib.pyplot
+            matplotlib.pyplot.subplot(211)
+            matplotlib.pyplot.plot(z_positions, ch2/ch1)
+            matplotlib.pyplot.title('channel2/channel1')
+            matplotlib.pyplot.subplot(212)
+            matplotlib.pyplot.plot(z_positions, derivative)
+            matplotlib.pyplot.title('derivative')
+            matplotlib.pyplot.show()
+
+        target = z_positions[numpy.abs(derivative).argmax()] + offset
+        ret = self.createMacro('mv', self.getMoveable(motor_name), target)
+        move, _ = ret
+        answer = ''
+        while not answer.lower() in ('y','n'):
+            answer = self.input('Motor %s will be moved to %f. Do you want to continue? (y/n) ?' % (motor_name, target), timeout=10, default_value='y')
+        if answer == 'y':
+            self.output('Moving %s to %f' % (motor_name, target))
+            self.runMacro(move)
+        else:
+            self.output('Aborting')
+        self.output('Finished. Press enter for prompt')
 
 
 # class xmcd_3D_mv(Macro):

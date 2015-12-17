@@ -46,6 +46,18 @@ class escan(Macro):
         ]
     
 
+    def energy_pre_move(self):
+        global flag_no_first
+        self.info("\tCalling move energy hook")
+    
+        pos_to_set = self.energy_device.read_attribute("Position").value + flag_no_first * self.step
+        flag_no_first = 1
+
+        wavelength = self.lambda_to_e/pos_to_set
+        
+        
+        self.diffrac.write_attribute("wavelength", wavelength)
+
     def hkl_pre_move(self):
         global flag_no_first
         self.info("\tCalling move hkl hook")
@@ -131,9 +143,20 @@ class escan(Macro):
         
 
         self.energy_device = energy_device
+            
+        self.initial_autoenergy = self.diffrac.read_attribute("autoenergyupdate").value
+
+        self.diffrac_defined = 0
+        try:
+            diffrac_name = self.getEnv('DiffracDevice')
+            self.diffrac = self.getDevice(diffrac_name)
+            self.diffrac_defined = 1
+        except:
+            self.debug("DiffracDevice not defined or not found")
 
         if fixq == "fixq":
             self.lambda_to_e = 12398.424 # Amstrong * eV
+            # Repeat it here for getting an eror if fixq mode
             diffrac_name = self.getEnv('DiffracDevice')
             self.diffrac = self.getDevice(diffrac_name)
             pseudo_motor_names = []
@@ -151,9 +174,13 @@ class escan(Macro):
             self.h_fix = self.h_device.read_attribute("Position").value
             self.k_fix = self.k_device.read_attribute("Position").value
             self.l_fix = self.l_device.read_attribute("Position").value
-            
+
+            self.diffrac.write_attribute("autoenergyupdate", 0)
+
             wavelength = self.lambda_to_e/self.energy_device.read_attribute("Position").value
             self.diffrac.write_attribute("wavelength", wavelength)
+        else:
+            self.diffrac.write_attribute("autoenergyupdate", 1)
 
             
         # set the motor to the initial position for having the right position at the first hook
@@ -173,6 +200,9 @@ class escan(Macro):
             self.runMacro(macro_hkl)
         
             macro.hooks = [ (self.hkl_pre_move, ["pre-move"]), (self.hkl_post_move, ["post-move"]), ] 
+        else:
+            if self.diffrac_defined:
+                macro.hooks = [ (self.energy_pre_move, ["pre-move"]), ] 
 
         self.runMacro(macro)
 
@@ -180,14 +210,16 @@ class escan(Macro):
 
         if return_flag:
             self.output("Returning the energy to the value before the scan ...")
-            self.energy_device.Position = saved_initial_position
+            self.energy_device.write_attribute("Position", saved_initial_position)
             if fixq == "fixq":
                 wavelength = self.lambda_to_e/saved_initial_position
                 
                 self.diffrac.write_attribute("wavelength", wavelength)
-                macro_hkl,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1, 1)
+                macro_hkl,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1, 0)
                 
                 self.runMacro(macro_hkl)
+             
+            self.diffrac.write_attribute("autoenergyupdate", self.initial_autoenergy)   
             while self.energy_device.state() == DevState.MOVING:
                 time.sleep(1)
 
@@ -246,15 +278,27 @@ class me(Macro):
             fmb_tango_device.write_attribute("PseudoChannelCutMode", 0)
         except:
             pass
+        
+        flag_diffrac = 0
+        try:
+            diffrac_name = self.getEnv('DiffracDevice')
+            diffrac_device = self.getDevice(diffrac_name)
+            
+            initial_autoenergy = diffrac_device.read_attribute("autoenergyupdate").value
+            diffrac_device.write_attribute("autoenergyupdate", 0)
 
-        diffrac_name = self.getEnv('DiffracDevice')
-        diffrac_device = self.getDevice(diffrac_name)
-        lambda_to_e = 12398.424 # Amstrong * eV
-        wavelength = lambda_to_e/energy        
-        diffrac_device.write_attribute("wavelength", wavelength)
+            flag_diffrac = 1
+
+            lambda_to_e = 12398.424 # Amstrong * eV
+            wavelength = lambda_to_e/energy        
+            diffrac_device.write_attribute("wavelength", wavelength)
+        except:
+            pass
 
         self.execMacro("mv", energy_device, energy)
 
+        if flag_diffrac:
+            diffrac_device.write_attribute("autoenergyupdate", initial_autoenergy)
 
 class escanexafs_general(Macro):
     """ Energy regions scan"""
