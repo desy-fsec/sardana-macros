@@ -126,7 +126,7 @@ def nxslsprof(self):
     """
 
     set_selector(self)
-    printList(self, "AvailableSelections", False,
+    printList(self, "AvailableProfiles", False,
               "Available profiles", True)
 
 
@@ -138,7 +138,7 @@ def nxslstimers(self):
 
     set_selector(self)
     printList(self, "AvailableTimers", False,
-              "Available timers")
+              "Available timers", True)
 
 
 @macro()
@@ -163,9 +163,9 @@ class nxsetprof(Macro):
     def run(self, name):
         set_selector(self)
         self.selector.mntgrp = name
-        self.selector.fetchConfiguration()
+        self.selector.fetchProfile()
         self.selector.importMntGrp()
-        self.selector.storeConfiguration()
+        self.selector.storeProfile()
         update_configuration(self)
 
 
@@ -181,7 +181,7 @@ class nxsrmprof(Macro):
 
     def run(self, name):
         set_selector(self)
-        self.selector.deleteMntGrp(name)
+        self.selector.deleteProfile(name)
 
 
 class nxsettimers(Macro):
@@ -197,10 +197,10 @@ class nxsettimers(Macro):
 
     def run(self, *timer_list):
         set_selector(self)
-        cnf = json.loads(self.selector.configuration)
+        cnf = json.loads(self.selector.profileConfiguration)
 
         cnf["Timer"] = str(json.dumps(timer_list))
-        self.selector.configuration = str(json.dumps(cnf))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
 
 
@@ -219,18 +219,18 @@ class nxsadd(Macro):
 
     def run(self, *component_list):
         set_selector(self)
-        cnf = json.loads(self.selector.configuration)
-        cpdct = json.loads(cnf["ComponentGroup"])
-        dsdct = json.loads(cnf["DataSourceGroup"])
+        cnf = json.loads(self.selector.profileConfiguration)
+        cpdct = json.loads(cnf["ComponentSelection"])
+        dsdct = json.loads(cnf["DataSourceSelection"])
         pch = self.selector.poolChannels()
         for name in component_list:
             if name not in pch and name in self.selector.availableComponents():
                 cpdct[str(name)] = True
             else:
                 dsdct[str(name)] = True
-        cnf["DataSourceGroup"] = str(json.dumps(dsdct))
-        cnf["ComponentGroup"] = str(json.dumps(cpdct))
-        self.selector.configuration = str(json.dumps(cnf))
+        cnf["DataSourceSelection"] = str(json.dumps(dsdct))
+        cnf["ComponentSelection"] = str(json.dumps(cpdct))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
 
 
@@ -250,17 +250,17 @@ class nxsrm(Macro):
 
     def run(self, *component_list):
         set_selector(self)
-        cnf = json.loads(self.selector.configuration)
-        cpdct = json.loads(cnf["ComponentGroup"])
-        dsdct = json.loads(cnf["DataSourceGroup"])
+        cnf = json.loads(self.selector.profileConfiguration)
+        cpdct = json.loads(cnf["ComponentSelection"])
+        dsdct = json.loads(cnf["DataSourceSeleciton"])
         for name in component_list:
             if name in cpdct:
                 cpdct[str(name)] = False
             if name in dsdct:
                 dsdct[str(name)] = False
-        cnf["DataSourceGroup"] = str(json.dumps(dsdct))
-        cnf["ComponentGroup"] = str(json.dumps(cpdct))
-        self.selector.configuration = str(json.dumps(cnf))
+        cnf["DataSourceSeleciton"] = str(json.dumps(dsdct))
+        cnf["ComponentSelection"] = str(json.dumps(cpdct))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
 
 
@@ -269,16 +269,16 @@ class nxsclr(Macro):
 
     def run(self):
         set_selector(self)
-        cnf = json.loads(self.selector.configuration)
-        cpdct = json.loads(cnf["ComponentGroup"])
-        dsdct = json.loads(cnf["DataSourceGroup"])
+        cnf = json.loads(self.selector.profileConfiguration)
+        cpdct = json.loads(cnf["ComponentSelection"])
+        dsdct = json.loads(cnf["DataSourceSeleciton"])
         for name in cpdct.keys():
             cpdct[str(name)] = False
         for name in dsdct.keys():
             dsdct[str(name)] = False
-        cnf["DataSourceGroup"] = str(json.dumps(dsdct))
-        cnf["ComponentGroup"] = str(json.dumps(cpdct))
-        self.selector.configuration = str(json.dumps(cnf))
+        cnf["DataSourceSeleciton"] = str(json.dumps(dsdct))
+        cnf["ComponentSelection"] = str(json.dumps(cpdct))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
 
 
@@ -297,8 +297,8 @@ class nxsadddesc(Macro):
 
     def run(self, *component_list):
         set_selector(self)
-        cnf = json.loads(self.selector.configuration)
-        cpdct = json.loads(cnf["AutomaticComponentGroup"])
+        cnf = json.loads(self.selector.profileConfiguration)
+        cpdct = json.loads(cnf["ComponentPreselection"])
         dsdct = set(json.loads(cnf["InitDataSources"]))
         for name in component_list:
             if name in self.selector.availableComponents():
@@ -306,9 +306,9 @@ class nxsadddesc(Macro):
                 self.output("%s added" % name)
             elif name in self.selector.availableDataSources():
                 dsdct.add(str(name))
-        cnf["AutomaticComponentGroup"] = str(json.dumps(cpdct))
+        cnf["ComponentPreselection"] = str(json.dumps(cpdct))
         cnf["InitDataSources"] = str(json.dumps(list(dsdct)))
-        self.selector.configuration = str(json.dumps(cnf))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
         update_description(self)
         update_configuration(self)
 
@@ -328,8 +328,8 @@ class nxsrmdesc(Macro):
 
     def run(self, *component_list):
         set_selector(self)
-        cnf = json.loads(self.selector.configuration)
-        cpdct = json.loads(cnf["AutomaticComponentGroup"])
+        cnf = json.loads(self.selector.profileConfiguration)
+        cpdct = json.loads(cnf["ComponentPreselection"])
         dsdct = set(json.loads(cnf["InitDataSources"]))
         for name in component_list:
             if name in cpdct:
@@ -338,9 +338,9 @@ class nxsrmdesc(Macro):
             if name in dsdct:
                 dsdct.remove(str(name))
                 self.output("Removing %s" % name)
-        cnf["AutomaticComponentGroup"] = str(json.dumps(cpdct))
+        cnf["ComponentPreselection"] = str(json.dumps(cpdct))
         cnf["InitDataSources"] = str(json.dumps(list(dsdct)))
-        self.selector.configuration = str(json.dumps(cnf))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
         update_description(self)
         update_configuration(self)
 
@@ -372,12 +372,12 @@ class nxsetudata(Macro):
 
     def run(self, name, value):
         set_selector(self)
-        cnf = json.loads(self.selector.configuration)
-        udata = json.loads(cnf["DataRecord"])
+        cnf = json.loads(self.selector.profileConfiguration)
+        udata = json.loads(cnf["UserData"])
         udata[str(name)] = value
 
-        cnf["DataRecord"] = str(json.dumps(udata))
-        self.selector.configuration = str(json.dumps(cnf))
+        cnf["UserData"] = str(json.dumps(udata))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
 
 
@@ -397,8 +397,8 @@ class nxsusetudata(Macro):
 
     def run(self, *name_list):
         set_selector(self)
-        cnf = json.loads(self.selector.configuration)
-        udata = json.loads(cnf["DataRecord"])
+        cnf = json.loads(self.selector.profileConfiguration)
+        udata = json.loads(cnf["UserData"])
         changed = False
         for name in name_list:
             if name in udata.keys():
@@ -407,8 +407,8 @@ class nxsusetudata(Macro):
                 changed = True
 
         if changed:
-            cnf["DataRecord"] = str(json.dumps(udata))
-            self.selector.configuration = str(json.dumps(cnf))
+            cnf["UserData"] = str(json.dumps(udata))
+            self.selector.profileConfiguration = str(json.dumps(cnf))
             update_configuration(self)
 
 
@@ -440,10 +440,10 @@ class nxsave(Macro):
     def run(self, fname):
         set_selector(self)
         if fname:
-            self.selector.configFile = str(fname)
-        self.selector.saveConfiguration()
+            self.selector.profileFile = str(fname)
+        self.selector.saveProfile()
         self.output("Profile was saved in %s"
-                    % self.selector.configFile)
+                    % self.selector.profileFile)
 
 
 class nxsload(Macro):
@@ -458,11 +458,11 @@ class nxsload(Macro):
     def run(self, fname):
         set_selector(self)
         if fname:
-            self.selector.configFile = str(fname)
-        self.selector.loadConfiguration()
+            self.selector.profileFile = str(fname)
+        self.selector.loadProfile()
         update_configuration(self)
         self.output("Profile was loaded from %s"
-                    % self.selector.configFile)
+                    % self.selector.profileFile)
 
 
 class nxsls(Macro):
@@ -515,13 +515,12 @@ class nxshow(Macro):
 
     def run(self, name):
         set_selector(self)
-        if isinstance(self.selector, PyTango.DeviceProxy):
-            cpdesc = json.loads(self.selector.Description)
-        else:
-            cpdesc = json.loads(self.selector.description)
+        cpdesc = json.loads(getString(
+            self, "ComponentDescription", True))
         avcp = self.selector.availableComponents()
         avds = self.selector.availableDataSources()
-        fullpool = json.loads(self.selector.fullDeviceNames)
+        fullpool = json.loads(getString(
+            self, "FullDeviceNames", True))
         dslist = []
         if name in avcp:
             found = False
@@ -562,7 +561,7 @@ class nxshow(Macro):
         dslist = []
 
         if name in avds:
-            desc = self.selector.getSourceDescription([str(name)])
+            desc = self.selector.DataSourceDescription([str(name)])
             if desc:
                 md = json.loads(desc[0])
                 if "record" in md:
@@ -610,25 +609,27 @@ def printProfile(mcr, server, outflag=False):
     printConfList(mcr, "Timer", True, "Timer(s)", out=out)
     if not out:
         mcr.output("")
-    printList(mcr, "Components", False, "Detector Components", out=out)
+    printList(mcr, "SelectedComponents", False, "Detector Components",
+              True, out=out)
     if not out:
         mcr.output("")
-    printList(mcr, "DataSources", False, "Other Detector Channels", out=out)
+    printList(mcr, "SelectedDataSources", False, "Other Detector Channels",
+              True, out=out)
     if not out:
         mcr.output("")
     printList(mcr, "MandatoryComponents", False, "Mandatory Components",
               True, out=out)
     if not out:
         mcr.output("")
-    printList(mcr, "AutomaticComponents", False, "Description Components",
-              out=out)
+    printList(mcr, "PreselectedComponents", False, "Description Components",
+              True, out=out)
     if not out:
         mcr.output("")
     printConfList(mcr, "InitDataSources", True,
                   "Other Description Channels", out=out)
     if not out:
         mcr.output("")
-    printDict(mcr, "DataRecord", True, "User Data", out=out)
+    printDict(mcr, "UserData", True, "User Data", out=out)
     if not out:
         mcr.output("")
     #        printDict(mcr, "ConfigVariables", True, "ConfigServer Variables")
@@ -674,7 +675,7 @@ def printConfDict(mcr, name, decode=True, label=None, out=None):
 
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
-    conf = json.loads(mcr.selector.configuration)
+    conf = json.loads(mcr.selector.profileConfiguration)
 
     title = "%s" % (name if label is None else label)
     try:
@@ -700,7 +701,7 @@ def printConfList(mcr, name, decode=True, label=None, out=None):
 
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
-    conf = json.loads(mcr.selector.configuration)
+    conf = json.loads(mcr.selector.profileConfiguration)
 
     title = "%s" % (name if label is None else label)
     try:
@@ -761,7 +762,7 @@ def printConfString(mcr, name, label=None):
 
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
-    conf = json.loads(mcr.selector.configuration)
+    conf = json.loads(mcr.selector.profileConfiguration)
     data = conf[name]
     title = name if label is None else label
     if not out:
@@ -847,15 +848,16 @@ def update_configuration(mcr):
     mcr.selector.updateMntGrp()
     mcr.selector.importMntGrp()
     if not isinstance(mcr.selector, PyTango.DeviceProxy):
-        mcr.selector.exportAllEnv()
+        mcr.selector.exportEnvProfile()
 
 
 def update_description(mcr):
     """ Update selection of description components """
     try:
-        mcr.selector.updateControllers()
+        mcr.selector.preselectComponents()
     except PyTango.CommunicationFailed as e:
         if e[-1].reason == "API_DeviceTimedOut":
             wait_for_device(mcr.selector)
         else:
             raise
+
