@@ -157,9 +157,9 @@ class br(Macro, _diffrac):
 
 
     param_def = [
-       ['H', Type.Float, None, "H value"],
-       ['K', Type.Float, None, "K value"],
-       ['L', Type.Float, None, "L value"],
+       ['H', Type.String, None, "H value"],
+       ['K', Type.String, None, "K value"],
+       ['L', Type.String, None, "L value"],
        ['AnglesIndex', Type.Integer, -1, "Angles index"],
        ['FlagNotBlocking', Type.Integer,  0, "If 1 not block. Return without finish movement"]
     ]
@@ -170,14 +170,27 @@ class br(Macro, _diffrac):
     def run(self, H, K, L, AnglesIndex, FlagNotBlocking):
         if not self.prepared:
             return
-
+        
         if AnglesIndex != -1:
             sel_tr = AnglesIndex
         else:
             sel_tr =  self.diffrac.selectedtrajectory
+            
+        if H == "H" or K == "K" or L == "L":
+            try:
+                q_vector = self.getEnv('Q')
+                if H == "H":
+                    H = float(q_vector[0])
+                if K == "K":
+                    H = float(q_vector[1])
+                if L == "L":
+                    L = float(q_vector[2])
+            except:
+                self.error("Environment Q not defined. Run wh to define it")
+                return
+        
+        hkl_values = [float(H), float(K), float(L)]
 
-
-        hkl_values = [H, K, L]
         self.diffrac.write_attribute("computetrajectoriessim",hkl_values)
 
         angles_list = self.diffrac.trajectorylist[sel_tr] 
@@ -204,9 +217,9 @@ class ubr(Macro, _diffrac):
     """
 
     param_def = [
-        [ "hh", Type.Float, -999, "H position" ],
-        [ "kk", Type.Float, -999, "K position" ],
-        [ "ll", Type.Float, -999, "L position" ],
+        [ "hh", Type.String, "Not set", "H position" ],
+        [ "kk", Type.String, "Not set", "K position" ],
+        [ "ll", Type.String, "Not set", "L position" ],
         ['AnglesIndex', Type.Integer, -1, "Angles index"]
         ]
 
@@ -215,7 +228,14 @@ class ubr(Macro, _diffrac):
     
     def run( self, hh,kk,ll, AnglesIndex):
 
-        if ll != -999:        
+        if hh == "H" or kk == "K" or ll == "L": # Needs to be checked also here
+            try:
+                q_vector = self.getEnv('Q')
+            except:
+                self.error("Environment Q not defined. Run wh to define it")
+                return
+    
+        if ll != "Not set":        
             br, pars = self.createMacro("br", hh, kk, ll, AnglesIndex, 1)
             self.runMacro(br)
             self.execMacro('blockprintmove', 1)
