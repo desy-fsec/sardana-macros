@@ -499,7 +499,8 @@ class wh(Macro, _diffrac):
         self.output("%10s %11s %12s %11s %10s %11s" %("Delta","Theta","Chi","Phi","Mu","Gamma"))
         self.output("%10s %11s %12s %11s %10s %11s" % 
                     (str_pos1, str_pos2, str_pos3, str_pos4, str_pos5, str_pos6))
-
+        
+        self.setEnv('Q',[self.h_device.position,self.k_device.position,self.l_device.position,self.diffrac.WaveLength])
 
 class freeze(Macro, _diffrac):
     """ Set psi value for psi constant modes """
