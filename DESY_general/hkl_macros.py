@@ -176,21 +176,28 @@ class br(Macro, _diffrac):
         else:
             sel_tr =  self.diffrac.selectedtrajectory
             
-        if H == "H" or K == "K" or L == "L":
+        hkl_labels = ["H","K","L"]
+        
+        if H in hkl_labels or K in hkl_labels or L in  hkl_labels:
             try:
                 q_vector = self.getEnv('Q')
-                if H == "H":
-                    H = float(q_vector[0])
-                if K == "K":
-                    H = float(q_vector[1])
-                if L == "L":
-                    L = float(q_vector[2])
+                q_dict = {}
+                q_dict["H"] = q_vector[0]
+                q_dict["K"] = q_vector[1]
+                q_dict["L"] = q_vector[2]
+                
+                if H in hkl_labels:
+                    H = float(q_dict[H])
+                if K in hkl_labels:
+                    K = float(q_dict[K])
+                if L in hkl_labels:
+                    L = float(q_dict[L])
             except:
                 self.error("Environment Q not defined. Run wh to define it")
                 return
         
         hkl_values = [float(H), float(K), float(L)]
-
+        
         self.diffrac.write_attribute("computetrajectoriessim",hkl_values)
 
         angles_list = self.diffrac.trajectorylist[sel_tr] 
@@ -228,7 +235,9 @@ class ubr(Macro, _diffrac):
     
     def run( self, hh,kk,ll, AnglesIndex):
 
-        if hh == "H" or kk == "K" or ll == "L": # Needs to be checked also here
+        hkl_labels = ["H","K","L"]
+        
+        if hh in hkl_labels or kk in hkl_labels or ll in  hkl_labels: # Needs to be checked also here
             try:
                 q_vector = self.getEnv('Q')
             except:
