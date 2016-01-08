@@ -197,7 +197,7 @@ class br(Macro, _diffrac):
                 return
         
         hkl_values = [float(H), float(K), float(L)]
-        
+     
         self.diffrac.write_attribute("computetrajectoriessim",hkl_values)
 
         angles_list = self.diffrac.trajectorylist[sel_tr] 
@@ -214,6 +214,8 @@ class br(Macro, _diffrac):
         if FlagNotBlocking == 0:
             self.execMacro('blockprintmove', 0)
 
+        self.setEnv('Q',[hkl_values[0],hkl_values[1],hkl_values[2],self.diffrac.WaveLength])
+        
     def on_stop(self):
         _diffrac.on_stop(self)
         
