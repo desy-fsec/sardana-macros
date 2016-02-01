@@ -145,6 +145,8 @@ class qExafs(Macro):
         self.debug("preConfigure entering...")
         self.debug('Configuring Pmac...')
         pmac = taurus.Device(self.pmacName)
+        # select the capture program
+        pmac.SetPVariable([4077,1])
         # configuring position capture control
         pmac.SetIVariable([7012, 2])
         # configuring position capture flag select
