@@ -561,7 +561,10 @@ class qExafsPos(Macro):
         energy_values = linspace(self.startPos, self.finalPos,
                                  self.nrOfTriggers)
         enc_values = energy_bragg_encoder(energy_values)
-        direction = int(self.startPos < self.finalPos)
+        if (self.startPos < self.finalPos):
+            direction=0
+        else:
+            direction=1
         pmac.SetPVariable([4075, direction])
         pmac.SetPVariable([4078, self.nrOfTriggers])
         start_buffer = int(pmac.GetPVariable(4076))
@@ -689,7 +692,7 @@ def energy_bragg_encoder(energy_values):
             enc_value = enc + 2 * maxCounts
         else:
             enc_value = enc
-        enc_values.append(enc_value)
+        enc_values.append(int(enc_value))
     return enc_values
 
 
@@ -731,7 +734,7 @@ class qExafsStartupPos(Macro):
                           "DoNotInvertPolarity"])
 
         dev = PyTango.DeviceProxy(self.master_timer)
-        dev["StartTriggerSource"] = '/Dev1/PFI35'
+        dev["StartTriggerSource"] = '/Dev1/PFI39'
         dev["StartTriggerType"] = "DigEdge"
 
         for trigger in self.slave_triggers:
