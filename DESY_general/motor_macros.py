@@ -34,6 +34,8 @@ from sardana.macroserver.macro import Type, Macro, macro, ParamRepeat, ViewOptio
 
 import PyTango
 
+import numpy as np
+
 class wg(Macro):
     """Show motor positions of a list of motors"""
 
