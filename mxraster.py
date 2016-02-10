@@ -381,7 +381,9 @@ class mxraster(Macro):
     def send_one_result(self):
 #        mxraster_results = [ (self.yidx, self.zidx, self.last_result), ]
 
-        mxraster_results = [{'sample_x':self.yidx, 'sample_y':self.zidx, 'value': self.last_result},]
+        mxraster_results = [{'sample_x':self.yidx, 'sample_y':self.zidx,
+                             'value': self.last_result, 'image_file_name':
+                                 self.last_image},]
         self.debug("      - sending out "  + str(mxraster_results))
         self._macro_status['data'] = {'mxraster_results': mxraster_results}
 
