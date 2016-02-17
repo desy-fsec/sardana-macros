@@ -52,7 +52,12 @@ class wait_for_petra(Macro):
     """ wait for machine state: Betrieb-> experimente """
 
     def run(self):
-        petra_device_name = "haspp09mono:10000/petra/globals/keyword"
+
+        try:
+            petra_device_name = self.getEnv('PetraDevice')
+        except:
+            self.info("PetraDevice environment not defined. Using petra/globals/keyword as petra device")
+            petra_device_name = "petra/globals/keyword"
 
         try:
             petra_device = PyTango.DeviceProxy(petra_device_name)

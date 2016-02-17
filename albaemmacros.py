@@ -1,12 +1,10 @@
 
 from sardana.macroserver.macro import Macro, Type
-#import sys
-#import pyIcePAP
+import sys
 #import time
-import PyTango
 #from pylab import *
 #import array
-from AlbaEmLib import albaem 
+from albaemlib import AlbaEm
 
 #ActivealbaemDev is the serial devices ('ws/bl01/serial0')
 class albaemMacro():
@@ -14,7 +12,7 @@ class albaemMacro():
         try:
             dev = self.getEnv('ActivealbaemDev')
             print dev
-            mydev = albaem(self.getEnv('ActivealbaemDev'))
+            mydev = AlbaEm(self.getEnv('ActivealbaemDev'))
         except Exception, e:
             self.output('albaemMacro.getActivealbaemDev caused an exception')
             print e
@@ -251,7 +249,7 @@ class albaemGetMeasures(Macro, albaemMacro):
     param_def = []
     def run(self):
         myalbaem = self.getActivealbaemDev()
-        self.output('Meas of channel %s :%s'%(channel, myalbaem.getMeasure(['1', '2', '3', '4'])))
+        self.output('Meas of all channels:%s'%(myalbaem.getMeasure(['1', '2', '3', '4'])))
 
 
 class albaemGetInvs(Macro, albaemMacro):
