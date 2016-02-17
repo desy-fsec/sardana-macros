@@ -2,8 +2,6 @@
 
 from __future__ import print_function
 
-
-
 __all__ = ["delete_create_mg","change_mg"]
 
 import os
