@@ -8,7 +8,7 @@ DoAll.pl
     /afs/desy.de/group/hasylab/Tango/HostLists/SardanaHosts.lis
 
 Files.lis
-  contains the files to be updated, used by Update_files.pls
+  contains the files to be updated, used by Update_files.pl
 
 Files.db
   contains info about the update state of each file, used by Updata_files.pl
