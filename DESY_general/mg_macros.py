@@ -4,7 +4,7 @@
 
 from __future__ import print_function
 
-__all__ = ["delete_create_mg","delete_mg", "change_mg"]
+__all__ = ["delete_mg", "change_mg"]
 
 import os
 import PyTango
@@ -544,7 +544,7 @@ class MgConf:
         return True
 
 
-class create_delete_mg(Macro):
+class create_delete_mgOBSOLETE(Macro):
     """Change the active measurement group"""
     
     param_def = [
@@ -605,7 +605,8 @@ class delete_mg(Macro):
             mg_active = self.getEnv( 'ActiveMntGrp')
             if mg_active == mgName:
                 self.unsetEnv( 'ActiveMntGrp')
-                self.output("delete_mg: usenv ActiveMgtGrp (was %s)" % mgName)
+                self.output("delete_mg: usenv ActiveMgtGrp")
+            self.output("delete_mg: restart MacroServer before re-creating %s" % mgName)
         else:
             self.output("delete_mg: %s does not belong to any pool" % mgName)
 
@@ -616,13 +617,14 @@ class change_mg(Macro):
     change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer>
               -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>
 
-    All parameters are options. However, a timer has to be specified, if a new MGoptions
+    All parameters are options. However, a timer has to be specified, if a new MG
     is created or if an existing MG is cleared and re-filled ('-a False' or '-a' not supplied.
     If mgName is not supplied, the active MGe is changed. 
     If addFlag (true or false) is not given, the MG will be cleared (addFlag False by default) 
-    and re-filled with the given elements
-
+    and re-filled with the given elements.   
     Lists of elements are separated by ',', like: -c exp_ct01,exp_ct02  (no blank space)
+
+    The ActiveMntGrp is set to the created/change MG. 
 
     Example: 
       change_mg -g mg_ivp -t exp_t01 -c exp_c01,vc_pilatus300k,vc_pilatus1m -m d1_mca01
@@ -652,12 +654,13 @@ class change_mg(Macro):
 \
     Lists of elements are separated by ',', like: -c exp_ct01,exp_ct02  (no blank space)\
 \
+    The ActiveMntGrp is set to the created/change MG. \
+\
     Example:\
       change_mg -g mg_ivp -t exp_t01 -c exp_c01,vc_pilatus300k,vc_pilatus1m -m d1_mca01\
 \
     ")
             return
-            
        
         opt_dict = {}
         for opt_par in options_list:
@@ -734,6 +737,8 @@ class change_mg(Macro):
                 mgConf.addCounter(elem,0)
 
         mgConf.updateConfiguration()
+        self.setEnv( 'ActiveMntGrp', mg_name)
+        self.output( "change_mg: ActiveMntGrp = %s" % mg_name)
 
 class setmg(Macro):
     """
