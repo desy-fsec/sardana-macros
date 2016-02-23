@@ -289,7 +289,7 @@ class _ca(Macro, _diffrac):
             start_range = Trajectory
             end_range = Trajectory + 1
             
-        for i in range(start_range, end_range):
+        for i in range(int(start_range), int(end_range)):
             angles_list = self.diffrac.trajectorylist[i]
             self.output("")
             self.output("Trajectory %2d " % i)
