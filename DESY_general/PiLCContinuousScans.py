@@ -29,7 +29,7 @@ class cscan_pilc_sis3820mcs(Macro):
     result_def = [ [ "result", Type.String, None, "the cscan object" ]]
 
     def run(self, motor, start_pos, final_pos, nb_triggers, trigger_interval, trigger_mode):
-
+        
         pilctg_device_name       = self.getEnv('PiLCTGDevice')
         self.output("Using PiLCTriggerGenerator device " + pilctg_device_name)
         mcs_device_name         = self.getEnv('MCSDevice')
@@ -177,7 +177,7 @@ class cscan_pilc_sis3820mcs(Macro):
         #self._closeNxEntry()
         #self._closeNxFile()
 
-        result = "Esto es un test"
+        result = "Scan ended sucessfully"
         return result 
 
     def _openNxFile(self):
@@ -286,6 +286,62 @@ class cscan_pilc_sis3820mcs(Macro):
         self.nexuswriter_device.Record(mstr)
         return 1
 
+
+class c2dscan_pilc_sis3820mcs_postrigger(Macro):
+    """Perfoms a 2d continuous scan with the pilc triggering the sis3820mcs"""
+
+    param_def = [
+        ['motor',            Type.Motor,   None, 'Internal motor to scan'],
+        ['start_pos',        Type.Float,   None, 'Internal scan start position'],
+        ['final_pos',        Type.Float,   None, 'Internal scan final position'],
+        ['nb_triggers',      Type.Integer, None, 'Nb of points internal scan'],
+        ['trigger_interval', Type.Float,   None, 'Time between consecutive triggers'],
+        ['motor_ext',            Type.Motor,   None, 'External motor to scan'],
+        ['start_pos_ext',        Type.Float,   None, 'External scan start position'],
+        ['final_pos_ext',        Type.Float,   None, 'External scan final position'],
+        ['nb_scans',      Type.Integer, None, 'Nb of points external scan'],
+        ['trigger_mode', Type.Integer,  1, 'Trigger mode: 1 pos, 2 time, 3 pos-time, 4 time-pos']
+    ]
+
+    def run(self, motor, start_pos, final_pos, nb_triggers, trigger_interval, motor_ext, start_pos_ext, final_pos_ext, nb_scans, trigger_mode):
+        
+        pilctg_device_name       = self.getEnv('PiLCTGDevice')
+        pilctg_device      = PyTango.DeviceProxy(pilctg_device_name)
+        
+        motor_int_device   = PyTango.DeviceProxy(motor.getName())
+        motor_ext_device   = PyTango.DeviceProxy(motor_ext.getName())
+
+        # Compute position increment for external motor
+        pos_inc_ext = abs(final_pos_ext - start_pos_ext)/nb_scans
+        
+        # Move ext motor to start position
+        motor_ext_device.Position = start_pos_ext
+        
+	for i in range(0, int(nb_scans + 1)):
+            
+            while motor_ext_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)      
+            while motor_int_device.state() == PyTango.DevState.MOVING:
+                time.sleep(0.001)
+
+            if i == 0:
+                corrected_start = start_pos
+            else:
+                corrected_start = pilctg_device.EncoderTrigger/pilctg_device.PositionConversion
+            if i%2 == 0:
+                self.execMacro('cscan_pilc_sis3820mcs', motor, corrected_start, final_pos, nb_triggers, trigger_interval, trigger_mode)
+            else:
+                self.execMacro('cscan_pilc_sis3820mcs', motor, corrected_start, start_pos, nb_triggers, trigger_interval, trigger_mode)
+    
+            # Move ext motor to next position, except for the last point
+
+            if i < nb_scans:
+                self.output(motor_ext_device.state())
+                self.execMacro('mv', motor_ext, start_pos_ext + (i+1) * pos_inc_ext)
+                self.output(motor_ext_device.state())
+                #motor_ext_device.Position = start_pos_ext + (i+1) * pos_inc_ext
+
+    
 class cscan_pilc_sis3820mcs_senv(Macro):
     """ Sets default environment variables """
 
