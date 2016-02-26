@@ -617,14 +617,14 @@ class change_mg(Macro):
     change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer>
               -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>
 
-    All parameters are options. However, a timer has to be specified, if a new MG
-    is created or if an existing MG is cleared and re-filled ('-a False' or '-a' not supplied.
-    If mgName is not supplied, the active MGe is changed. 
+    All parameters are optional. However, a timer has to be specified, if a new MG is
+    created or if an existing MG is cleared and re-filled ('-a False' or '-a' not supplied).
+    If mgName is not supplied, the active MG is changed. 
     If addFlag (true or false) is not given, the MG will be cleared (addFlag False by default) 
     and re-filled with the given elements.   
     Lists of elements are separated by ',', like: -c exp_ct01,exp_ct02  (no blank space)
 
-    The ActiveMntGrp is set to the created/change MG. 
+    The ActiveMntGrp is set to the created/changed MG. 
 
     Example: 
       change_mg -g mg_ivp -t exp_t01 -c exp_c01,vc_pilatus300k,vc_pilatus1m -m d1_mca01
