@@ -39,7 +39,7 @@ def device_groups(self):
         ["door", Type.String, '', "Door"]])
 def nxselector(self, mode, selector, door):
     """ Run NeXus Component Selector """
-    args = ["nxscomp_selector"]
+    args = ["nxselector"]
     if mode:
         args.append("-m%s" % mode)
     if selector:
