@@ -21,6 +21,8 @@ class ppPurge(Macro):
 
     Here is an example for a directory structure that is ppPurge-compliant.
 
+      <ScanDir> == /gpfs/current/raw
+
       the .fio file
         /gpfs/current/raw/au_00456.fio
       the MCA files:

@@ -1,10 +1,10 @@
+#!/usr/bin/env python
+
 """Change active mg"""
 
 from __future__ import print_function
 
-
-
-__all__ = ["delete_create_mg","change_mg"]
+__all__ = ["delete_mg", "change_mg"]
 
 import os
 import PyTango
@@ -544,7 +544,7 @@ class MgConf:
         return True
 
 
-class create_delete_mg(Macro):
+class create_delete_mgOBSOLETE(Macro):
     """Change the active measurement group"""
     
     param_def = [
@@ -554,7 +554,6 @@ class create_delete_mg(Macro):
     def run(self, list_of_elements):
 
         self.output("Changing active MG")
-
         
         mg_name = self.getEnv( 'ActiveMntGrp')
         
@@ -579,17 +578,53 @@ class create_delete_mg(Macro):
 
         self.output("Done")
 
+
+class delete_mg(Macro):
+    """
+    Delete a MG
+    """
+    
+    param_def = [
+        ['mgName', Type.String, None, 'MG to be deleted']
+        ]
+
+    def run(self, mgName):
+
+        pools = self.getPools()
+        pool = None
+        for tmp_pool in pools:
+            for mg in tmp_pool.MeasurementGroupList:
+                hsh = json.loads(mg)
+                if mgName == hsh["name"]:
+                    pool = tmp_pool
+
+
+        if pool:
+            pool.DeleteElement(mgName)
+            self.output("delete_mg: %s deleted" % mgName)
+            mg_active = self.getEnv( 'ActiveMntGrp')
+            if mg_active == mgName:
+                self.unsetEnv( 'ActiveMntGrp')
+                self.output("delete_mg: usenv ActiveMgtGrp")
+            self.output("delete_mg: restart MacroServer before re-creating %s" % mgName)
+        else:
+            self.output("delete_mg: %s does not belong to any pool" % mgName)
+
+        return True
+
 class change_mg(Macro):
     """
     change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer>
               -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>
 
-    All options are optional (except timer if -a is False (clear and create MG)
-    If MG is not supplied, the active one is changed
-    If addFlag (true or false) is not given, the MG will be cleared (addFlag False by default) 
-    and created with the given elements
+    All parameters are optional. However, a timer has to be specified, if a new 
+    MG is created or if an existing MG is cleared and re-filled ('-a False' or 
+    '-a' not supplied). If mgName is not supplied, the active MG is changed. 
+    If addFlag is not given, the MG will be cleared (addFlag False by default) 
+    and re-filled with the given elements.   
+    Lists of elements are separated by ',', like: -c exp_ct01,exp_ct02  (no blank space)
 
-    Elements in a list have to be given separated by ,: eg. -c exp_ct01,exp_ct02
+    The ActiveMntGrp is set to the created/changed MG. 
 
     Example: 
       change_mg -g mg_ivp -t exp_t01 -c exp_c01,vc_pilatus300k,vc_pilatus1m -m d1_mca01
@@ -604,23 +639,32 @@ class change_mg(Macro):
         ]
     
     def run(self, *options_list):
-
         
         if options_list[0][0] == "None":
-            self.output("Usage:")
-            self.output("change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer> -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>")
-            self.output("")
-            self.output("All options are optional (except timer if -a is False (clear and create MG)")
-            self.output("If not MG name is done, the active one is changed")
-            self.output("If not addFlag (true or false) is given, the MG will be cleared (addFlag False by default) and created with the given elements")
-            self.output("Elements in a list have to be given separated by ,: eg. -c exp_ct01,exp_ct02")
+            self.output( "hallo")
+            self.output( "\
+    change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer>\
+              -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>\
+\
+    All parameters are options. However, a timer has to be specified, if a new MGoptions\
+    is created or if an existing MG is cleared and re-filled ('-a False' or '-a' not supplied.\
+    If mgName is not supplied, the active MGe is changed.\
+    If addFlag (true or false) is not given, the MG will be cleared (addFlag False by default)\
+    and re-filled with the given elements.\
+\
+    Lists of elements are separated by ',', like: -c exp_ct01,exp_ct02  (no blank space)\
+\
+    The ActiveMntGrp is set to the created/change MG. \
+\
+    Example:\
+      change_mg -g mg_ivp -t exp_t01 -c exp_c01,vc_pilatus300k,vc_pilatus1m -m d1_mca01\
+\
+    ")
             return
-            
        
         opt_dict = {}
         for opt_par in options_list:
             opt_dict[opt_par[0]] = opt_par[1]
-
 
         key = '-g'
         if key in opt_dict:
@@ -629,9 +673,17 @@ class change_mg(Macro):
             mg_name = self.getEnv( 'ActiveMntGrp') 
 
         mntgrp_list = self.findObjs(mg_name, type_class=Type.MeasurementGroup)
-
+        #
+        # the MG is created, if it does not exist
+        #
         if len(mntgrp_list) == 0:
-            raise Exception('A measurement group with that name does not exists')
+            pools = self.getPools()
+            if len( pools) != 1:
+                raise Exception( "change_mg: %s does not exist and no. of pools != 1" % mg_name)
+            if not opt_dict.has_key( '-t'):
+                raise Exception( "change_mg: %s cannot be created because no timer is specified" % mg_name)
+            lst = opt_dict[ '-t'].split(',')
+            pools[0].CreateMeasurementGroup( [ mg_name, lst[0]])
 
         pools = self.getPools()
         for tmp_pool in pools:
@@ -649,7 +701,7 @@ class change_mg(Macro):
         key = '-t'
         if flagClear == True:
             if key not in opt_dict:
-                raise Exception('A timer (-t timer_name) has to be given')
+                raise Exception("change_mg: need a timer or '-a True'")
 
         mgConf = MgConf( pool.name(), mg_name, flagClear)
 
@@ -685,6 +737,8 @@ class change_mg(Macro):
                 mgConf.addCounter(elem,0)
 
         mgConf.updateConfiguration()
+        self.setEnv( 'ActiveMntGrp', mg_name)
+        self.output( "change_mg: ActiveMntGrp = %s" % mg_name)
 
 class setmg(Macro):
     """
