@@ -353,11 +353,11 @@ class cscan_pilc_xia(Macro):
         xia_device.GateMaster = 1
         xia_device.NumberMcaChannels = 2048
         xia_device.NumMapPixels = nb_triggers
-#        if nb_triggers%2 == 0:
-#          xia_device.NumMapPixelsPerBuffer = nb_triggers/2
-#        else:
-#            xia_device.NumMapPixelsPerBuffer = (nb_triggers + 1)/2
-        xia_device.NumMapPixelsPerBuffer = -1
+        if nb_triggers%2 == 0:
+          xia_device.NumMapPixelsPerBuffer = nb_triggers/2
+        else:
+            xia_device.NumMapPixelsPerBuffer = (nb_triggers + 1)/2
+        #xia_device.NumMapPixelsPerBuffer = -1
         xia_device.MaskMapChannels = 1 # change if one wants to work with more XIA channels
 
         nb_xia_channels = xia_device.NumberMcaChannels
@@ -367,11 +367,11 @@ class cscan_pilc_xia(Macro):
         
         # Compute motor slewrate for the continuous scan
 
-        #old_slewrate = motor_device.Velocity
+        old_slewrate = motor_device.Velocity
 
-        #scan_slewrate = abs(final_pos - start_pos)/(trigger_interval * (nb_triggers - 1))
+        scan_slewrate = abs(final_pos - start_pos)/(trigger_interval * (nb_triggers - 1))
 
-        #motor_device.Velocity = scan_slewrate 
+        motor_device.Velocity = scan_slewrate
 
         # Move motor to start position minus an offset
 
@@ -380,12 +380,12 @@ class cscan_pilc_xia(Macro):
         else:
             pos_offset = -0.1
 
-        motor_device.Position = start_pos - pos_offset
-        
+        self.execMacro(["mv", motor, start_pos - pos_offset])
+    
         while motor_device.State() == PyTango.DevState.MOVING:
             time.sleep(1)
-
-
+        self.output(motor_device.Position)
+        
         if trigger_mode == 2 or trigger_mode == 4:
             # Start motor movement to final position (the macro mv can not be used because it blocks)
             motor_device.Position = final_pos + pos_offset
@@ -403,7 +403,7 @@ class cscan_pilc_xia(Macro):
             # Start pilc triggering
         
             pilctg_device.Arm = 1
-
+            
         elif trigger_mode == 1 or trigger_mode == 3:
             # Store starttime
             
@@ -414,12 +414,13 @@ class cscan_pilc_xia(Macro):
             # Start pilc triggering
         
             pilctg_device.Arm = 1
-            
+
+            time.sleep(1)
             # Start motor movement to final position (the macro mv can not be used because it blocks)
             motor_device.Position = final_pos + pos_offset
 
             
-            
+           
         # Check when the triggering is done
 
         while pilctg_device.State() == PyTango.DevState.MOVING:
@@ -427,12 +428,13 @@ class cscan_pilc_xia(Macro):
         
         # Check that the XIA is done
 
+        self.output("Checking xia state")
         while xia_device.State() == PyTango.DevState.MOVING:
             time.sleep(1)
 
         # Reset motor slewrate
 
-        #motor_device.Velocity = old_slewrate
+        motor_device.Velocity = old_slewrate
 
         # PiLC Data
 
