@@ -222,7 +222,7 @@ class nxsadd(Macro):
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
         dsdct = json.loads(cnf["DataSourceSelection"])
-        pch = self.selector.poolChannels()
+        pch = self.selector.poolElementNames('ExpChannelList')
         for name in component_list:
             if name not in pch and name in self.selector.availableComponents():
                 cpdct[str(name)] = True
@@ -252,13 +252,17 @@ class nxsrm(Macro):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
-        dsdct = json.loads(cnf["DataSourceSeleciton"])
+        dsdct = json.loads(cnf["DataSourceSelection"])
+        timers = json.loads(cnf["Timer"])
         for name in component_list:
             if name in cpdct:
                 cpdct[str(name)] = False
             if name in dsdct:
                 dsdct[str(name)] = False
-        cnf["DataSourceSeleciton"] = str(json.dumps(dsdct))
+            if timers and name in timers and timers[0] != name:
+                timers.remove(name)
+        cnf["Timer"] = str(json.dumps(list(timers)))
+        cnf["DataSourceSelection"] = str(json.dumps(dsdct))
         cnf["ComponentSelection"] = str(json.dumps(cpdct))
         self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
@@ -271,12 +275,12 @@ class nxsclr(Macro):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
-        dsdct = json.loads(cnf["DataSourceSeleciton"])
+        dsdct = json.loads(cnf["DataSourceSelection"])
         for name in cpdct.keys():
             cpdct[str(name)] = False
         for name in dsdct.keys():
             dsdct[str(name)] = False
-        cnf["DataSourceSeleciton"] = str(json.dumps(dsdct))
+        cnf["DataSourceSelection"] = str(json.dumps(dsdct))
         cnf["ComponentSelection"] = str(json.dumps(cpdct))
         self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
@@ -481,7 +485,7 @@ class nxsls(Macro):
         set_selector(self)
 
         allch = set(self.selector.availableDataSources())
-        allch.update(set(self.selector.poolChannels()))
+        allch.update(set(self.selector.poolElementNames('ExpChannelList')))
         allch.update(set(self.selector.availableComponents()))
         available = set()
         groups = device_groups(self)
