@@ -23,6 +23,6 @@ class pilatus_get_first_image(Macro):
 
     result_def =  [['nb_first',Type.Integer, None, 'Image number for first image']]
     
-    def run(self,dev,ifirst):
+    def run(self,dev):
         pilatus = PyTango.DeviceProxy(dev)
         return pilatus.read_attribute('nb_first_image').value
