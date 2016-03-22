@@ -2,10 +2,9 @@
     Macro library containing icepap related macros for the macro
     server Tango device server as part of the Sardana project.
 """
-
+from PyTango import DeviceProxy
 import pyIcePAP
 import time
-import PyTango
 from sardana.macroserver.macro import *
 from macro_utils.icepap import create_motor_info_dict, home, \
                                home_group, home_strict, home_group_strict
@@ -359,35 +358,22 @@ def ipap_reset_motor(self, motor):
     if not isIcepapMotor(self, motor):
         self.error('Motor: %s is not an Icepap motor' % motor_name)
         return
-    
-    #pool_obj = motor.getPoolObj()
-    
-    # We call to next funcion because the getPoolObj of sardana randomly have
-    # a exception, then we use this fix _getPoolObj of this file.
-    
-    pool_obj = _getPoolObj(motor)
+    pool_obj = motor.getPoolObj()
     ctrl_name = motor.getControllerName()
     ctrl_obj = motor.getControllerObj()
     icepap_host = ctrl_obj.get_property('host')['host'][0]
     axis_nr = motor.getAxis()
     crate_nr = fromAxisToCrateNr(axis_nr)
     status = motor.read_attribute('StatusDetails').value
-    status_closeLoop = motor.read_attribute('StatusStopCode').value
-    alarm_msg_closeLoop = "Close loop error"
-    
-
-    # Implement verification about the StatusStopCode to decide which command to execute:
-    if alarm_msg_closeLoop in status_closeLoop:
-        cmd = "%d:ESYNC" % axis_nr
-        self.debug('Detected Close Loop error')
-    else:
-        cmd = "RESET %d" % crate_nr
-
+    cmd = "RESET %d" % crate_nr
     self.debug('Sending command: %s' % cmd)
     pool_obj.SendToController([ctrl_name, cmd])
     msg = 'Crate nr: %d of the Icepap host: %s ' % (crate_nr, icepap_host) + \
-          'is being reset. It will take aprox. 3 seconds...'
+          'is being reset. It will take a while...'
     self.info(msg)
+
+    waitSeconds(self, 5)
+    _initCrate(self, ctrl_obj, crate_nr)
 
     try: 
         efrom, eto = getResetNotificationAuthorAndRecipients(self)
@@ -406,13 +392,12 @@ def ipap_reset_motor(self, motor):
     message += 'Icepap host: %s\n' % icepap_host
     message += 'Axis: %s\n' % axis_nr
     message += 'Status: %s\n' % status
-    self.info(message)    
     sendMail(efrom, eto, subject, message)
     self.info('Email notification was send to: %s' % eto)
     # waiting 3 seconds so the Icepap recovers after the reset
     # it is a dummy wait, probably it could poll the Icepap 
     # and break if the reset is already finished
-    waitSeconds(self, 3)
+#    waitSeconds(self, 3)
 
 
 @macro([["icepap_ctrl", Type.Controller, None, "icepap controller name"],
@@ -426,16 +411,9 @@ def ipap_reset(self, icepap_ctrl, crate_nr):
                                               icepap_ctrl.getName())
         return
     ctrl_obj = icepap_ctrl.getObj()
-    
-    
-    # pool_obj = ctrl_obj.getPoolObj()
-    
+    pool_obj = ctrl_obj.getPoolObj()
     icepap_host = ctrl_obj.get_property('host')['host'][0]
     ice_dev = pyIcePAP.EthIcePAP(icepap_host,5000)
-    
-    pool_obj = _getPoolObj(ctrl_obj)
-        
-
     while not ice_dev.connected:
         time.sleep(0.5)
 
@@ -491,25 +469,7 @@ def ipap_reset(self, icepap_ctrl, crate_nr):
     # and break if the reset is already finished
     waitSeconds(self, 3)
 
-def _getPoolObj(pool_element):
-    db = pool_element.get_device_db()
-    db_proxy = PyTango.DeviceProxy((pool_element.get_device_db()).dev_name())
-    info = db_proxy.DbGetDeviceInfo(pool_element.dev_name())
-    server_name_element = info[1][3] #array, the second element is a str list.
-    pool_exported_list = db.get_device_exported_for_class('Pool').value_string
-    count = 0
-    for pool_exported in pool_exported_list:
-        info = db_proxy.DbGetDeviceInfo(pool_exported)
-        server_name_pool = info[1][3] #array, the second element is a str list.
-        if server_name_element == server_name_pool:
-            count +=1
-            pool_name = pool_exported
 
-    if count != 1:
-        raise Exception('There are more than one instance of the Pool')
-    pool_proxy = PyTango.DeviceProxy(pool_name)
-
-    return pool_proxy 
 
 #class ipap_homing(Macro):
     """Macro to do the homing procedure in more than one axis at the same time.
@@ -519,3 +479,127 @@ def _getPoolObj(pool_element):
        The macro ends when the home signal is detected or any axis receive an alarm
     """
 
+#    param_def = [
+#        ["strict",  Type.Boolean, False, "If performed strict homing."],         
+#        ['motor_direction_list',
+#        ParamRepeat(['motor', Type.Motor, None, 'Motor to perform the homing procedure.'],
+#                    ['direction', Type.Integer, None, 'Direction in which you will look for the home signal <-1|1>']),
+#        None, 'List of motors and homing directions.']
+#    ]
+
+#    result_def = [
+#        ['homed',  Type.Boolean, None, 'Motors homed state']
+#    ]
+    
+#    CMD_HOME = '#home%s' #if pool throws the exception properly in case of starting the homing in config mode it doesn't need to start with #
+#    CMD_HOME_GROUP_STRICT = 'home group strict%s' 
+#    CMD_HOME_STAT = '?homestat%s'
+#    CMD_HOME_POS = '?homepos%s' #only works if all queried motors have found home 
+#    CMD_HOMEENC_ENCIN = '?homeenc encin%s' #only works if all queried motors have found home
+#    CMD_ABORT = 'abort%s'
+
+
+#    def prepare(self, *args, **opts):
+        
+#        self.strict = args[0]
+#        self.motors = []
+
+#        motors_directions = args[1:]
+#        motors_axis_str = ''
+#        motors_directions_str = ''
+#        for motor_direction in motors_directions:
+#            motor = motor_direction[0]
+#            self.motors.append(motor)
+#            motor_axis = motor.getAxis()
+            #if necessary we change homing direction from pool to icepap sense
+#            motor_sign = motor.getSign()
+#            direction = motor_direction[1] * motor_sign
+#            motors_directions_str += ' %d %d' % (motor_axis, direction)
+#            motors_axis_str += ' %d' % motor_axis 
+        
+#        if self.strict:
+#            self.cmd_home = self.CMD_HOME_GROUP_STRICT % motors_directions_str
+#        else:
+#            self.cmd_home = self.CMD_HOME % motors_directions_str
+#        self.cmd_home_stat = self.CMD_HOME_STAT % motors_axis_str
+#        self.cmd_home_pos = self.CMD_HOME_POS % motors_axis_str
+#        self.cmd_abort = self.CMD_ABORT % motors_axis_str
+
+#        self.debug('Homing command: %s' % self.cmd_home)
+#        self.debug('Homing status command: %s' % self.cmd_home_stat)        
+        
+        #@todo: group motors by icepapcontrollers and perform motion on particular controllers
+#        first_motor = motors_directions[0][0]
+#        self.pool = first_motor.getPoolObj()
+#        self.ctrl_name = first_motor.getControllerName()
+#        self.home_pos_dict = {}
+#        self.debug('Pool: %s, Controller: %s' % (repr(self.pool), self.ctrl_name))
+
+#    def run(self, *args, **opts):
+#        self.info('Starting the homing procedure')
+#        self.execute_homing()
+
+#    def on_abort(self):
+#        self.aborted = True
+        
+#    def execute_homing(self):
+#        self.aborted = False
+        #@todo: pool should throw an exception in case of starting homing in a config mode and it should be caught here
+#        ans = self.pool.SendToController([self.ctrl_name , self.cmd_home])  
+#        if ans.startswith('HOME ERROR'):
+#            self.error(ans)
+#            return False
+#        while (not self.aborted):
+#            ans = self.pool.SendToController([self.ctrl_name, self.cmd_home_stat])
+#            home_stats = ans.split()[1::2]
+#            self.debug('Home stats: %s' % repr(home_stats))
+#            if self.strict:
+#                pass
+#            else:
+#                if any([stat == 'MOVING' for stat in home_stats]):
+#                    self.debug('Homing in progress...')
+#                elif any([stat == 'NOTFOUND' for stat in home_stats]):
+#                    ans = self.pool.SendToController([self.ctrl_name, self.cmd_home_pos])
+#                    self.debug(ans)
+#                    self.info('Homing precedure failed.')
+#                    return False
+#                else: 
+#                    ans = self.pool.SendToController([self.ctrl_name, self.cmd_home_pos])
+#                    home_positions = ans.split()[1:]
+#                    self.debug('Home positions: %s' % repr(home_positions))
+#                    for i,motor in enumerate(self.motors):
+#                        self.debug('Motor: %s, home position: %d' % (motor.getName(), int(home_positions[i])))
+#                    return True
+#            time.sleep(1)
+
+def _initCrate(macro, ctrl_obj, crate_nr):
+    # It initializes all axis found in the same crate
+    # than the target motor given.
+    # We could have decided to initialize all motors in the controller.
+
+    # Define axes range to re-initialize after reset
+    # These are the motors in the same crate than the given motor
+    first = crate_nr*10
+    last = first + 8
+    macro.info('Initializing Crate number %s:' % crate_nr)
+    macro.info('axes range [%s,%s]' % (first, last))
+    
+    # Get the alias for ALL motors for the controller
+    motor_list = ctrl_obj.elementlist
+    macro.debug("Element in controller: %s" % repr(motor_list))
+
+    # Crate a proxy to each element and
+    # get the axis for each of them
+    for alias in motor_list:
+        m = DeviceProxy(alias)
+        a = int(m.get_property('axis')['axis'][0])
+        # Execute init command for certain motors:
+        if first <= a <= last:
+            macro.debug('alias: %s' % alias) 
+            macro.debug('device name: %s' % m.name())    
+            macro.debug('axis number: %s' % a)
+            macro.info("Initializing %s..." % alias)
+            try:
+                m.command_inout('Init')
+            except Exception:
+                macro.error('axis %s cannot be initialized' % alias)
