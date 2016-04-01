@@ -426,10 +426,10 @@ class mythencomp(Macro):
     Macro to extrat to file the compensated value
     """
     param_def = [['outputFile', Type.String,  None, 'Name for the output file'],
-                 ['scanid', Type.Integer, -1, 'Scan id [last scan]'],
+                 ['threshold', Type.Integer, 10, 'Noise threshold [10]'],
                  ['pixmin', Type.Integer, 100, 'Minimum pixel [100]'],
                  ['pixmax', Type.Integer, 1000, 'Maximun pixel [1000]'],
-                 ['threshold', Type.Integer, 10, 'Noise threshold [10]']]
+                 ['scanid', Type.Integer, -1, 'Scan id [last scan]']]
 
     def run(self, filename,scanid, pixmin, pixmax, threshold):
         dir_name = self.getEnv('ScanDir')
