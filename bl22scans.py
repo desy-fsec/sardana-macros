@@ -160,7 +160,13 @@ class qExafs(Macro):
         if self.run_startup:
             self.execMacro('qExafsStartup')
         if self.wait_fe:
-            self.execMacro('waitFE')
+            try:
+                self.execMacro('waitFE')
+            except Exception as e:
+                self.error('There was an exception with the waitFE macro: '
+                           '%s' % e)
+                raise RuntimeError()
+
 
     def postConfigure(self):
         self.debug('postConfigure entering...')
@@ -184,6 +190,8 @@ class qExafs(Macro):
         # self.mg_bck = self.getEnv('ActiveMntGrp')
         mg = self.getEnv('ContScanMG')
         self.setEnv('ActiveMntGrp', mg)
+        self.execMacro('feauto 1')
+
 
     def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, wait_fe,
             run_startup, run_cleanup, pmac_delay, acqTime, nrOfRepeats,
@@ -558,9 +566,9 @@ class qExafsPos(Macro):
         # select the compare program
         pmac.SetPVariable([4077, 2])
         # prepare encoder table
-        #energy_values = linspace(self.startPos, self.finalPos,
-        #                         self.nrOfTriggers)
-        #enc_values = energy_bragg_encoder(energy_values)
+        energy_values = linspace(self.startPos, self.finalPos,
+                                self.nrOfTriggers)
+        enc_values = energy_bragg_encoder(energy_values)
         if (self.startPos < self.finalPos):
             direction=0
         else:
@@ -569,8 +577,8 @@ class qExafsPos(Macro):
         pmac.SetPVariable([4078, self.nrOfTriggers])
         start_buffer = int(pmac.GetPVariable(4076))
         end_buffer = start_buffer+self.nrOfTriggers
-        #for p_reg, value in zip(range(start_buffer,end_buffer), enc_values):
-        #    pmac.SetPVariable([p_reg, value])
+        for p_reg, value in zip(range(start_buffer,end_buffer), enc_values):
+            pmac.SetPVariable([p_reg, value])
         # enabling plc0 execution
         pmac.SetIVariable([5, 3])
         if self.run_startup:
@@ -583,7 +591,7 @@ class qExafsPos(Macro):
         self.debug('Setting Pmac starting delay...')
         dev = PyTango.DeviceProxy('bl22/io/ibl2202-dev1-ctr0')
         delay = dev.read_attribute('InitialDelayTime').value
-        total_delay = 0
+        total_delay = 0 
         dev.write_attribute('InitialDelayTime', total_delay)
 
     def postCleanup(self):

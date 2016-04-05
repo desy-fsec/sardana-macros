@@ -59,11 +59,11 @@ class ConfigAling(object):
         return self._tolist(self.config_file.get('general','instruments'))
 
     def get_element(self, element):
-        return self.config_path.get(self.config, element)
+        return self.config_file.get(self.config, element)
 
     def get_ioregisters(self):
         return self._tolist(self.config_file.get('general','ioregisters'))
-
+        
     def save_file(self, filename):
         """
         :param filename: New file name to save the current configuration.
@@ -94,7 +94,7 @@ class ConfigAling(object):
             dev = self.getDevice(element)
             rvalue = dev.read_attribute(attr).value
             self.config_file.set(self.config, element, rvalue)
-        #self.save_file(self.config_path)
+        self.save_file(self.config_path)
         self.info(self.config_file.items(self.config))
 
 
@@ -117,7 +117,7 @@ class mvblE(Macro, ConfigAling):
     def run(self, energy, retries):
         try:
             config_path = self.getEnv('BeamlineEnergyConfig')
-            self.init_config(energy, config_path)
+            self.initConfig(energy, config_path)
             
             self.execMacro('feclose')
             self.execMacro('mv energy %s' % energy)
@@ -145,6 +145,7 @@ class mvblE(Macro, ConfigAling):
                     for i in range(retries):
                         self.execMacro(cmd)
             
+            self.execMacro('mv energy %f' % energy)
             # It will be possible whit the new EPS configuration. 
             #self.execMacro('feopen')
 
