@@ -39,7 +39,7 @@ def device_groups(self):
         ["door", Type.String, '', "Door"]])
 def nxselector(self, mode, selector, door):
     """ Run NeXus Component Selector """
-    args = ["nxscomp_selector"]
+    args = ["nxselector"]
     if mode:
         args.append("-m%s" % mode)
     if selector:
@@ -222,7 +222,7 @@ class nxsadd(Macro):
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
         dsdct = json.loads(cnf["DataSourceSelection"])
-        pch = self.selector.poolChannels()
+        pch = self.selector.poolElementNames('ExpChannelList')
         for name in component_list:
             if name not in pch and name in self.selector.availableComponents():
                 cpdct[str(name)] = True
@@ -252,13 +252,17 @@ class nxsrm(Macro):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
-        dsdct = json.loads(cnf["DataSourceSeleciton"])
+        dsdct = json.loads(cnf["DataSourceSelection"])
+        timers = json.loads(cnf["Timer"])
         for name in component_list:
             if name in cpdct:
                 cpdct[str(name)] = False
             if name in dsdct:
                 dsdct[str(name)] = False
-        cnf["DataSourceSeleciton"] = str(json.dumps(dsdct))
+            if timers and name in timers and timers[0] != name:
+                timers.remove(name)
+        cnf["Timer"] = str(json.dumps(list(timers)))
+        cnf["DataSourceSelection"] = str(json.dumps(dsdct))
         cnf["ComponentSelection"] = str(json.dumps(cpdct))
         self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
@@ -271,12 +275,12 @@ class nxsclr(Macro):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
-        dsdct = json.loads(cnf["DataSourceSeleciton"])
+        dsdct = json.loads(cnf["DataSourceSelection"])
         for name in cpdct.keys():
             cpdct[str(name)] = False
         for name in dsdct.keys():
             dsdct[str(name)] = False
-        cnf["DataSourceSeleciton"] = str(json.dumps(dsdct))
+        cnf["DataSourceSelection"] = str(json.dumps(dsdct))
         cnf["ComponentSelection"] = str(json.dumps(cpdct))
         self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
@@ -299,15 +303,26 @@ class nxsadddesc(Macro):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentPreselection"])
-        dsdct = set(json.loads(cnf["InitDataSources"]))
-        for name in component_list:
-            if name in self.selector.availableComponents():
-                cpdct[str(name)] = True
-                self.output("%s added" % name)
-            elif name in self.selector.availableDataSources():
-                dsdct.add(str(name))
+        if self.selector_version <= 2:
+            dsdct = set(json.loads(cnf["InitDataSources"]))
+            for name in component_list:
+                if name in self.selector.availableComponents():
+                    cpdct[str(name)] = True
+                    self.output("%s added" % name)
+                elif name in self.selector.availableDataSources():
+                    dsdct.add(str(name))
+            cnf["InitDataSources"] = str(json.dumps(list(dsdct)))
+        else:
+            dsdct = json.loads(cnf["DataSourcePreselection"])
+            for name in component_list:
+                if name in self.selector.availableComponents():
+                    cpdct[str(name)] = True
+                    self.output("%s added" % name)
+                elif name in self.selector.availableDataSources():
+                    dsdct[str(name)] = True
+                    self.output("%s added" % name)
+            cnf["DataSourcePreselection"] = str(json.dumps(dsdct))
         cnf["ComponentPreselection"] = str(json.dumps(cpdct))
-        cnf["InitDataSources"] = str(json.dumps(list(dsdct)))
         self.selector.profileConfiguration = str(json.dumps(cnf))
         update_description(self)
         update_configuration(self)
@@ -330,16 +345,28 @@ class nxsrmdesc(Macro):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentPreselection"])
-        dsdct = set(json.loads(cnf["InitDataSources"]))
-        for name in component_list:
-            if name in cpdct:
-                cpdct.pop(str(name))
-                self.output("Removing %s" % name)
-            if name in dsdct:
-                dsdct.remove(str(name))
-                self.output("Removing %s" % name)
+        if self.selector_version <= 2:
+            dsdct = set(json.loads(cnf["InitDataSources"]))
+            for name in component_list:
+                if name in cpdct:
+                    cpdct.pop(str(name))
+                    self.output("Removing %s" % name)
+                if name in dsdct:
+                    dsdct.remove(str(name))
+                    self.output("Removing %s" % name)
+            cnf["InitDataSources"] = str(json.dumps(list(dsdct)))
+        else:
+            dsdct = json.loads(cnf["DataSourcePreselection"])
+            for name in component_list:
+                if name in cpdct:
+                    cpdct.pop(str(name))
+                    self.output("Removing %s" % name)
+                if name in dsdct:
+                    dsdct.pop(str(name))
+                    self.output("Removing %s" % name)
+            cnf["DataSourcePreselection"] = str(json.dumps(dsdct))
+
         cnf["ComponentPreselection"] = str(json.dumps(cpdct))
-        cnf["InitDataSources"] = str(json.dumps(list(dsdct)))
         self.selector.profileConfiguration = str(json.dumps(cnf))
         update_description(self)
         update_configuration(self)
@@ -481,7 +508,7 @@ class nxsls(Macro):
         set_selector(self)
 
         allch = set(self.selector.availableDataSources())
-        allch.update(set(self.selector.poolChannels()))
+        allch.update(set(self.selector.poolElementNames('ExpChannelList')))
         allch.update(set(self.selector.availableComponents()))
         available = set()
         groups = device_groups(self)
@@ -625,8 +652,13 @@ def printProfile(mcr, server, outflag=False):
               True, out=out)
     if not out:
         mcr.output("")
-    printConfList(mcr, "InitDataSources", True,
-                  "Other Description Channels", out=out)
+
+    if mcr.selector_version <= 2:
+        printConfList(mcr, "InitDataSources", True,
+                      "Other Description Channels", out=out)
+    else:
+        printList(mcr, "PreselectedDataSources", False,
+                      "Other Description Channels", True, out=out)
     if not out:
         mcr.output("")
     printDict(mcr, "UserData", True, "User Data", out=out)
@@ -717,9 +749,12 @@ def printConfList(mcr, name, decode=True, label=None, out=None):
     except Exception as e:
         mcr.output(str(e))
     if not out:
-        mcr.output("%s:  %s" % (
+        try:
+            mcr.output("%s:  %s" % (
                 title,
                 ", ".join(data) if data else "< None >"))
+        except:
+            mcr.output(str(e))
     else:
         out.appendRow([title, ", ".join(data) if data else "< None >"])
 
@@ -837,10 +872,19 @@ def set_selector(mcr):
 
     if servers and servers[0] != 'module':
         mcr.selector = PyTango.DeviceProxy(str(servers[0]))
+        setversion(mcr)
         return str(servers[0])
     else:
         from nxsrecconfig import Settings
         mcr.selector = Settings.Settings()
+        setversion(mcr)
+
+
+def setversion(mcr):
+    if hasattr(mcr.selector, "version"):
+        mcr.selector_version = int(str(mcr.selector.version).split(".")[0])
+    else:
+        mcr.selector_version = 1
 
 
 def update_configuration(mcr):
@@ -860,4 +904,3 @@ def update_description(mcr):
             wait_for_device(mcr.selector)
         else:
             raise
-
