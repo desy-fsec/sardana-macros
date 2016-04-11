@@ -7,24 +7,35 @@ class ConfigAling(object):
     Class Helper to read the configuration file.
     """
 
-    def initConfig(self, energy, config_path):
-        self.energy =  energy / 1000 # to use keV
+    def initConfig(self, str_energy, config_path):
         self.config_file = ConfigParser.RawConfigParser()
         self.config_file.read(config_path)
         self.config_path = config_path
+        
+        # Select configuration: 
+        if str_energy.lower() == 'clear':
+            self.config = 'clear'
+            self.energy = 7 #7kev 
+            self.execMacro('mv energy %s' % 7000)
+        else:
+            
+            try:
+                self.energy =  float(str_energy) / 1000 # to use keV
+            except Exception as e:
+                raise ValueError('The energy should be: clear or a number')
 
-        # Select configuration:
-        if self.energy > 62.5 or self.energy < 2.4:
-            msg = 'Value out of range [2400, 62500]'
-            raise ValueError(msg)
-        elif self.energy >= 35:
-            self.config = '35keV'
-        elif self.energy >= 14:
-            self.config = '14keV'
-        elif self.energy >= 7:
-            self.config = '7keV'
-        elif self.energy >= 2.4:
-            self.config = '2.4keV'
+            if self.energy > 62.5 or self.energy < 2.4:
+                msg = 'Value out of range [2400, 62500]'
+                raise ValueError(msg)
+            elif self.energy >= 35:
+                self.config = '35keV'
+            elif self.energy >= 14:
+                self.config = '14keV'
+            elif self.energy >= 7:
+                self.config = '7keV'
+            elif self.energy >= 2.4:
+                self.config = '2.4keV'
+        
         self.motors_cal = self._tolist(self.config_file.get('general',
                                                             'equation'))
 
@@ -108,7 +119,7 @@ class mvblE(Macro, ConfigAling):
     """
 
 
-    param_def = [['energy', Type.Float, None, 'Beamline energy in eV'],
+    param_def = [['energy', Type.String, None, 'Beamline energy in eV'],
                  ['retries', Type.Integer, 3, 
                   'Number of retries to move the motors']]
 
@@ -120,7 +131,8 @@ class mvblE(Macro, ConfigAling):
             self.initConfig(energy, config_path)
             
             self.execMacro('feclose')
-            self.execMacro('mv energy %s' % energy)
+            if energy.lower() != 'clear':
+                self.execMacro('mv energy %s' % energy)
 
             self.info('Configuring filters...')
             for ior in self.get_ioregisters():
