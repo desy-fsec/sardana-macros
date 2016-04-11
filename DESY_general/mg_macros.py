@@ -627,7 +627,7 @@ class change_mg(Macro):
     The ActiveMntGrp is set to the created/changed MG. 
 
     Example: 
-      change_mg -g mg_ivp -t exp_t01 -c exp_c01,vc_pilatus300k,vc_pilatus1m -m d1_mca01
+      change_mg -g mg_ivp -t exp_t01 -c exp_c01 -m d1_mca01 -q pilatus
 
     """
     param_def = [ 
@@ -641,7 +641,6 @@ class change_mg(Macro):
     def run(self, *options_list):
         
         if options_list[0][0] == "None":
-            self.output( "hallo")
             self.output( "\
     change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer>\
               -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>\
