@@ -159,7 +159,7 @@ class mvblE(Macro, ConfigAling):
             
             self.execMacro('mv energy %f' % energy)
             # It will be possible whit the new EPS configuration. 
-            #self.execMacro('feopen')
+            self.execMacro('feopen')
 
             self.info('Moving table_z....')
             for cmd in self.get_cmds_mov('table_z'):
