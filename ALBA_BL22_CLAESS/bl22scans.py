@@ -5,7 +5,8 @@ from sardana.macroserver.scan import SScan
 from sardana.macroserver.macros.scan import ascan, getCallable, UNCONSTRAINED
 import taurus
 import PyTango
-from math import sqrt
+from math import sqrt, pow
+from numpy import linspace
 
 EV2REVA = 0.2624682843
 
@@ -145,6 +146,8 @@ class qExafs(Macro):
         self.debug("preConfigure entering...")
         self.debug('Configuring Pmac...')
         pmac = taurus.Device(self.pmacName)
+        # select the capture program
+        pmac.SetPVariable([4077,1])
         # configuring position capture control
         pmac.SetIVariable([7012, 2])
         # configuring position capture flag select
@@ -157,7 +160,13 @@ class qExafs(Macro):
         if self.run_startup:
             self.execMacro('qExafsStartup')
         if self.wait_fe:
-            self.execMacro('waitFE')
+            try:
+                self.execMacro('waitFE')
+            except Exception as e:
+                self.error('There was an exception with the waitFE macro: '
+                           '%s' % e)
+                raise RuntimeError()
+
 
     def postConfigure(self):
         self.debug('postConfigure entering...')
@@ -181,6 +190,8 @@ class qExafs(Macro):
         # self.mg_bck = self.getEnv('ActiveMntGrp')
         mg = self.getEnv('ContScanMG')
         self.setEnv('ActiveMntGrp', mg)
+        self.execMacro('feauto 1')
+
 
     def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, wait_fe,
             run_startup, run_cleanup, pmac_delay, acqTime, nrOfRepeats,
@@ -501,3 +512,312 @@ class aEscan(Macro):
         macro_ascan.hooks = [(self.pre_acquisition, ["pre-acq"]),]
 
         self.runMacro(macro_ascan)
+
+
+###############################################################################
+# Trigger by position
+###############################################################################
+
+class qExafsPos(Macro):
+    """
+    Macro to execute the quick Exafs experiment.
+    """
+
+    env = ('ContScanMG',)
+    motName = "energy"
+    # motName = "oh_dcm_bragg"
+    pmacName = "pmac"
+
+    masterTriggerName = "bl22/io/ibl2202-dev1-ctr0"
+
+    mem_overload = 1000000
+    hints = {}
+
+    param_def = [["startPos", Type.Float, None, "Starting position"],
+                 ["endPos", Type.Float, None, "Ending pos value"],
+                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                 ["scanTime", Type.Float, None, "Scan time"],
+
+                 ["speedLim", Type.Boolean, True, ("Active the verification "
+                                                   "of the speed and "
+                                                   "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")],
+
+                 ["runStartup", Type.Boolean, True, 'run qExasfStartup'],
+                 ["runCleanup", Type.Boolean, True, 'run qExasfCleanup'],
+
+                 ["pmacDelay", Type.Float, 0.01, ("Delay to run the motion "
+                                                  "of the speed and "
+                                                  "integration time")],
+
+                 ["acqTime", Type.Float, 99, ("Acquisition time per trigger. "
+                                              "Expressed in percentage of time"
+                                              " per trigger (scanTime/"
+                                              "nrOfTriggers)")],
+                 ["nrOfRepeats", Type.Integer, 1, "NrOfRepeats"],
+                 ["backAndForth", Type.Boolean, False, ('Scan in both'
+                                                        'directions')]]
+
+    def preConfigure(self):
+        self.debug("preConfigure entering...")
+        self.debug('Configuring Pmac...')
+        pmac = taurus.Device(self.pmacName)
+        # select the compare program
+        pmac.SetPVariable([4077, 2])
+        # prepare encoder table
+        energy_values = linspace(self.startPos, self.finalPos,
+                                self.nrOfTriggers)
+        enc_values = energy_bragg_encoder(energy_values)
+        if (self.startPos < self.finalPos):
+            direction=0
+        else:
+            direction=1
+        pmac.SetPVariable([4075, direction])
+        pmac.SetPVariable([4078, self.nrOfTriggers])
+        start_buffer = int(pmac.GetPVariable(4076))
+        end_buffer = start_buffer+self.nrOfTriggers
+        for p_reg, value in zip(range(start_buffer,end_buffer), enc_values):
+            pmac.SetPVariable([p_reg, value])
+        # enabling plc0 execution
+        pmac.SetIVariable([5, 3])
+        if self.run_startup:
+            self.execMacro('qExafsStartupPos')
+        if self.wait_fe:
+            self.execMacro('waitFE')
+
+    def postConfigure(self):
+        self.debug('postConfigure entering...')
+        self.debug('Setting Pmac starting delay...')
+        dev = PyTango.DeviceProxy('bl22/io/ibl2202-dev1-ctr0')
+        delay = dev.read_attribute('InitialDelayTime').value
+        total_delay = 0 
+        dev.write_attribute('InitialDelayTime', total_delay)
+
+    def postCleanup(self):
+        self.debug("postCleanup entering...")
+        pmac = taurus.Device(self.pmacName)
+        # disabling plc0 execution
+        pmac.SetIVariable([5, 2])
+
+    def prepare(self, *args, **kwargs):
+        # self.mg_bck = self.getEnv('ActiveMntGrp')
+        mg = self.getEnv('ContScanMG')
+        self.setEnv('ActiveMntGrp', mg)
+
+    def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, wait_fe,
+            run_startup, run_cleanup, pmac_delay, acqTime, nrOfRepeats,
+            backAndForth):
+        moveable = self.getMoveable(self.motName)
+        int_time = scanTime / nrOfTriggers
+        self.pmac_dt = pmac_delay
+        if speedLim:
+            if int_time < 0.5:
+                raise Exception(('You must use a higher integration time '
+                                 '(integration time = scanTime/nrOfTriggers).'
+                                 ' The minimum value is 0.5'))
+        else:
+            self.warning('The speed verification is desactive')
+
+        mem = nrOfTriggers * scanTime
+        if mem > self.mem_overload:
+            raise Exception(('You can not send this scan, because there is not '
+                             'enough memory. The combination of the nrOfTrigger'
+                             '*scanTime < 1000000'))
+
+        self.run_startup = run_startup
+        self.run_cleanup = run_cleanup
+        self.wait_fe = wait_fe
+
+        self.startPos = startPos
+        self.finalPos = finalPos
+        self.nrOfTriggers = nrOfTriggers
+        try:
+            for i in range(nrOfRepeats):
+                quickScanPosCapture, pars = self.createMacro("ascanct",
+                                                             moveable,
+                                                             startPos,
+                                                             finalPos,
+                                                             nrOfTriggers,
+                                                             int_time,
+                                                             acqTime)
+                quickScanPosCapture.hooks = [(self.preConfigure,
+                                              ["pre-configuration"]),
+                                             (self.postConfigure,
+                                              ["post-configuration"]),
+                                             (self.postCleanup,
+                                              ["post-cleanup"])]
+                self.debug("Running %d repetition" % i)
+                self.runMacro(quickScanPosCapture)
+                if backAndForth:
+                    self.debug("Swapping start with end")
+                    temp = startPos
+                    startPos = finalPos
+                    finalPos = temp
+
+        finally:
+            if self.run_cleanup:
+                mg = self.getEnv('DefaultMG')
+                self.setEnv('ActiveMntGrp', mg)
+                self.execMacro('qExafsCleanupPos')
+
+
+
+def energy_bragg_encoder(energy_values):
+    """
+    :param energy_values: Array with the energy values
+    :return: Array with the bragg encoder values
+    """
+
+    energy_motor = taurus.Device('pm/dcm_energy_ctrl/1') #energy
+    bragg_motor = taurus.Device('motor/dcm_pmac_ctrl/1') #oh_dcm_bragg
+    pmac = taurus.Device('bl22/ct/pmaceth-01')
+
+    # Translations from  degrees to raw counts. Getting an offset between
+    # position and encoder register (offset = 2683367)
+    stepPerUnit = bragg_motor.read_attribute('step_per_unit').value
+    braggMotorOffset = bragg_motor.read_attribute('offset').value
+    braggMotorOffsetEncCounts = braggMotorOffset*stepPerUnit
+    braggPosCounts = float(pmac.SendCtrlChar("P").split()[0])
+    encRegCounts = float(pmac.GetMVariable(101))
+    offset = braggPosCounts - encRegCounts + braggMotorOffsetEncCounts
+
+    # Transform from energy to bragg angle, the first motor is bragg the
+    # second on is the perpendicular
+    maxCounts = pow(2,23) #encoder register 24 bits overflow
+
+    calc_bragg = lambda energy: energy_motor.CalcAllPhysical([energy])[0]
+    calc_enc = lambda bragg: (bragg * stepPerUnit) - offset
+
+    enc_values = []
+    for energy in energy_values:
+        # transform energy to bragg angle
+        bragg = calc_bragg(energy)
+        enc = calc_enc(bragg)
+        if enc > maxCounts:
+            enc_value = enc - 2 * maxCounts
+        elif enc < - maxCounts:
+            enc_value = enc + 2 * maxCounts
+        else:
+            enc_value = enc
+        enc_values.append(int(enc_value))
+    return enc_values
+
+
+class qExafsStartupPos(Macro):
+    """
+    The macro configures the Adlink and the Ni660X for the
+    continuous scan
+    """
+
+    adlinks = ['bl22/ct/adc-ibl2202-01', 'bl22/ct/adc-ibl2202-02']
+    slave_triggers = ['bl22/io/ibl2202-dev1-ctr2', 'bl22/io/ibl2202-dev1-ctr4']
+    counters = ['bl22/io/ibl2202-dev1-ctr6', 'bl22/io/ibl2202-dev1-ctr7',
+                'bl22/io/ibl2202-dev2-ctr0', 'bl22/io/ibl2202-dev2-ctr1',
+                'bl22/io/ibl2202-dev2-ctr2', 'bl22/io/ibl2202-dev2-ctr3',
+                'bl22/io/ibl2202-dev2-ctr4', 'bl22/io/ibl2202-dev2-ctr5',
+                'bl22/io/ibl2202-dev2-ctr6', 'bl22/io/ibl2202-dev2-ctr7']
+
+    ni_devName = 'bl22/io/ibl2202-dev1'
+    timer_trigger = '/Dev1/RTSI0'
+    timer_PFI = '/Dev1/PFI36'
+    master_timer = 'bl22/io/ibl2202-dev1-ctr0'
+
+    def run(self):
+        self.debug('Configuring Adlink...')
+        for adlink in self.adlinks:
+            adc = taurus.Device(adlink)
+            if adc.State() != PyTango.DevState.STANDBY:
+                adc.Stop()
+
+        self.debug('Configuring NI660X...')
+        ni_devs = self.slave_triggers + self.counters + [self.master_timer]
+        for ni_dev in ni_devs:
+            self.debug(ni_dev)
+            dev = taurus.Device(ni_dev)
+            dev.init()
+
+        dev = PyTango.DeviceProxy(self.ni_devName)
+        dev.ConnectTerms([self.timer_PFI, self.timer_trigger,
+                          "DoNotInvertPolarity"])
+
+        dev = PyTango.DeviceProxy(self.master_timer)
+        dev["StartTriggerSource"] = '/Dev1/PFI39'
+        dev["StartTriggerType"] = "DigEdge"
+
+        for trigger in self.slave_triggers:
+            dev = PyTango.DeviceProxy(trigger)
+            dev["StartTriggerSource"] = self.timer_trigger
+            dev["StartTriggerType"] = "DigEdge"
+
+        for ni_count in self.counters:
+            dev_proxy = PyTango.DeviceProxy(ni_count)
+            dev_proxy.write_attribute("SampleClockSource", self.timer_trigger)
+            dev_proxy.write_attribute('SampleTimingType', "SampClk")
+            if self.counters.index(ni_count) > 4:
+                dev_proxy.write_attribute("DataTransferMechanism", 'Interrupts')
+
+        self.info("qExafs startup is done")
+
+
+class qExafsCleanupPos(Macro):
+    param_def = []
+    adlinks = ['bl22/ct/adc-ibl2202-01', 'bl22/ct/adc-ibl2202-02']
+    triggers = ['bl22/io/ibl2202-dev1-ctr0', 'bl22/io/ibl2202-dev1-ctr2',
+                'bl22/io/ibl2202-dev1-ctr4']
+    counters = ['bl22/io/ibl2202-dev1-ctr6', 'bl22/io/ibl2202-dev1-ctr7',
+                'bl22/io/ibl2202-dev2-ctr0', 'bl22/io/ibl2202-dev2-ctr1',
+                'bl22/io/ibl2202-dev2-ctr2', 'bl22/io/ibl2202-dev2-ctr3',
+                'bl22/io/ibl2202-dev2-ctr4', 'bl22/io/ibl2202-dev2-ctr5',
+                'bl22/io/ibl2202-dev2-ctr6', 'bl22/io/ibl2202-dev2-ctr7']
+
+    ni_devName = 'bl22/io/ibl2202-dev1'
+    timer_trigger = '/Dev1/RTSI0'
+    timer_PFI = '/Dev1/PFI36'
+    master_timer = 'bl22/io/ibl2202-dev1-ctr0'
+
+    def run(self):
+
+        self.debug('Configuring Adlink...')
+        for adlink in self.adlinks:
+            adc = taurus.Device(adlink)
+            if adc.State() != PyTango.DevState.STANDBY:
+                adc.Stop()
+            else:
+                adc.Init()
+                # in case of stopping acq, state is alredy STANDBY, but it does
+                # not allow starting new acq @todo in DS
+            adc.getAttribute("TriggerSources").write("SOFT")
+            adc.getAttribute("TriggerMode").write(0)
+            adc.getAttribute("TriggerInfinite").write(0)
+
+        # in case of aborting qExafs macro, seems that there is an exception in
+        # aborting adlink device,
+        # to be sure stopping trigger lines if they were not stopped.
+        self.debug('Configuring NI660X...')
+        ni_devs = self.triggers + self.counters
+        for ni_dev in ni_devs:
+            dev = taurus.Device(ni_dev)
+            dev.init()
+        #             if dev.State() != PyTango.DevState.STANDBY:
+        #                 dev.Stop()
+
+        dev = PyTango.DeviceProxy(self.ni_devName)
+        dev.ConnectTerms([self.timer_PFI, self.timer_trigger,
+                          "DoNotInvertPolarity"])
+
+        dev_timer = PyTango.DeviceProxy(self.master_timer)
+        dev_timer.write_attribute('InitialDelayTime', 0)
+        dev_timer.write_attribute('LowTime', 0.001)
+        dev_timer.write_attribute('SampPerChan', long(1))
+
+        for ni_count in self.counters:
+            dev_proxy = PyTango.DeviceProxy(ni_count)
+            dev_proxy.write_attribute("PauseTriggerType", "DigLvl")
+            dev_proxy.write_attribute('PauseTriggerSource', self.timer_trigger)
+            dev_proxy.write_attribute("PauseTriggerWhen", "Low")
+
+        self.info("qExafs cleanup is done")
+
+
+
