@@ -117,6 +117,8 @@ class escan(Macro):
             self.error("integ_time not specified")
             return
 
+        self.lambda_to_e = 12398.424 # Amstrong * eV
+        
         energy_device = self.getObj("mnchrmtr")
         energy_device_name = "mnchrmtr"
         try: # if the device exists gives error if comparing to None
@@ -156,7 +158,6 @@ class escan(Macro):
 
         
         if fixq == "fixq":
-            self.lambda_to_e = 12398.424 # Amstrong * eV
             # Repeat it here for getting an error if fixq mode
             diffrac_name = self.getEnv('DiffracDevice')
             self.diffrac = self.getDevice(diffrac_name)
