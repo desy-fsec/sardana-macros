@@ -56,8 +56,9 @@ class oav_merit_method(Macro):
     The merit method selected depends on the available methods defined in
     find_spots.py module:
 
-    * xds: Description?
-    * labelit: (phenix) Description?
+    * xds: Diffraction data indexing program from Wolfgang Kabsch (http://xds.mpimf-heidelberg.mpg.de/)
+    * labelit: Diffraction data indexing program of choice for automating production line from
+    Lawrence Berkeley Laboratory (http://ipo.lbl.gov/lbnl1960/)
     * random: Only for test purposes. This method 'random' simulates finding
     spots on an image using a random method from the image filename. Returns
     a random value between 810 and 1120.
