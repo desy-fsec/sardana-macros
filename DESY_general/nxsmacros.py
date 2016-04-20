@@ -11,11 +11,14 @@ import os
 import subprocess
 from sardana.macroserver.macro import (
     Macro, Type, macro, ParamRepeat)
+from sardana.macroserver.msexception import UnknownEnv
 
 from taurus.console.list import List
 from taurus.console import Alignment
 
 Left, Right, HCenter = Alignment.Left, Alignment.Right, Alignment.HCenter
+Nothing = '< None >'
+Splitter = ', '
 
 
 def device_groups(self):
@@ -47,9 +50,9 @@ def nxselector(self, mode, selector, door):
     if door:
         args.append("-d%s" % door)
     my_env = os.environ.copy()
-    if not 'DISPLAY' in my_env.keys():
+    if 'DISPLAY' not in my_env.keys():
         my_env['DISPLAY'] = ':0.0'
-    if not 'USER' in my_env.keys():
+    if 'USER' not in my_env.keys():
         if 'TANGO_USER' in my_env.keys():
             my_env['USER'] = my_env['TANGO_USER']
         else:
@@ -68,9 +71,9 @@ def nxsmacrogui(self, selector, door):
     if door:
         args.append("-d%s" % door)
     my_env = os.environ.copy()
-    if not 'DISPLAY' in my_env.keys():
+    if 'DISPLAY' not in my_env.keys():
         my_env['DISPLAY'] = ':0.0'
-    if not 'USER' in my_env.keys():
+    if 'USER' not in my_env.keys():
         if 'TANGO_USER' in my_env.keys():
             my_env['USER'] = my_env['TANGO_USER']
         else:
@@ -79,22 +82,29 @@ def nxsmacrogui(self, selector, door):
     subprocess.Popen(args, env=my_env)
 
 
-class nxsprof(Macro):
+@macro()
+def nxsprof(self):
     """ List the current profile """
 
-    def run(self):
-        server = set_selector(self)
-        printProfile(self, server)
+    server = set_selector(self)
+    try:
+        ismgupdated = False
+        self.nxsimportmg()
+        ismgupdated = self.selector.isMntGrpUpdated()
+    finally:
+        mout = printProfile(self, server)
+        for line in mout.genOutput():
+            self.output(line)
+
+        if not ismgupdated:
+            self.output("\nProfile is not set or MntGrp has been changed")
 
 
 @macro()
 def lsprof(self):
     """ List the current profile """
 
-    server = set_selector(self)
-    mout = printProfile(self, server, True)
-    for line in mout.genOutput():
-        self.output(line)
+    nxsprof(self)
 
 
 @macro()
@@ -148,40 +158,87 @@ def nxslsdevtype(self):
         They are defined by DeviceGroups attribute of NXSRecSelector.
     """
     set_selector(self)
-    self.output("Device Types:  %s" % ", ".join(device_groups(self).keys()))
+    self.output("Device Types:  %s"
+                % Splitter.join(device_groups(self).keys()))
 
 
 class nxsetprof(Macro):
     """ Set the active profile.
-        This action changes also ActiveMntGrp.
+        This action changes also ActiveMntGrp if the profile name is given
     """
 
     param_def = [
         ['name', Type.String, '', 'profile name'],
-        ]
+    ]
 
     def run(self, name):
         set_selector(self)
-        self.selector.mntgrp = name
+        profname = self.selector.mntgrp
+        try:
+            mgname = self.getEnv("ActiveMntGrp")
+        except UnknownEnv:
+            mgname = None
+        if not name:
+            name = mgname
+        elif mgname != profname:
+            if mgname:
+                self.unsetEnv("ActiveMntGrp")
+        if name:
+            self.selector.mntgrp = name
         self.selector.fetchProfile()
         self.selector.importMntGrp()
         self.selector.storeProfile()
         update_configuration(self)
 
 
+class nxsimportmg(Macro):
+    """ Import Active Measurement Group
+    """
+
+    def run(self):
+        set_selector(self)
+        try:
+            name = self.getEnv("ActiveMntGrp")
+        except UnknownEnv:
+            name = self.selector.mntgrp
+        self.selector.mntgrp = name
+        self.selector.fetchProfile()
+        self.selector.importMntGrp()
+        self.selector.storeProfile()
+
+
 class nxsrmprof(Macro):
-    """ Remove the current profile
-        The current profile can be shown by
-        'nxsprof' or 'lsprof' macros
+    """ Remove the given profile
+        A list of available profiles can be shown by the 'nxslsprof' macro
  """
 
     param_def = [
-        ['name', Type.String, '', 'profile name'],
+        ['name', Type.String, None, 'profile name'],
         ]
 
     def run(self, name):
         set_selector(self)
         self.selector.deleteProfile(name)
+
+
+class nxsrmallprof(Macro):
+    """ Remove the all profiles
+        A list of available profiles can be shown by the 'nxslsprof' macro
+ """
+
+    param_def = [
+        ['execute', Type.Boolean, False, 'remove all profiles'],
+        ]
+
+    def run(self, execute):
+        set_selector(self)
+        if execute:
+            self.selector.deleteAllProfiles()
+        else:
+            self.output("To remove all available profile: "
+                        "'nxsrmallprof True'\n")
+            printList(self, "AvailableProfiles", False,
+                      "Available Profiles", True)
 
 
 class nxsettimers(Macro):
@@ -226,8 +283,51 @@ class nxsadd(Macro):
         for name in component_list:
             if name not in pch and name in self.selector.availableComponents():
                 cpdct[str(name)] = True
-            else:
+            elif name in pch or name in self.selector.availableComponents():
                 dsdct[str(name)] = True
+            else:
+                self.warning("'%s' is not defined" % name)
+        cnf["DataSourceSelection"] = str(json.dumps(dsdct))
+        cnf["ComponentSelection"] = str(json.dumps(cpdct))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
+        update_configuration(self)
+
+
+class nxset(Macro):
+    """ Set the given timer(s) and detector components
+        Available components can be listed by
+        'nxsls', 'nxslscp' or 'nxslsds' macros
+    """
+
+    param_def = [
+        ['component_list',
+         ParamRepeat(['component', Type.String, None,
+                      'detector component to add']),
+         None, 'List of detector components to add'],
+    ]
+
+    def run(self, *component_list):
+        set_selector(self)
+        timers = self.selector.availableTimers()
+        stimers = [tm for tm in component_list if tm in timers]
+        if not stimers:
+            self.warning("Timer is missing")
+            return
+
+        nxsclr(self)
+        cnf = json.loads(self.selector.profileConfiguration)
+        cpdct = json.loads(cnf["ComponentSelection"])
+        dsdct = json.loads(cnf["DataSourceSelection"])
+        pch = self.selector.poolElementNames('ExpChannelList')
+        for name in component_list:
+            if name not in pch and name in self.selector.availableComponents():
+                cpdct[str(name)] = True
+            elif name in pch or name in self.selector.availableComponents():
+                if str(name) not in stimers:
+                    dsdct[str(name)] = True
+            else:
+                self.warning("'%s' is not defined" % name)
+        cnf["Timer"] = str(json.dumps(stimers))
         cnf["DataSourceSelection"] = str(json.dumps(dsdct))
         cnf["ComponentSelection"] = str(json.dumps(cpdct))
         self.selector.profileConfiguration = str(json.dumps(cnf))
@@ -236,8 +336,7 @@ class nxsadd(Macro):
 
 class nxsrm(Macro):
     """ Deselect the given detector components.
-        Selected detector components
-        and other detector channels can be listed by
+        Selected detector components can be listed by
         'nxsprof' or 'lsprof' macros
     """
 
@@ -268,22 +367,23 @@ class nxsrm(Macro):
         update_configuration(self)
 
 
-class nxsclr(Macro):
+@macro()
+def nxsclr(self):
     """ Removes all detector components from the current profile"""
 
-    def run(self):
+    if not hasattr(self, "selector"):
         set_selector(self)
-        cnf = json.loads(self.selector.profileConfiguration)
-        cpdct = json.loads(cnf["ComponentSelection"])
-        dsdct = json.loads(cnf["DataSourceSelection"])
-        for name in cpdct.keys():
-            cpdct[str(name)] = False
-        for name in dsdct.keys():
-            dsdct[str(name)] = False
-        cnf["DataSourceSelection"] = str(json.dumps(dsdct))
-        cnf["ComponentSelection"] = str(json.dumps(cpdct))
-        self.selector.profileConfiguration = str(json.dumps(cnf))
-        update_configuration(self)
+    cnf = json.loads(self.selector.profileConfiguration)
+    cpdct = json.loads(cnf["ComponentSelection"])
+    dsdct = json.loads(cnf["DataSourceSelection"])
+    for name in cpdct.keys():
+        cpdct[str(name)] = False
+    for name in dsdct.keys():
+        dsdct[str(name)] = False
+    cnf["DataSourceSelection"] = str(json.dumps(dsdct))
+    cnf["ComponentSelection"] = str(json.dumps(cpdct))
+    self.selector.profileConfiguration = str(json.dumps(cnf))
+    update_configuration(self)
 
 
 class nxsadddesc(Macro):
@@ -311,6 +411,8 @@ class nxsadddesc(Macro):
                     self.output("%s added" % name)
                 elif name in self.selector.availableDataSources():
                     dsdct.add(str(name))
+                else:
+                    self.warning("'%s' is not defined" % name)
             cnf["InitDataSources"] = str(json.dumps(list(dsdct)))
         else:
             dsdct = json.loads(cnf["DataSourcePreselection"])
@@ -321,6 +423,8 @@ class nxsadddesc(Macro):
                 elif name in self.selector.availableDataSources():
                     dsdct[str(name)] = True
                     self.output("%s added" % name)
+                else:
+                    self.warning("'%s' is not defined" % name)
             cnf["DataSourcePreselection"] = str(json.dumps(dsdct))
         cnf["ComponentPreselection"] = str(json.dumps(cpdct))
         self.selector.profileConfiguration = str(json.dumps(cnf))
@@ -445,12 +549,29 @@ class nxsupdatedesc(Macro):
         of component tango (motor) devices.
         Selected description components can be listed by
         'nxsprof' or 'lsprof' macros.
-        Description component group can be changed by
+        Descriptive component group can be changed by
         'nxsadddesc' and 'nxsrmdesc' macros.
     """
 
     def run(self):
         set_selector(self)
+        update_description(self)
+        update_configuration(self)
+
+
+class nxsresetdesc(Macro):
+    """ Reset a selection of description components to default set.
+        The selection is made with respected to working status
+        of component tango (motor) devices.
+        Selected description components can be listed by
+        'nxsprof' or 'lsprof' macros.
+        Descriptive component group can be changed by
+        'nxsadddesc' and 'nxsrmdesc' macros.
+    """
+
+    def run(self):
+        set_selector(self)
+        self.selector.resetPreselectedComponents()
         update_description(self)
         update_configuration(self)
 
@@ -507,9 +628,24 @@ class nxsls(Macro):
     def run(self, dev_type):
         set_selector(self)
 
-        allch = set(self.selector.availableDataSources())
-        allch.update(set(self.selector.poolElementNames('ExpChannelList')))
-        allch.update(set(self.selector.availableComponents()))
+        adss = set(self.selector.availableDataSources())
+        pchs = set(self.selector.poolElementNames('ExpChannelList'))
+        acps = set(self.selector.availableComponents())
+        fdss = self._filterSet(adss, dev_type)
+        fchs = self._filterSet(pchs, dev_type)
+        fcps = self._filterSet(acps, dev_type)
+
+        if fdss:
+            self.output("\n    DataSources:\n")
+            self.output(Splitter.join(list(fdss)))
+        if fchs:
+            self.output("\n    PoolDevices:\n")
+            self.output(Splitter.join(list(fchs)))
+        if fcps:
+            self.output("\n    Components:\n")
+            self.output(Splitter.join(list(fcps)))
+
+    def _filterSet(self, comps, dev_type):
         available = set()
         groups = device_groups(self)
         if dev_type:
@@ -519,15 +655,15 @@ class nxsls(Macro):
             if dev_type in groups.keys():
                 for gr in groups[dev_type]:
                     filtered = fnmatch.filter(
-                        allch, gr)
+                        comps, gr)
                     available.update(filtered)
             else:
                 filtered = fnmatch.filter(
-                    allch, "*%s*" % dev_type)
+                    comps, "*%s*" % dev_type)
                 available.update(filtered)
         else:
-            available.update(allch)
-        self.output(", ".join(list(available)))
+            available.update(comps)
+        return available
 
 
 class nxshow(Macro):
@@ -577,11 +713,7 @@ class nxshow(Macro):
         dslist = []
         if name in fullpool.keys():
             if name in fullpool.keys():
-                dslist.append(
-                            {
-#                        "dsname": name,
-#                        "dstype": "POOL",
-                        "source": fullpool[name]})
+                dslist.append({"source": fullpool[name]})
         if dslist:
             self.output("\n    PoolDevice: %s\n" % name)
             printTable(self, dslist)
@@ -622,59 +754,43 @@ def wait_for_device(proxy, counter=100):
         cnt += 1
 
 
-def printProfile(mcr, server, outflag=False):
-    out = None
-    if outflag:
-        out = List(["Profile (MntGrp): %s"
-                    % str(getString(mcr, "MntGrp")), ""],
-                   text_alignment=(Right, Right),
-                   max_col_width=(-1, 60),
-                   )
-    if not out:
-        printString(mcr, "MntGrp", "Profile (and MntGrp)", out=out)
-        mcr.output("")
+def printProfile(mcr, server):
+    out = List(["Profile (MntGrp): %s"
+                % str(getString(mcr, "MntGrp")), ""],
+               text_alignment=(Right, Right),
+               max_col_width=(-1, 60),)
     printConfList(mcr, "Timer", True, "Timer(s)", out=out)
-    if not out:
-        mcr.output("")
     printList(mcr, "SelectedComponents", False, "Detector Components",
               True, out=out)
-    if not out:
-        mcr.output("")
-    printList(mcr, "SelectedDataSources", False, "Other Detector Channels",
+    printList(mcr, "SelectedDataSources", False, "", True, out=out)
+    mergeLastTwoRows(out)
+    printList(mcr, "PreselectedComponents", False, "Descriptive Components",
               True, out=out)
-    if not out:
-        mcr.output("")
+    if mcr.selector_version <= 2:
+        printConfList(mcr, "InitDataSources", True, "", out=out)
+    else:
+        printList(mcr, "PreselectedDataSources", False, "", True, out=out)
+    mergeLastTwoRows(out)
     printList(mcr, "MandatoryComponents", False, "Mandatory Components",
               True, out=out)
-    if not out:
-        mcr.output("")
-    printList(mcr, "PreselectedComponents", False, "Description Components",
-              True, out=out)
-    if not out:
-        mcr.output("")
-
-    if mcr.selector_version <= 2:
-        printConfList(mcr, "InitDataSources", True,
-                      "Other Description Channels", out=out)
-    else:
-        printList(mcr, "PreselectedDataSources", False,
-                      "Other Description Channels", True, out=out)
-    if not out:
-        mcr.output("")
     printDict(mcr, "UserData", True, "User Data", out=out)
-    if not out:
-        mcr.output("")
-    #        printDict(mcr, "ConfigVariables", True, "ConfigServer Variables")
-#        mcr.output("")
     printString(mcr, "AppendEntry", out=out)
-    if not out:
-        mcr.output("")
-        mcr.output("SelectorServer:  %s" % str(server))
-    else:
-        out.append(["SelectorServer", str(server)])
+    out.append(["SelectorServer", str(server)])
     printString(mcr, "ConfigDevice", "ConfigServer", out=out)
     printString(mcr, "WriterDevice", "WriterServer", out=out)
     return out
+
+
+def mergeLastTwoRows(out):
+    last = out.pop()
+    beforelast = out[-1]
+    if last[-1] != Nothing:
+        if beforelast[-1] == Nothing:
+            beforelast[-1] = last[-1]
+        else:
+            sbl = beforelast[-1].split(Splitter)
+            sl = last[-1].split(Splitter)
+            beforelast[-1] = Splitter.join(set(sbl + sl))
 
 
 def printDict(mcr, name, decode=True, label=None, out=None):
@@ -752,11 +868,11 @@ def printConfList(mcr, name, decode=True, label=None, out=None):
         try:
             mcr.output("%s:  %s" % (
                 title,
-                ", ".join(data) if data else "< None >"))
+                Splitter.join(data) if data else Nothing))
         except:
             mcr.output(str(e))
     else:
-        out.appendRow([title, ", ".join(data) if data else "< None >"])
+        out.appendRow([title, Splitter.join(data) if data else Nothing])
 
 
 def printList(mcr, name, decode=True, label=None, command=False, out=None):
@@ -786,10 +902,10 @@ def printList(mcr, name, decode=True, label=None, command=False, out=None):
     except Exception as e:
         mcr.output(str(e))
     if not out:
-        mcr.output("%s:  %s" % (title,
-                               ", ".join(data) if data else "< None >"))
+        mcr.output("%s:  %s" % (
+            title, Splitter.join(data) if data else Nothing))
     else:
-        out.appendRow([title, ", ".join(data) if data else "< None >"])
+        out.appendRow([title, Splitter.join(data) if data else Nothing])
 
 
 def printConfString(mcr, name, label=None):
