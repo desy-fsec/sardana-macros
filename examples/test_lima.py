@@ -2,11 +2,13 @@ from sardana.macroserver.macro import macro, iMacro, Macro, Type, ParamRepeat
 import time
 import taurus
 
+
 class test_limastatusquery(Macro):
-    '''
+    """
     Category: Test
-    Request the status fo a device server at certain frquency.
-    '''
+
+    Request the status of a device server at certain frequency.
+    """
     param_def = [ ['det', Type.String, 'bl13/eh/pilatuslima', 'lima device name'],
                   ['nq', Type.Integer, 0, "number of queries to perform" ],
                   ['freq', Type.Float, 1, "time between queries"]
@@ -14,17 +16,15 @@ class test_limastatusquery(Macro):
  
     def run(self, det, nq, freq):
 
-        self.info('Numer of queries: %s' % nq)
-        self.info('Performe query every %s s.' % freq)
+        self.info('Number of queries: %s' % nq)
+        self.info('Perform query every %s s.' % freq)
         self.info('Detector: %s' % det)
 
         try:
             dev = taurus.Device(det)
             self.info('ping: %s s' % dev.ping())
-
         except:
             raise Exception('Cannot connect to detector %s' % det)
-            
         
         counter = 0
 
@@ -36,8 +36,7 @@ class test_limastatusquery(Macro):
                 counter += 1
                 self.checkPoint()
                 time.sleep(freq)
-                
-        except:
+        except Exception:
             self.error('Exception during queries')
 
 

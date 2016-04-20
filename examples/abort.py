@@ -4,17 +4,17 @@ import time
 
 class test_abort_macro(Macro):
     """
-    Category: Test
+    Category: Examples
 
     This macro is designed to show how the abort command is captured and
-    managed by the macroserver.
+    managed by the MacroServer.
     """
     param_def = [['duration', Type.Float, 5.0, 'time to abort'],
                  ['check', Type.Boolean, True, 'checkpoints ON'],
                  ]
 
     def prepare(self, duration, check):
-        self.str_macro = str('_sleep ' + str(duration) + ' ' + str(check))
+        self.str_macro = str('sleep ' + str(duration) + ' ' + str(check))
         self.info('Starting main macro...')
 
     def run(self, duration, check):
@@ -24,16 +24,15 @@ class test_abort_macro(Macro):
             self.execMacro(self.str_macro)
             self.checkPoint()
             time.sleep(1)
-	self.info('Already out from loop')
+        self.info('Already out from loop')
 
-	
     def on_abort(self):
         self.info('on_abort from [main macro] executed!')
 
 
-class _sleep(Macro):
+class sleep(Macro):
     """
-    Category: Test
+    Category: Examples
 
     This macro sleeps for a certain time (duration) in cycles of
     1 second. In between, a checkpoint function is used to provide

@@ -3,7 +3,11 @@ import PyTango
 
 
 class ni_shutter(Macro):
-
+    """
+    This macro is used to operate a shutter via a ni660x channel.
+    The channel name is expected to be accessible as an environment
+    variable (NIShutterChannel)
+    """
     param_def = [['open_close', Type.String, None, 'open/close the shutter']]
 
     def prepare(self, open_close):
