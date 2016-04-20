@@ -25,9 +25,9 @@ def catch_error(meth):
     return _catch_error
 
 
-class raise_exception(Macro):
+class _raise_exception(Macro):
     """
-    Category: Tests
+    Category: None
 
     This macro raises a given exception according to the dictionary defined.
     """
@@ -52,7 +52,7 @@ class raise_exception(Macro):
             self.info("No exception raised!")
 
 
-class testCatchException(Macro):
+class test_catch_exception(Macro):
     """
     Category: Tests
 
@@ -65,4 +65,4 @@ class testCatchException(Macro):
         
     @catch_error
     def run(self, m):
-        self.execMacro("raiseException %s" % m)
+        self.execMacro("_raiseException %s" % m)

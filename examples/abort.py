@@ -14,7 +14,7 @@ class test_abort_macro(Macro):
                  ]
 
     def prepare(self, duration, check):
-        self.str_macro = str('sleep ' + str(duration) + ' ' + str(check))
+        self.str_macro = str('_sleep ' + str(duration) + ' ' + str(check))
         self.info('Starting main macro...')
 
     def run(self, duration, check):
@@ -30,9 +30,9 @@ class test_abort_macro(Macro):
         self.info('on_abort from [main macro] executed!')
 
 
-class sleep(Macro):
+class _sleep(Macro):
     """
-    Category: Examples
+    Category: None
 
     This macro sleeps for a certain time (duration) in cycles of
     1 second. In between, a checkpoint function is used to provide

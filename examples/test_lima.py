@@ -3,9 +3,9 @@ import time
 import taurus
 
 
-class test_limastatusquery(Macro):
+class test_lima_status_query(Macro):
     """
-    Category: Test
+    Category: Tests
 
     Request the status of a device server at certain frequency.
     """

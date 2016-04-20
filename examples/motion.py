@@ -15,7 +15,7 @@ import time
 
 class move_async(Macro):
     """
-    Category: Test
+    Category: Tests
 
     A macro that executes an asynchronous movement of a motor. The movement
     can be cancelled by a Ctrl-C.
@@ -49,7 +49,7 @@ class move_async(Macro):
 
 class move_async_test(Macro):
     """
-    Category: Test
+    Category: Tests
 
     A macro that executes an asynchronous movement of a motor.
     Be careful when adding functionality to the macro, since the
@@ -99,9 +99,9 @@ class move_async_test(Macro):
             self.error('Exception in on_abort: %s' % e)
 
 
-class inf_loop(Macro):
+class test_cancel_inf_loop(Macro):
     """
-    Category: Test
+    Category: Tests
 
     A macro that executes an infinity loop until cancelled by a Ctrl-C.
     This macro is part of the examples package. It was written for

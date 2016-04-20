@@ -4,7 +4,7 @@ import os
 
 class which_user(Macro):
     """
-    Category: Test
+    Category: Diagnostics
 
     Returns the user currently running the MacroServer instance.
     """
