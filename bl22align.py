@@ -131,9 +131,9 @@ class mvblE(Macro, ConfigAling):
             self.initConfig(energy, config_path)
             
             self.execMacro('feclose')
-            if energy.lower() != 'clear':
-                self.execMacro('mv energy %s' % energy)
-
+            # if energy.lower() != 'clear':
+            #     self.execMacro('mv energy %s' % energy) 
+        
             self.info('Configuring filters...')
             for ior in self.get_ioregisters():
                 wvalue = int(self.get_element(ior))
@@ -156,8 +156,12 @@ class mvblE(Macro, ConfigAling):
                 for cmd in self.get_cmds_mov(instrument):
                     for i in range(retries):
                         self.execMacro(cmd)
-            
-            self.execMacro('mv energy %f' % energy)
+
+            # after the load config the energy is in keV
+            eng = self.energy*1000 
+            self.info('Moving energy to: %f' % eng)
+            self.execMacro('mv energy %f' % eng)
+
             # It will be possible whit the new EPS configuration. 
             self.execMacro('feopen')
 
