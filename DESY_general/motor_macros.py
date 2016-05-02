@@ -64,7 +64,30 @@ class wg(Macro):
         
         self.execMacro('_wm',*self.all_motors, **self.table_opts)
 
+class wm_encoder(Macro):
+    """ Show motor position from encoder readout """
+    
+    param_def = [
+        ['motor', Type.Moveable, None, 'Motor name']
+    ]
 
+    def run(self, motor):
+        try:
+            motor_td = PyTango.DeviceProxy(motor.TangoDevice)
+        except:
+            self.output("Not tango device outside Pool")
+            return
+        try:
+            self.table_opts = {}
+            self.execMacro('_wm',motor, **self.table_opts)
+            encoder_pos = motor_td.PositionEncoder
+            self.output("Encoder " + str(encoder_pos))
+        except:
+            self.output("Not posible to read encoder position")
+            
+      
+        
+        
 class tw(iMacro):
     """
     tw - tweak motor by variable delta
