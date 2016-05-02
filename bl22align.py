@@ -140,7 +140,7 @@ class mvblE(Macro, ConfigAling):
                 dev_ior = self.getDevice(ior)
                 dev_ior.write_attribute('value', wvalue)
                 for i in range(retries):
-                    rvalue = dev_ior.read_attribute('value')
+                    rvalue = dev_ior.read_attribute('value').value
                     time.sleep(5)
                     if rvalue == wvalue:
                         break
