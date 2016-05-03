@@ -314,10 +314,13 @@ class nxset(Macro):
             self.warning("Timer is missing")
             return
 
-        nxsclr(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
         dsdct = json.loads(cnf["DataSourceSelection"])
+        for name in cpdct.keys():
+            cpdct[str(name)] = False
+        for name in dsdct.keys():
+            dsdct[str(name)] = False
         pch = self.selector.poolElementNames('ExpChannelList')
         for name in component_list:
             if name not in pch and name in self.selector.availableComponents():
