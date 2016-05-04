@@ -569,16 +569,32 @@ class qExafsPos(Macro):
         energy_values = linspace(self.startPos, self.finalPos,
                                 self.nrOfTriggers)
         enc_values = energy_bragg_encoder(energy_values)
+        first_point_register_a = enc_values[0]
         if (self.startPos < self.finalPos):
             direction=0
+            first_point_register_b = first_point_register_a + 5
         else:
             direction=1
+            first_point_register_b = first_point_register_a - 5
         pmac.SetPVariable([4075, direction])
         pmac.SetPVariable([4078, self.nrOfTriggers])
         start_buffer = int(pmac.GetPVariable(4076))
         end_buffer = start_buffer+self.nrOfTriggers
         for p_reg, value in zip(range(start_buffer,end_buffer), enc_values):
             pmac.SetPVariable([p_reg, value])
+        
+        # Configure the PLC0: 
+        # first point on the compare register A&B
+        # set auto-increment to 0 to avoid the eneble of the compare circuit
+        # set output to start on Low Level
+        # update the signal output
+
+        pmac.SetMVariable([108, first_point_register_a])
+        pmac.SetMVariable([109, first_point_register_b])
+        pmac.SetMVariable([110, 0])
+        pmac.SetMVariable([112, 0])
+        pmac.SetMVariable([111, 1])
+
         # enabling plc0 execution
         pmac.SetIVariable([5, 3])
         if self.run_startup:
@@ -592,7 +608,7 @@ class qExafsPos(Macro):
         dev = PyTango.DeviceProxy('bl22/io/ibl2202-dev1-ctr0')
         delay = dev.read_attribute('InitialDelayTime').value
         total_delay = 0 
-        dev.write_attribute('InitialDelayTime', total_delay)
+        dev.write_attribute('InitialDelayTime', delay)
 
     def postCleanup(self):
         self.debug("postCleanup entering...")
