@@ -4,14 +4,12 @@
 Specific Alba BL29 MARES (RSXS end station) utility macros
 """
 
-
-__all__=['femto', 'mares_sample_temp_control']
-
-
 import PyTango
 import time
 
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
+
+__all__ = ['femto', 'mares_sample_temp_control']
 
 
 class femto(Macro):
@@ -20,17 +18,17 @@ class femto(Macro):
 
     For GETTING the gain value simply run the macro without parameters
 
-    For SETTING the gain value run the macro with the target gain value. These values
-    can range from 4 (which means 1e4) to 13 (which means 1e13): any other value
-    will simply be ignored by the hardware.
+    For SETTING the gain value run the macro with the target gain value. These
+    values can range from 4 (which means 1e4) to 13 (which means 1e13): any
+    other value will simply be ignored by the hardware.
     The macro will check that the set value had been correctly written in the
-    hardware for some time and will show an error message if target value is not
-    correctly set in the hardware after that time
+    hardware for some time and will show an error message if target value is
+    not correctly set in the hardware after that time
     On success, the macro will return the target gain value. On failure it will
-    return 0 
+    return 0
     """
 
-    RANGE = range(4,13+1)
+    RANGE = range(4, 13+1)
     ATTRIBUTE_NAME = 'BL29/CT/EPS-PLC-01/EX_AMP_EH02_01_GAIN_A'
     TIMEOUT = 15
 
@@ -40,7 +38,8 @@ class femto(Macro):
 
     def prepare(self, gain, *args, **kwargs):
         if (gain != 0) and not (gain in self.RANGE):
-            self.error('Invalid gain: %d. Valid values are %s. Set value will be ignored by the hardware.' %(gain, str(self.RANGE)))
+            self.error('Invalid gain: %d. Valid values are %s. Set value will '
+                       'be ignored by the hardware.' % (gain, str(self.RANGE)))
 
     def run(self, gain, *args, **kwargs):
         attr = PyTango.AttributeProxy(self.ATTRIBUTE_NAME)
@@ -51,16 +50,18 @@ class femto(Macro):
             gain_now = attr.read().value
             start = time.time()
             timeout = False
-            while gain_now!=gain and not timeout:
+            while gain_now != gain and not timeout:
                 time.sleep(0.2)
                 gain_now = attr.read().value
                 if time.time() - start > self.TIMEOUT:
                     timeout = True
             if timeout:
-                self.error('Timeout while checking if value was correctly set to hardware')
-            if gain_now!=gain:
-                self.error('Gain read from hardware %d is not the target value %d. Please check!' % (gain_now, gain))
-        elif gain==0:
+                self.error('Timeout while checking if value was correctly set '
+                           'to hardware')
+            if gain_now != gain:
+                self.error('Gain read from hardware %d is not the target '
+                           'value %d. Please check!' % (gain_now, gain))
+        elif gain == 0:
             gain_now = attr.read().value
             self.output('Femto gain %d' % gain_now)
             return gain_now
@@ -87,8 +88,8 @@ class mares_sample_temp_control(Macro):
         mares_sample_temp_control setpoint 33.3
 
     The parameter names and their possible values are:
-    - state -> The hardware controller state. Please note that only 2 states are
-    availabe when setting the value:
+    - state -> The hardware controller state. Please note that only 2 states
+    are availabe when setting the value:
         * on
         * off
     - setpoint -> the value is a float number
@@ -113,12 +114,12 @@ class mares_sample_temp_control(Macro):
         a) Output power if controller is in manual mode
         b) Temperature target in K in any other case
 
-    2) Hence, in order to avoid possible errors, if you want to set output power
-    manually you have to explicitly specify that you want to set the controller
-    to manual mode (even if it is already in that mode). Otherwise, the setpoint
-    parameter will be assumed to be a temperature setpoint, and hence the macro
-    will check that the controller IS NOT in manual mode, and will complain if
-    it is.
+    2) Hence, in order to avoid possible errors, if you want to set output
+    power manually you have to explicitly specify that you want to set the
+    controller to manual mode (even if it is already in that mode). Otherwise,
+    the setpoint parameter will be assumed to be a temperature setpoint, and
+    hence the macro will check that the controller IS NOT in manual mode, and
+    will complain if it is.
 
     3) Note that setting the state (hardware controller state) to 'off' will
     completely disable the hardware equipment, and hence it will not regulate
@@ -133,11 +134,15 @@ class mares_sample_temp_control(Macro):
     ]
 
 #    @todo: replace DEPRECATED old style when bug solved:
-#    https://sourceforge.net/tracker/?func=detail&atid=484769&aid=3608704&group_id=57612
+#    https://sourceforge.net/p/sardana/tickets/65/
+#    @todo: see new style param repeat
+#    http://www.sardana-controls.org/en/stable/devel/howto_macros/\
+#    macros_general.html#repeat-parameters
 #    param_def = [
-#        [ 'param_value', [ [ 'param_name',  Type.String, None, 'parameter name' ],
-#                           [ 'param_value', Type.String, None, 'parameter value'],
-#                           { 'min' : 1, 'max' : 4 } ],
+#        [ 'param_value', [
+#             [ 'param_name',  Type.String, None, 'parameter name' ],
+#             [ 'param_value', Type.String, None, 'parameter value'],
+#               { 'min' : 1, 'max' : 4 } ],
 #         None, 'List of param_name/param_value pairs']
 #    ]
 
@@ -149,24 +154,24 @@ class mares_sample_temp_control(Macro):
     ctrl_attr_type = 'Loop1Type'
     ctrl_attr_state = 'State'
 
-    control_types = ['Off', 'PID', 'Manual', 'Table', 'RampWithPID', 'RampWithTable']
+    control_types = ['Off', 'PID', 'Manual', 'Table',
+                     'RampWithPID', 'RampWithTable']
     ranges = ['Low', 'Mid', 'Hi']
 
     control_types_hw = ['off', 'pid', 'man', 'table', 'rampp', 'rampt']
 
     data = {
-        'setpoint' : None,
-        'control_type' : None,
-        'range' : None,
-        'rate' : None,
-        'state' : None
+        'setpoint':     None,
+        'control_type': None,
+        'range':        None,
+        'rate':         None,
+        'state':        None
     }
 
     allowed_commands = ('on', 'off')
 
     def to_usr(self, value):
         """"""
-        control_types = [type.lower() for type in self.control_types]
         value = value.lower()
         if value in self.control_types_hw:
             return self.control_types[self.control_types_hw.index(value)]
@@ -186,35 +191,38 @@ class mares_sample_temp_control(Macro):
         """"""
 
         hw_params = []
-        #check parameters if provided
+        # check parameters if provided
         self.data = {
-            'setpoint'     : None,
-            'control_type' : None,
-            'range'        : None,
-            'rate'         : None,
-            'state'        : None
+            'setpoint':     None,
+            'control_type': None,
+            'range':        None,
+            'rate':         None,
+            'state':        None,
         }
         control_types = [type.lower() for type in self.control_types]
         ranges = [range.lower() for range in self.ranges]
         for param_name, param_value in pairs:
             param_value = param_value.lower()
-            #check param name
+            # check param name
             if not (param_name in self.data.keys()):
-                msg = 'Invalid parameter %s. Valid parameters are: %s' % (str(param_name), str(self.data.keys()))
+                msg = 'Invalid parameter %s. Valid parameters are: %s' % \
+                      (str(param_name), str(self.data.keys()))
                 self.output(msg)
                 raise Exception(msg)
-            #check param value
+            # check param value
             if param_name == 'setpoint':
                 self.data[param_name] = param_value
             elif param_name == 'control_type':
                 if not (param_value in control_types):
-                    msg = 'Invalid parameter control_type: %s Valid values are %s' % (param_value, str(self.control_types))
+                    msg = 'Invalid parameter control_type: %s Valid values ' \
+                          'are %s' % (param_value, str(self.control_types))
                     self.output(msg)
                     raise Exception(msg)
                 self.data[param_name] = param_value
             elif param_name == 'range':
                 if not (param_value in ranges):
-                    msg = 'Invalid parameter range: %s Valid values are %s' % (param_value, str(self.ranges))
+                    msg = 'Invalid parameter range: %s Valid values are %s' % \
+                          (param_value, str(self.ranges))
                     self.output(msg)
                     raise Exception(msg)
                 self.data[param_name] = param_value
@@ -222,7 +230,8 @@ class mares_sample_temp_control(Macro):
                 self.data[param_name] = param_value
             elif param_name == 'state':
                 if not (param_value in self.allowed_commands):
-                    msg = 'Invalid parameter state: %s Valid values are %s' % (param_value, str(self.allowed_commands))
+                    msg = 'Invalid parameter state: %s Valid values are %s' % \
+                          (param_value, str(self.allowed_commands))
                     self.output(msg)
                     raise Exception(msg)
                 self.data[param_name] = param_value
@@ -231,26 +240,28 @@ class mares_sample_temp_control(Macro):
                 self.output(msg)
                 raise Exception(msg)
 
-        #and finally check logic between parameters and translate them to hw params
-        #NOTE that the order in which the ha params are appended to the list are
-        #important in case of setting temperature/manual_value
+        # and finally check logic between parameters and translate them to hw
+        # NOTE that the order in which the ha params are appended to the list
+        # are important in case of setting temperature/manual_value
         setpoint = self.data['setpoint']
         control_type = self.data['control_type']
         range = self.data['range']
         rate = self.data['rate']
         state = self.data['state']
-        if control_type != None:
+        if control_type is not None:
             hw_params.append([self.ctrl_attr_type, self.to_hw(control_type)])
-        if range != None:
+        if range is not None:
             hw_params.append([self.ctrl_attr_range, range])
-        if rate != None:
+        if rate is not None:
             hw_params.append([self.ctrl_attr_rate, float(rate)])
-        if setpoint != None:
-            if control_type == None:
-                actual_control_type = self.dev.read_attribute(self.ctrl_attr_type).value
+        if setpoint is not None:
+            if control_type is None:
+                actual_control_type = \
+                    self.dev.read_attribute(self.ctrl_attr_type).value
                 actual_control_type = actual_control_type.lower()
                 if actual_control_type == 'man':
-                    msg = 'You requested setting a temperature target, but the controller is in manual mode'
+                    msg = 'You requested setting a temperature target, but '\
+                        'the controller is in manual mode'
                     self.output(msg)
                     raise Exception(msg)
                 hw_params.append([self.ctrl_attr_setpoint, float(setpoint)])
@@ -258,51 +269,56 @@ class mares_sample_temp_control(Macro):
                 hw_params.append([self.ctrl_attr_output, float(setpoint)])
             else:
                 hw_params.append([self.ctrl_attr_setpoint, float(setpoint)])
-        #special treament for 'state'
-        if state != None:
+        # special treament for 'state'
+        if state is not None:
             hw_params.append(['state', state])
 
         return hw_params
 
     def prepare(self, *pairs, **opts):
         """Check hardware"""
-        #check temperature controller state
+        # check temperature controller state
         msg = ''
         try:
             self.dev = PyTango.DeviceProxy(self.ctrl_dev)
             if self.dev.state() == PyTango.DevState.FAULT:
                 msg = 'Temperature controller is FAULT. Please check.'
-        except Exception, e:
+        except Exception:
             msg = 'Unknown error while accessing temperature controller'
         if msg != '':
             self.error(msg)
             raise Exception(msg)
 
     def run(self, *pairs, **opts):
-        """Set requested parameters and check that they were correctly set in the hardware"""
-        #lower case for easiest management
-        control_types = [type.lower() for type in self.control_types]
-        ranges = [range.lower() for range in self.ranges]
-
-        #getting parameters requested
+        """Set requested parameters and check that they were correctly set in
+        the hardware"""
+        # getting parameters requested
         param, value = pairs[0]
-        if param.lower() == 'get':
-            if not (value.lower() in self.data.keys()) and value.lower()!= 'all':
+        param, value = param.lower(), value.lower()
+        if param == 'get':
+            if not (value in self.data.keys()) and value != 'all':
                 msg = 'Invalid parameter: %s' % str(value)
                 self.output(msg)
                 raise Exception(msg)
             try:
-                control_type = self.dev.read_attribute(self.ctrl_attr_type).value
+                control_type = \
+                    self.dev.read_attribute(self.ctrl_attr_type).value
                 self.data['control_type'] = self.to_usr(control_type)
                 if control_type.lower() == 'man':
-                    setpoint = self.dev.read_attribute(self.ctrl_attr_output).value
+                    setpoint = \
+                        self.dev.read_attribute(self.ctrl_attr_output).value
                 else:
-                    setpoint = self.dev.read_attribute(self.ctrl_attr_setpoint).value
+                    setpoint = \
+                        self.dev.read_attribute(self.ctrl_attr_setpoint).value
                 self.data['setpoint'] = setpoint
-                self.data['range'] = self.dev.read_attribute(self.ctrl_attr_range).value.capitalize()
-                self.data['rate'] = self.dev.read_attribute(self.ctrl_attr_rate).value
-                self.data['state'] = self.dev.read_attribute(self.ctrl_attr_state).value
-            except Exception, e:
+                self.data['range'] = \
+                    self.dev.read_attribute(self.ctrl_attr_range).value
+                self.data['range'] = self.data['range'].capitalize()
+                self.data['rate'] = \
+                    self.dev.read_attribute(self.ctrl_attr_rate).value
+                self.data['state'] = \
+                    self.dev.read_attribute(self.ctrl_attr_state).value
+            except Exception:
                 msg = 'Error while getting controller parameters'
                 self.output(msg)
                 raise Exception(msg)
@@ -313,18 +329,20 @@ class mares_sample_temp_control(Macro):
                 self.output('%s: %s' % (value, str(self.data[value])))
             return
 
-        #check and get requested parameters to really set in the hardware
+        # check and get requested parameters to really set in the hardware
         hw_params = self.extract_and_check_params(pairs)
-        #apply the requested parameters in the hardware
+        # apply the requested parameters in the hardware
         for param_name, param_value in hw_params:
             try:
-                if param_name == 'state': #this needs a special treatment (see below)
+                # this needs a special treatment (see below)
+                if param_name == 'state':
                     self.dev.command_inout(param_value)
                 else:
                     param_name = param_name.lower()
                     self.dev.write_attribute(param_name, param_value)
             except:
-                msg = 'Error while writing parameter %s with %s value' % (param_name, str(param_value))
+                msg = 'Error while writing parameter %s with %s value' % \
+                      (param_name, str(param_value))
                 self.output(msg)
                 raise Exception(msg)
             self.check_readback(param_name, param_value)
@@ -338,24 +356,31 @@ class mares_sample_temp_control(Macro):
             else:
                 readback = self.dev.read_attribute(param_name).value
             if type(readback) == str:
-                if readback.lower()!= param_value.lower():
-                    msg = 'Readback value read from instrument %s differs from the set value %s' % (str(readback), str(param_value))
+                if readback.lower() != param_value.lower():
+                    msg = 'Readback value read from instrument %s differs '\
+                          'from the set value %s' %\
+                          (str(readback), str(param_value))
                     self.error(msg)
                     raise Exception(msg)
             elif type(readback) == float:
-                #If param is outsetpoint, the attr writen value must be set, not the read value 
-                if param_name.lower() == self.ctrl_attr_output.lower() :
+                # If param is outsetpoint, the attr writen value must be set,
+                # not the read value
+                if param_name.lower() == self.ctrl_attr_output.lower():
                     readback = self.dev.read_attribute(param_name).w_value
                 if abs(readback-param_value) > 1e-5:
-                    msg = 'Readback value read from instrument %s differs from the set value %s' % (str(readback), str(param_value))
+                    msg = 'Readback value read from instrument %s differs '\
+                          'from the set value %s' % \
+                          (str(readback), str(param_value))
                     self.error(msg)
                     raise Exception(msg)
             else:
-                msg = 'Unexpected type (%s) for param %s' % (str(type(readback)), param_name)
+                msg = 'Unexpected type (%s) for param %s' % \
+                      (str(type(readback)), param_name)
                 self.output(msg)
                 raise Exception(msg)
-        except Exception, e:
-            msg = 'Error while checking written parameter %s with %s value' % (param_name, str(param_value))
+        except Exception:
+            msg = 'Error while checking written parameter %s with %s value' % \
+                  (param_name, str(param_value))
             self.output(msg)
             raise Exception(msg)
 
@@ -364,33 +389,38 @@ class mares_sample_temp_control(Macro):
 #     """
 #     Simple macro for moving a smaract SDC controller
 #     """
-# 
+#
 #     BAUDRATE = 115200
 #     LF = 0xA
 #     VOLTAGE = 4090
 #     FREQUENCY = 200
 #     RC_OK = ':E0,0'
-# 
+#
 #     param_def = [
-#         ['axis',     Type.Integer, None, 'axis to move (0 is special command to set tty port)'],
-#         ['position', Type.Integer, None, 'position (if axis parameter is 0 then this is the axis id to which to set serial device name )'],
-#         ['port',     Type.String,  '',   'optional (for configuration only) if axis is 0 then this is the serial device name to communicate to with the given axis '],
+#         ['axis',     Type.Integer, None, 'axis to move (0 is special command'
+#                                          ' to set tty port)'],
+#         ['position', Type.Integer, None, 'position (if axis parameter is 0 '
+#             'then this is the axis id to which to set serial device name )'],
+#         ['port',     Type.String,  '',   'optional (for configuration only) '
+#             'if axis is 0 then this is the serial device name to communicate'
+#             ' to with the given axis '],
 #     ]
-# 
+#
 #     def run(self, axis, position, port, *args, **kwargs):
 #         #prepare environment
 #         env_prefix = 'Macros.%s.' % self.__class__.__name__
 #         environment = self.getGlobalEnv()
-# 
+#
 #         try:
 #             axes = environment['%s%s' % (env_prefix, 'axes')]
 #         except KeyError, e:
 #             axes = {}
 #         except Exception, e:
-#             self.error('Unexpected exception while getting environment: %s' % str(e))
+#             self.error('Unexpected exception while getting environment: %s'\
+#                 % str(e))
 #             raise
-# 
-#         if axis==0:
+#
+#         if axis == 0:
 #             axis_env = int(position)
 #             if axis_env <= 0:
 #                 self.error('environment axis id must be >0')
@@ -399,14 +429,14 @@ class mares_sample_temp_control(Macro):
 #             self.output('Setting environment: %s' % str(axes))
 #             self.setEnv('%s%s' % (env_prefix, 'axes'), axes)
 #             return -1
-# 
+#
 #         #check if axis is defined in environment
 #         try:
 #             serial_name = axes[axis]
 #         except KeyError, e:
 #             self.error('Axis %s does not exist' % str(axis))
 #             return -1
-# 
+#
 #         #check if axis is accessible
 #         try:
 #             serial = PyTango.DeviceProxy(serial_name)
@@ -420,7 +450,7 @@ class mares_sample_temp_control(Macro):
 #         except Exception, e:
 #             self.error('Unable to communicate with SDC controller')
 #             return -1
-# 
+#
 #         #move motor
 #         try:
 #             cmd = ':MST0,%d,%d,%d' % (position, self.VOLTAGE, self.FREQUENCY)
@@ -431,7 +461,8 @@ class mares_sample_temp_control(Macro):
 #                 self.error('SDC return code (expected 0): %d' % self.RC_OK)
 #                 return -1
 #         except Exception, e:
-#             self.error('Error while executing move command in SDC: %s' % str(e))
+#             self.error('Error while executing move command in SDC: %s'\
+#                         % str(e))
 #             return -1
-# 
+#
 #         return 0
