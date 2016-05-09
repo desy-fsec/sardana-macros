@@ -10,7 +10,7 @@ DEV_STATE_ON = PyTango._PyTango.DevState.ON
 IPAP_TIMEOUT = 1
 NR_STEPS = 1000
 
-class smaract_homming(Macro):
+class smaract_sdc_homming(Macro):
     """
     Macro to do a homing of the smaract controller. It executes a find
     reference command in the smaract device server and set the register of the
