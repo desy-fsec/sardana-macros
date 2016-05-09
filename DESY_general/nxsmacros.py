@@ -97,7 +97,8 @@ def nxsprof(self):
             self.output(line)
 
         if not ismgupdated:
-            self.output("\nProfile is not set or MntGrp has been changed")
+            self.info("\nProfile is not set by nxselector(nxsmacros) "
+                      "or MntGrp has been changed")
 
 
 @macro()
@@ -185,7 +186,7 @@ class nxsetprof(Macro):
                 self.unsetEnv("ActiveMntGrp")
         if name:
             self.selector.mntgrp = name
-        self.selector.fetchProfile()
+        fetchProfile(self)
         self.selector.importMntGrp()
         self.selector.storeProfile()
         update_configuration(self)
@@ -202,7 +203,7 @@ class nxsimportmg(Macro):
         except UnknownEnv:
             name = self.selector.mntgrp
         self.selector.mntgrp = name
-        self.selector.fetchProfile()
+        fetchProfile(self)
         self.selector.importMntGrp()
         self.selector.storeProfile()
 
@@ -739,6 +740,23 @@ class nxshow(Macro):
             printTable(self, dslist)
 
 
+def fetchProfile(mcr):
+        configold = getString(mcr, "ConfigDevice")
+        doorold = getString(mcr, "Door")
+        door = mcr.getDoorName()
+        if door and door != doorold:
+            mcr.selector.door = door
+        mcr.selector.fetchProfile()
+        confignew = getString(mcr, "ConfigDevice")
+        doornew = getString(mcr, "Door")
+        if configold and configold != confignew:
+            mcr.selector.configDevice = configold
+        if door and door != doornew:
+            mcr.selector.door = door
+            mcr.info("Profile's door '%s' was changed to '%s'" %
+                     (doornew, door))
+
+
 def wait_for_device(proxy, counter=100):
     """ Wait for the given Tango device """
     found = False
@@ -1008,8 +1026,11 @@ def setversion(mcr):
 
 def update_configuration(mcr):
     """ Synchonize profile with mntgrp """
-    mcr.selector.updateMntGrp()
-    mcr.selector.importMntGrp()
+    if hasattr(mcr.selector, "updateProfile"):
+        mcr.selector.updateProfile()
+    else:
+        mcr.selector.updateMntGrp()
+        mcr.selector.importMntGrp()
     if not isinstance(mcr.selector, PyTango.DeviceProxy):
         mcr.selector.exportEnvProfile()
 
