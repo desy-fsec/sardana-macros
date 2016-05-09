@@ -10,6 +10,7 @@ DEV_STATE_ON = PyTango._PyTango.DevState.ON
 IPAP_TIMEOUT = 1
 NR_STEPS = 1000
 
+
 class smaract_sdc_homming(Macro):
     """
     Macro to do a homing of the smaract controller. It executes a find
@@ -22,7 +23,7 @@ class smaract_sdc_homming(Macro):
     """
 
     param_def = [['motor', Type.Motor, None, 'smaract motor'],
-                 ['positive_limit'. Type.Boolean, True, ('move to the '
+                 ['positive_limit', Type.Boolean, True, ('move to the '
                                                          'positive limit')]]
 
     def _wait(self):
@@ -66,7 +67,7 @@ class smaract_sdc_homming(Macro):
         self.info('Setting the icepap indexer')
         ctrl_name = motor.getControllerName()
         ctrl = Device(ctrl_name)
-        properties = ctrl.get_property(['Host','Port'])
+        properties = ctrl.get_property(['Host', 'Port'])
         ipap_port = properties['Port'][0]
         ipap_host = properties['Host'][0]
         motor_axis = motor.getAxis()
