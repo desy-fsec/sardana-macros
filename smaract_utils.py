@@ -22,7 +22,7 @@ class smaract_sdc_homing(Macro):
     """
 
     param_def = [['motor', Type.Motor, None, 'smaract motor'],
-                 ['positive_limit'. Type.Boolean, True, ('move to the '
+                 ['positive_limit', Type.Boolean, True, ('move to the '
                                                          'positive limit')]]
 
     def _wait(self):
