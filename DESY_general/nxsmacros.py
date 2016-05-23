@@ -50,6 +50,8 @@ def nxselector(self, mode, selector, door):
     if door:
         args.append("-d%s" % door)
     my_env = os.environ.copy()
+    if 'GNOME_DESKTOP_SESSION_ID' not in my_env.keys():
+        my_env['GNOME_DESKTOP_SESSION_ID'] = 'qtconfig'
     if 'DISPLAY' not in my_env.keys():
         my_env['DISPLAY'] = ':0.0'
     if 'USER' not in my_env.keys():
@@ -71,6 +73,8 @@ def nxsmacrogui(self, selector, door):
     if door:
         args.append("-d%s" % door)
     my_env = os.environ.copy()
+    if 'GNOME_DESKTOP_SESSION_ID' not in my_env.keys():
+        my_env['GNOME_DESKTOP_SESSION_ID'] = 'qtconfig'
     if 'DISPLAY' not in my_env.keys():
         my_env['DISPLAY'] = ':0.0'
     if 'USER' not in my_env.keys():
