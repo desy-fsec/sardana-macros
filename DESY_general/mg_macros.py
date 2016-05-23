@@ -638,7 +638,7 @@ class change_mg(Macro):
          ]
         ]
     
-    def run(self, *options_list):
+    def run(self, options_list):
         
         if options_list[0][0] == "None":
             self.output( "\
@@ -676,6 +676,7 @@ class change_mg(Macro):
         # the MG is created, if it does not exist
         #
         if len(mntgrp_list) == 0:
+            
             pools = self.getPools()
             if len( pools) != 1:
                 raise Exception( "change_mg: %s does not exist and no. of pools != 1" % mg_name)

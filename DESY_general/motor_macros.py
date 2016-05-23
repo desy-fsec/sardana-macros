@@ -45,11 +45,11 @@ class wg(Macro):
             None, 'List of motors'],
         ]
 
-    def prepare(self, *motors, **opts):
+    def prepare(self, motors, **opts):
         self.all_motors = motors[0:]
         self.table_opts = {}
     
-    def run(self, *motors):
+    def run(self, motors):
         nr_motors = len(self.all_motors)
         if nr_motors == 0:
             self.output('No motor defined')
@@ -62,7 +62,7 @@ class wg(Macro):
             self.output('Current positions (user) on %s'%datetime.datetime.now().isoformat(' '))
         self.output('')
         
-        self.execMacro('_wm',*self.all_motors, **self.table_opts)
+        self.execMacro('_wm',self.all_motors, **self.table_opts)
 
 class wm_encoder(Macro):
     """ Show motor position from encoder readout """
@@ -79,7 +79,7 @@ class wm_encoder(Macro):
             return
         try:
             self.table_opts = {}
-            self.execMacro('_wm',motor, **self.table_opts)
+            self.execMacro('_wm', [motor], **self.table_opts)
             encoder_pos = motor_td.PositionEncoder
             self.output("Encoder " + str(encoder_pos))
         except:

@@ -380,7 +380,7 @@ class cscan_pilc_xia(Macro):
         else:
             pos_offset = -0.1
 
-        self.execMacro(["mv", motor, start_pos - pos_offset])
+        self.execMacro("mv", [[motor, start_pos - pos_offset]])
     
         while motor_device.State() == PyTango.DevState.MOVING:
             time.sleep(1)
@@ -508,7 +508,7 @@ class c2dscan_pilc_sis3820mcs_postrigger(Macro):
 
             if i < nb_scans:
                 self.output(motor_ext_device.state())
-                self.execMacro('mv', motor_ext, start_pos_ext + (i+1) * pos_inc_ext)
+                self.execMacro('mv', [[motor_ext, start_pos_ext + (i+1) * pos_inc_ext]])
                 self.output(motor_ext_device.state())
                 #motor_ext_device.Position = start_pos_ext + (i+1) * pos_inc_ext
 

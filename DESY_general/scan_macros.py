@@ -89,7 +89,7 @@ class ascan_regions(Macro):
          None, 'List of scan regions']
         ]
     
-    def run(self, motor, *scan_regions):      
+    def run(self, motor, scan_regions):      
         # calculate number of regions
         nregions = len(scan_regions)
         for i in range(0, nregions):
@@ -115,7 +115,7 @@ class dscan_regions(Macro):
          None, 'List of scan regions']
         ]
     
-    def run(self, motor, *scan_regions):
+    def run(self, motor, scan_regions):
         
         # calculate number of regions
         nregions = len(scan_regions)

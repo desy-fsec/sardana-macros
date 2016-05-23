@@ -298,7 +298,7 @@ class me(Macro):
         except:
             pass
 
-        self.execMacro("mv", energy_device, energy)
+        self.execMacro("mv", [[energy_device, energy]])
 
         if flag_diffrac:
             diffrac_device.write_attribute("autoenergyupdate", initial_autoenergy)
@@ -315,7 +315,7 @@ class escanexafs_general(Macro):
          None, 'List of scan regions']
         ]
     
-    def run(self,  integ_time, *scan_regions):
+    def run(self,  integ_time, scan_regions):
         
         # calculate number of regions
         nregions = len(scan_regions)
@@ -352,7 +352,5 @@ class escanexafs(Macro):
     
     def run(self, estart1, estop1, estep1, estart2, estop2, estep2, estart3, estop3, estep3, integ_time):
         
-        
-        macro,pars = self.createMacro('escanexafs_general', integ_time, estart1, estop1, estep1, estart2, estop2, estep2, estart3, estop3, estep3)
-
+        macro,pars = self.createMacro('escanexafs_general', integ_time, [[estart1, estop1, estep1], [estart2, estop2, estep2], [estart3, estop3, estep3]])
         self.runMacro(macro)

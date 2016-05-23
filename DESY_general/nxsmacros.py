@@ -253,7 +253,7 @@ class nxsettimers(Macro):
          None, 'List of profile timers to set'],
     ]
 
-    def run(self, *timer_list):
+    def run(self, timer_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
 
@@ -275,7 +275,7 @@ class nxsadd(Macro):
          None, 'List of detector components to add'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
@@ -307,7 +307,7 @@ class nxset(Macro):
          None, 'List of detector components to add'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         timers = self.selector.availableTimers()
         stimers = [tm for tm in component_list if tm in timers]
@@ -351,7 +351,7 @@ class nxsrm(Macro):
          None, 'List of components to show'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
@@ -403,7 +403,7 @@ class nxsadddesc(Macro):
          None, 'List of description components to add'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentPreselection"])
@@ -449,7 +449,7 @@ class nxsrmdesc(Macro):
          None, 'List of descpription components to remove'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentPreselection"])
@@ -530,7 +530,7 @@ class nxsusetudata(Macro):
          None, 'List of user data names to delete'],
     ]
 
-    def run(self, *name_list):
+    def run(self, name_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         udata = json.loads(cnf["UserData"])
@@ -1044,3 +1044,5 @@ def update_description(mcr):
             wait_for_device(mcr.selector)
         else:
             raise
+
+
