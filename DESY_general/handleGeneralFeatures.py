@@ -95,7 +95,10 @@ class gh_enable(Macro):
                 gh_macros_dict[elem] = default_dict[elem]
             self.setEnv("GeneralHooks", gh_macros_dict)
         else:
-            gh_macros_dict = self.getEnv("GeneralHooks")
+            try:
+                gh_macros_dict = self.getEnv("GeneralHooks")
+            except:
+                gh_macros_dict = {}
             if hook_pos in positions:
                 macro_name_split = macro_name.split(",")
                 gh_macros_dict[hook_pos] = []
