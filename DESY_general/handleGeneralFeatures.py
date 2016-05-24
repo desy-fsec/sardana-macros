@@ -5,9 +5,9 @@ the general hooks/conditions/on_stop macro interface:
 the feature is used in gscan.py, scan.py and macro.py
 """
 
-__all__ = ["new_gf_status", "new_gf_list", "new_gf_head", "new_gf_enable",
-           "new_gh_enable", "new_gh_disable", "new_gh_isEnabled",
-           "new_gc_enable", "new_gc_enable", "new_gc_isEnabled",
+__all__ = ["gf_status", "gf_list", "gf_head", "gf_enable",
+           "gh_enable", "gh_disable", "gh_isEnabled",
+           "gc_enable", "gc_enable", "gc_isEnabled",
 	   ]
 
 import PyTango, os, sys
@@ -17,7 +17,7 @@ from sardana.macroserver.macro import macro
 #
 # status for all features
 #
-class new_gf_status(Macro):
+class gf_status(Macro):
     """display the status of the general features: hooks, conditions, on_stop """
 
     def run(self):    
@@ -26,46 +26,46 @@ class new_gf_status(Macro):
         #
         # hooks
         #
-        self.execMacro("new_gh_isEnabled")
+        self.execMacro("gh_isEnabled")
 
         self.output("")
         
         #
         # condition
         #
-        self.execMacro("new_gc_isEnabled")
+        self.execMacro("gc_isEnabled")
 
         self.output("")
         #
         # on-stop
         #
-        self.execMacro("new_gs_isEnabled")
+        self.execMacro("gs_isEnabled")
 
 #
 # general feature
 #
-class new_gf_enable(Macro):
+class gf_enable(Macro):
     """enable all general features: hooks, conditions, on_stop """
     
     def run(self):
-        self.execMacro("new_gh_enable")
-        self.execMacro("new_gc_enable")
-        self.execMacro("new_gs_enable")
+        self.execMacro("gh_enable")
+        self.execMacro("gc_enable")
+        self.execMacro("gs_enable")
 
-class new_gf_disable(Macro):
+class gf_disable(Macro):
     """disable all general features: hooks, conditions, on_stop """
 
     def run(self):
-        self.execMacro("new_gc_disable")
-        self.execMacro("new_gh_disable")
-        self.execMacro("new_gs_disable")
+        self.execMacro("gc_disable")
+        self.execMacro("gh_disable")
+        self.execMacro("gs_disable")
         
         self.output( "All general features disabled")
 
 #
 # general hooks feature
 #
-class new_gh_enable(Macro):
+class gh_enable(Macro):
     """enable general hooks """
     
     param_def = [
@@ -107,7 +107,7 @@ class new_gh_enable(Macro):
                 self.error(positions)
         
 
-class new_gh_disable(Macro):
+class gh_disable(Macro):
     """disable general hooks """
 
     def run(self):
@@ -116,7 +116,7 @@ class new_gh_disable(Macro):
         except:
             pass
         
-class new_gh_isEnabled(Macro):
+class gh_isEnabled(Macro):
     """return True, if the general hooks feature is enabled """    
 
     result_def = [[ "result", Type.Boolean, None, "True, if the general hooks feature is enabled" ]]
@@ -140,7 +140,7 @@ class new_gh_isEnabled(Macro):
 #
 # general condition feature
 #
-class new_gc_enable(Macro):
+class gc_enable(Macro):
     """enable general conditions """
     
     param_def = [
@@ -154,7 +154,7 @@ class new_gc_enable(Macro):
             self.setEnv("GeneralCondition", macro_name)
             
             
-class new_gc_disable(Macro):
+class gc_disable(Macro):
     """disable general conditions """
     
     def run(self):
@@ -163,7 +163,7 @@ class new_gc_disable(Macro):
         except:
             pass
 
-class new_gc_isEnabled(Macro):
+class gc_isEnabled(Macro):
     """return True, if the general conditions feature is enabled """    
 
     result_def = [[ "result", Type.Boolean, None, "True, if the general condition feature is enabled" ]]
@@ -183,7 +183,7 @@ class new_gc_isEnabled(Macro):
 #
 # on_stop feature
 #
-class new_gs_enable(Macro):
+class gs_enable(Macro):
     """enable on_stop feature """
     
     param_def = [
@@ -198,7 +198,7 @@ class new_gs_enable(Macro):
             
     
 
-class new_gs_disable(Macro):
+class gs_disable(Macro):
     """disable on_stop feature """
 
     def run(self):
@@ -207,7 +207,7 @@ class new_gs_disable(Macro):
         except:
             pass
 
-class new_gs_isEnabled(Macro):
+class gs_isEnabled(Macro):
     """return True, if the general on_stop feature is enabled """    
 
     result_def = [[ "result", Type.Boolean, None, "True, if the general on_stop feature is enabled" ]]
