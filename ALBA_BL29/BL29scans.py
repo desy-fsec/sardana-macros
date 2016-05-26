@@ -131,7 +131,7 @@ class rscan(Macro):
     ]
 
     def prepare(self, motor, integ_time, start_pos, *regions, **opts):
-        self.name = 'rscan'
+        self.name = self.__class__.__name__
         self.integ_time = integ_time
         self.start_pos = start_pos
         self.regions = regions
@@ -175,534 +175,479 @@ class rscan(Macro):
 # Continuous scans
 ###############################################################################
 
-class energy_scanct(Macro):
-    energy_name = 'energy_mono'
-    id_energy_names = ['ideu71_motor_energy', 'ideu71_energy_plus']
-    gr_name = 'gr_pitch'
-    mg_name = 'bl29_cont_sdd'
-    mg_name = 'bl29_cont'
-    pos_channel_name = 'energy_mono_ct'
-    encoder_resolution = 1
-    sample_clock = "/Dev1/PFI36"
-    trigger_device = 'bl29/ct/ni-ibl2902-00'
-    # allow to run on main and admin doors
-    allowed_doors = ['bl29/door/01', 'bl29/door/02']
+class escanct(Macro):
+    """
+    Energy continuous scan.
+    """
+
+    # @todo:would not be necessary if getMotor() worked with other pools motors
+    ID_DB = 'alba03:10000/'
+
+    GR_VEL = [294.98525073746316]
+    GR_ACC = [0.29981099999999999]
+    GR_DEC = [0.29981099999999999]
+
+    ID_PHASE_VEL = [1000, 1000]
+    ID_PHASE_ACC = [0.1, 0.1]
+    ID_PHASE_DEC = [0.1, 0.1]
+
+    # PLG reduced ID z speeds from 400 to 200 to avoid ID taper problems
+    ID_GAP_VEL = [200.0, 200.0, 200.0, 200.0]
+    ID_GAP_ACC = [0.1, 0.1, 0.1, 0.1]
+    ID_GAP_DEC = [0.1, 0.1, 0.1, 0.1]
 
     param_def = [
-        ['energy_start', Type.Float, None, 'start energy'],
-        ['energy_final', Type.Float, None, 'end energy'],
-        ['nr_of_points', Type.Integer, None, 'number of points'],
-        ['integ_time', Type.Float, None, 'integration time for each point'],
-        ['antiphase', Type.Boolean, False, 'use antiphase mode (optional '
-                                           'True/False, False by default)'],
+        ['energy_start', Type.Float,   None,
+            'start energy'],
+        ['energy_final', Type.Float,   None,
+            'end energy'],
+        ['nr_of_points', Type.Integer, None,
+            'number of points'],
+        ['integ_time',   Type.Float,   None,
+            'integration time'],
+        ['move_id',      Type.Boolean, True,
+            'move ID energy motor: if set to false only the mono will be moved'
+            ' and antiphase and lock_phase parameters will be ignored ('
+            'optional True/False, default True)'],
+        ['antiphase',    Type.Boolean, False,
+            'use antiphase mode (optional True/False, default False)'],
+        ['lock_phase',   Type.Boolean, True,
+            'move ID phase motors to mid position and do not move during the '
+            'scan: in this case only ID gap motors will be moved (optional '
+            'True/False, default True)'],
         ]
 
-    def getActiveMntGrpVarName(self):
-        return 'ActiveMntGrp'
+    env_params = {
+        'motor_name': None,  # main motor to scan (usually 'energy_mono')
+        'id_energy_names': None,  # list of ID energy names (phase, antiphase)
+        'id_phase_name': None,  # name of ID phase pseudomotor
+        'id_phase_names': None,  # list of ID phase physical motors
+        'id_gap_name': None,  # ID gap motor name
+        'id_gap_names': None,  # list of ID gap and taper physical motors
+        'gr_name': None,  # name of grating pitch motor
+        'doors': None,  # list of doors to allow executing this scan
+        'meas': None,   # list of meas to use on each of the allowed doors (set
+                        # empty string '' to use env ActiveMntGrp)
+        'pos_channel': PyTango.DeviceProxy,  # position channel
+        'enc_resolution': None,  # position encoder resolution
+        'sample_clock': None,  # clock to be used in counting card
+        'phase_min_speed': None,  # min speed for phase motors (35 is ok)
+        'TriggerDevice': None,  # just to check that it is define
+    }
 
-    def getTriggerDeviceVarName(self):
-        return 'TriggerDevice'
+    def prepare(self, start, final, nr_of_points,
+                integ_time, move_id, antiphase, lock_phase, **opts):
+        # get arguments
+        self.name = self.__class__.__name__
+        self.start_pos = start
+        self.final_pos = final
+        self.nr_of_points = nr_of_points
+        self.integ_time = integ_time
+        self.move_id = move_id
+        self.lock_phase = lock_phase
+        self.antiphase = antiphase
 
-    def validate(self):
-        """Validates if macro is correctly called e.g. if it is called
-        on the right door
+        # get macro parameters from environment
+        try:
+            self.door_name = self.getDoorName().lower()
+            # get parameters
+            for param_name in self.env_params.keys():
+                if not hasattr(self, param_name):
+                    value = self.getEnv(
+                                param_name,
+                                door_name=self.door_name, macro_name=self.name)
+                    type_ = self.env_params[param_name]
+                    if type_ is not None:
+                        value = type_(value)
+                    setattr(self, param_name, value)
+            self.doors = [door.lower() for door in self.doors]
+
+            # check we got all necessary (debug only)
+            for param_name in self.env_params.keys():
+                value = getattr(self, param_name)
+                self.debug('%s: %s' % (param_name, value))
+
+            # determine which energy motor to use
+            self.id_energy_name = self.id_energy_names[int(self.antiphase)]
+
+            # check measurement groups and doors are correctly specified
+            if len(self.doors) != len(self.meas):
+                msg = 'You must specify measurement group to be used for each'\
+                      ' door (set it to \'\' to use environment one)'
+                self.error(msg)
+                raise Exception(msg)
+            try:
+                index = self.doors.index(self.door_name)
+                self.meas_name = self.meas[index]
+                if index == 0:
+                    self.main_door = True
+                else:
+                    self.main_door = False
+            except ValueError:
+                msg = 'Measurement group not defined for current door'
+                self.error(msg)
+                raise Exception(msg)
+
+        except Exception, e:
+            self.error('Error while getting environment: %s' % str(e))
+            raise
+
+        try:
+            if self.move_id and self.lock_phase:
+                # calculate ID gap and phase displacement (only if move_id)
+                idev = PyTango.DeviceProxy(self.ID_DB+self.id_energy_name)
+                id_gap_start, id_phase_start = \
+                    idev.CalcAllPhysical([self.start_pos])
+                id_gap_final, id_phase_final = \
+                    idev.CalcAllPhysical([self.final_pos])
+                self.id_phase_middle = (id_phase_final + id_phase_start) / 2.0
+                self.id_gap_start = id_gap_start
+                self.id_gap_final = id_gap_final
+                self.id_phase_start = id_phase_start
+                self.id_phase_final = id_phase_final
+                self.debug('Gap (start,end): %f, %f'
+                           % (id_gap_start, id_gap_final))
+                self.debug('Phase (start,end): %f, %f'
+                           % (id_phase_start, id_phase_final))
+                self.debug('Phase (middle): %f'
+                           % self.id_phase_middle)
+        except Exception, e:
+            msg = 'Error while computing gap positions'
+            self.error('%s: %s' % (msg, str(e)))
+            raise Exception(msg)
+
+    def preConfigure(self):
+        self.debug('preConfigure entering...')
+        # since sardana channels when written are also read, SampleClockSource
+        # can not be read after writing - probably bug in the ds
+        ct_device_name = self.pos_channel['channelDevName'].value
+        ct_device = PyTango.DeviceProxy(ct_device_name)
+        ct_device['SampleClockSource'] = self.sample_clock
+        ct_device['SampleTimingType'] = 'SampClk'
+        ct_device['ZIndexEnabled'] = False
+        # @todo: for some reason PulsesPerRevolution only admits int
+        ct_device['PulsesPerRevolution'] = int(self.enc_resolution)
+        ct_device['Units'] = 'Ticks'
+
+    def preStart(self):
+        self.debug('preStart entering...')
+
+        # initializations
+        gr_motor = PyTango.DeviceProxy(self.gr_name)
+        initial_position = gr_motor['EncEncin'].value
+        self.debug('initial_position: %f' % initial_position)
+        self.pos_channel['InitialPosition'] = initial_position
+
+        # if we are told not to move the ID then quit now
+        if not self.move_id:
+            return
+
+        # in case we were told not to move the phase motor then move it to mid
+        # position and then do not move it again during the scan
+        if self.lock_phase:
+            speeds = self.ID_PHASE_VEL  # max speed and acc for this movement
+            accelerations = self.ID_PHASE_ACC
+            decelerations = self.ID_PHASE_DEC
+            for motor_name, speed, acceleration, deceleration in zip(
+                    self.id_phase_names, speeds, accelerations, decelerations):
+                motor = PyTango.DeviceProxy(self.ID_DB+motor_name)
+                motor.write_attribute('velocity', speed)
+                motor.write_attribute('acceleration', acceleration)
+                motor.write_attribute('deceleration', deceleration)
+            self.debug('Moving phase to middle pos: %f' % self.id_phase_middle)
+            macro = 'mv %s %f' % (self.id_phase_name, self.id_phase_middle)
+            self.execMacro(macro)
+        # in case we are told to move the phase motor it is possible that
+        # scanct preparations had set a extremely low and unreachable speed for
+        # the phase physical motors: in this case we have to set these speeds
+        # to a minimum
+        else:
+            for phase_motor_name in self.id_phase_names:
+                phase_mot = PyTango.DeviceProxy(self.ID_DB+phase_motor_name)
+                speed = phase_mot.read_attribute('velocity').value
+                if speed < self.phase_min_speed:
+                    msg = 'Velocity of %s motor too low (%f). Setting to %f'\
+                             % (phase_motor_name, speed, self.phase_min_speed)
+                    self.warning(msg)
+                    acc = phase_mot.read_attribute('acceleration').value
+                    phase_mot.write_attribute('velocity', self.phase_min_speed)
+                    phase_mot.write_attribute('acceleration', acc)
+
+    def postScan(self):
+        self.debug('postScan entering...')
+
+    def run(self, *args, **kwarg):
+
+        try:
+            # backup and set trigger device measurement group if necessary
+            if self.meas_name != '':
+                key = 'ActiveMntGrp'
+                if not self.main_door:  # if using main door use global meas
+                    key_set = '.'.join([self.door_name, key])
+                else:
+                    key_set = key
+                meas_back = self.getEnv(key, door_name=self.door_name)
+                self.debug('Setting env %s to %s' % (key_set, self.meas_name))
+                self.setEnv(key_set, self.meas_name)
+
+            # build scan
+            if self.move_id and not self.lock_phase:
+                scan_params = [
+                    'a2scanct',
+                    self.motor_name, self.start_pos, self.final_pos,
+                    self.id_energy_name, self.start_pos, self.final_pos,
+                    self.nr_of_points, self.integ_time]
+            elif self.move_id and self.lock_phase:
+                scan_params = [
+                    'a2scanct',
+                    self.motor_name, self.start_pos, self.final_pos,
+                    self.id_gap_name, self.id_gap_start, self.id_gap_final,
+                    self.nr_of_points, self.integ_time]
+            else:
+                scan_params = [
+                    'ascanct',
+                    self.motor_name, self.start_pos, self.final_pos,
+                    self.nr_of_points, self.integ_time]
+            scanct, pars = self.createMacro(scan_params)
+
+            # set necessary hooks
+            scanct.hooks = [(self.preConfigure, ['pre-configuration']),
+                            (self.preStart, ['pre-start']),
+                            (self.postScan, ['post-scan'])]
+            # run scan
+            self.runMacro(scanct)
+
+        # cleanup actions
+        finally:
+            if self.meas_name != '':
+                self.debug('Restoring env %s to %s' % (key_set, meas_back))
+                self.setEnv(key_set, meas_back)
+
+            # restore all necessary motor speeds and accelerations
+            motors = [self.gr_name]  # gr_pitch will always be restored
+            speeds = self.GR_VEL
+            accelerations = self.GR_ACC
+            decelerations = self.GR_DEC
+            if self.move_id:  # ID phases and gaps restored only if moved
+                motors.extend([self.ID_DB+mot for mot in self.id_phase_names])
+                speeds.extend(self.ID_PHASE_VEL)
+                accelerations.extend(self.ID_PHASE_ACC)
+                decelerations.extend(self.ID_PHASE_DEC)
+                motors.extend([self.ID_DB+mot for mot in self.id_gap_names])
+                speeds.extend(self.ID_GAP_VEL)
+                accelerations.extend(self.ID_GAP_ACC)
+                decelerations.extend(self.ID_GAP_DEC)
+            for motor, speed in zip(motors, speeds):
+                mot = PyTango.DeviceProxy(motor)
+                mot.write_attribute('velocity', speed)
+                self.debug('%s speed restored: %f' % (motor, speed))
+            for motor, acceleration in zip(motors, accelerations):
+                mot = PyTango.DeviceProxy(motor)
+                mot.write_attribute('acceleration', acceleration)
+                self.debug('%s accel restored: %f' % (motor, acceleration))
+            for motor, deceleration in zip(motors, decelerations):
+                mot = PyTango.DeviceProxy(motor)
+                mot.write_attribute('deceleration', deceleration)
+                self.debug('%s decel restored: %f' % (motor, deceleration))
+
+            # move phase: for some reason if you don't do this then phase and
+            # gap drift a little after each scan, finally resulting in a big
+            # drift after some scans
+            if self.move_id:
+                #  @todo: use motor API when it works
+                #  id_phase = self.getMotor(self.id_phase_name)
+                id_phase = PyTango.DeviceProxy(self.ID_DB+self.id_phase_name)
+                if (id_phase.read_attribute('position').value -
+                        self.id_phase_middle) < 0.1:
+                    self.execMacro('mv %s %f' % (self.id_phase_name,
+                                                 self.id_phase_final))
+                else:
+                    self.execMacro('mv %s %f' % (self.id_phase_name,
+                                                 self.id_phase_start))
+                    self.execMacro('mv %s %f' % (self.id_gap_name,
+                                                 self.id_gap_start))
+
+
+class edscanct(escanct):
+    """
+    Energy continuous scan specifying energy delta per point
+    """
+
+    param_def = [
+        ['energy_start', Type.Float,   None,
+            'start energy'],
+        ['energy_final', Type.Float,   None,
+            'end energy'],
+        ['delta_e',      Type.Float,   None,
+            'delta energy to increase for each point'],
+        ['integ_time',   Type.Float,   None,
+            'integration time'],
+        ['move_id',      Type.Boolean, True,
+            'move ID energy motor: if set to false only the mono will be moved'
+            ' and antiphase and lock_phase parameters will be ignored ('
+            'optional True/False, default True)'],
+        ['antiphase',    Type.Boolean, False,
+            'use antiphase mode (optional True/False, default False)'],
+        ['lock_phase',   Type.Boolean, True,
+            'move ID phase motors to mid position and do not move during the '
+            'scan: in this case only ID gap motors will be moved (optional '
+            'True/False, default True)'],
+        ]
+
+    def prepare(self, energy_start, energy_final, delta_e, integ_time,
+                move_id, antiphase, lock_phase, **kwargs):
+        # dirty hack to get environment parameters from the parent
+        class_name = self.__class__.__name__
+        # we can do this because we use single inheritance (be careful!)
+        self.__class__.__name__ = self.__class__.__mro__[1].__name__
+        # call parent's prepare
+        points = int((energy_final - energy_start) / delta_e)
+        args = [energy_start, energy_final, points, integ_time,
+                move_id, antiphase, lock_phase]
+        super(self.__class__, self).prepare(*args, **kwargs)
+        self.__class__.__name__ = class_name  # restore our class name
+        self.name = self.__class__.__name__
+
+
+class monoscanct(escanct):
+    """
+    Monochromator continuous scan
+    """
+
+    param_def = [
+        ['energy_start', Type.Float,   None,
+            'start energy'],
+        ['energy_final', Type.Float,   None,
+            'end energy'],
+        ['nr_of_points', Type.Integer, None,
+            'number of points'],
+        ['integ_time',   Type.Float,   None,
+            'integration time'],
+        ]
+
+    def prepare(self, *args, **kwargs):
         """
-        door_name = self.getDoorName().lower()
-        if door_name not in self.allowed_doors:
-            msg = '%s can not run on door %s' % (self.name, door_name)
-            raise RuntimeError(msg)
-
-    def prepare(self, start, final, nr_of_points,
-                integ_time, antiphase, **opts):
+        This scan is the same as the escanct with 1 difference:
+        - ID is not moved in under any condition
+        """
+        # dirty hack to get environment parameters from the parent
+        class_name = self.__class__.__name__
+        # we can do this because we use single inheritance (be careful!)
+        self.__class__.__name__ = self.__class__.__mro__[1].__name__
+        # call parent's prepare, but since this is a grating only scan then
+        # avoid moving the ID
+        move_id = False
+        antiphase = False
+        lock_phase = False
+        args = list(args)
+        args.extend([move_id, antiphase, lock_phase])
+        super(self.__class__, self).prepare(*args, **kwargs)
+        self.__class__.__name__ = class_name  # restore our class name
         self.name = self.__class__.__name__
-        self.validate()
-        self.start_pos = start
-        self.final_pos = final
-        self.nr_of_points = nr_of_points
-        self.integ_time = integ_time
-        self.id_energy_name = self.id_energy_names[int(antiphase)]
 
-    def preConfigure(self):
-        self.debug("preConfigure entering...")
-        self.pos_channel = PyTango.DeviceProxy(self.pos_channel_name)
-
-        # since sardana channels when written are also read, SampleClockSource
-        # can not be read after writing - probably bug in the ds
-
-        counterDevName = self.pos_channel['channelDevName'].value
-        counterDev = PyTango.DeviceProxy(counterDevName)
-        counterDev['SampleClockSource'] = self.sample_clock
-        counterDev['SampleTimingType'] = 'SampClk'
-        counterDev['ZIndexEnabled'] = False
-        counterDev['PulsesPerRevolution'] = self.encoder_resolution
-        counterDev['Units'] = 'Ticks'
-
-    def preStart(self):
-        self.debug('preStart entering...')
-        gr_motor = PyTango.DeviceProxy(self.gr_name)
-        initial_position = gr_motor['EncEncin'].value
-        self.debug('initial_position = %f' % initial_position)
-        self.pos_channel['InitialPosition'] = initial_position
-        y_motors = ['alba03:10000/ideu71_motor_y1',
-                    'alba03:10000/ideu71_motor_y2']
-        for y_motor in y_motors:
-            y = PyTango.DeviceProxy(y_motor)
-            vel = y.read_attribute('velocity').value
-            if vel < 35:
-                msg = 'Velocity of %s motor is %f and is too low. Setting it '\
-                      'to 35' % (y_motor, vel)
-                self.warning(msg)
-                accT = y.read_attribute('acceleration').value
-                y.write_attribute('velocity', 35)
-                y.write_attribute('acceleration', accT)
-
-    def run(self, *arg, **kwarg):
-        old_mg = self.getEnv('ActiveMntGrp', door_name=self.getDoorName())
-        old_trigger_device = self.getEnv('TriggerDevice',
-                                         door_name=self.getDoorName())
-        self.debug('Setting trigger device to %s' % self.trigger_device)
-        self.setEnv(self.getTriggerDeviceVarName(), self.trigger_device)
-        self.debug('Setting measurement group to %s' % self.mg_name)
-        self.setEnv(self.getActiveMntGrpVarName(), self.mg_name)
+        # get energy motor name from our own environment parameters
         try:
-            a2scanct, pars = self.createMacro(['a2scanct',
-                                              self.energy_name,
-                                              self.start_pos,
-                                              self.final_pos,
-                                              self.id_energy_name,
-                                              self.start_pos,
-                                              self.final_pos,
-                                              self.nr_of_points,
-                                              self.integ_time])
-
-            a2scanct.hooks = [(self.preConfigure, ['pre-configuration']),
-                              (self.preStart, ['pre-start'])]
-
-            self.runMacro(a2scanct)
-        finally:
-            self.setEnv(self.getActiveMntGrpVarName(), old_mg)
-            self.setEnv(self.getTriggerDeviceVarName(), old_trigger_device)
-            motors = ['alba03:10000/ideu71_motor_y1',
-                      'alba03:10000/ideu71_motor_y2',
-                      'alba03:10000/ideu71_motor_z1',
-                      'alba03:10000/ideu71_motor_z2',
-                      'alba03:10000/ideu71_motor_z3',
-                      'alba03:10000/ideu71_motor_z4',
-                      'gr_pitch']
-            # speeds = [1000, 1000, 400.0, 400.0, 400.0, 400.0,
-            #            294.98525073746316]
-            # PLG reduced ID speeds to 200 to avoid ID taper problems
-            speeds = [1000, 1000, 200.0, 200.0, 200.0, 200.0,
-                      294.98525073746316]
-            accelerations = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
-                             0.29981099999999999]
-            decelerations = accelerations
-            for motor, speed in zip(motors, speeds):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('velocity', speed)
-            for motor, acceleration in zip(motors, accelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('acceleration', acceleration)
-            for motor, deceleration in zip(motors, decelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('deceleration', deceleration)
+            param_name = 'motor_name'
+            self.motor_name = self.getEnv(param_name, door_name=self.door_name,
+                                          macro_name=self.name)
+        except Exception, e:
+            self.error('Error while getting environment: %s' % str(e))
+            raise
 
 
-class energy_scanct_mares(energy_scanct):
-    energy_name = 'energy_mono'
-    id_energy_names = ['ideu71_motor_energy', 'ideu71_energy_plus']
-    gr_name = 'gr_pitch'
-    mg_name = 'bl29_cont_mares'
-    pos_channel_name = 'energy_mono_ct'
-    encoder_resolution = 1
-    sample_clock = '/Dev1/PFI28'
-    trigger_device = 'bl29/ct/ni-ibl2902-02'
-    # allow to run on mares and admin doors
-    allowed_doors = ['bl29/door/03', 'bl29/door/02']
-
-    def getActiveMntGrpVarName(self):
-        return 'bl29/door/03.ActiveMntGrp'
-
-    def getTriggerDeviceVarName(self):
-        return 'bl29/door/03.TriggerDevice'
-
-
-class energy_gap_scanct(Macro):
-
-    energy_name = 'energy_mono'
-    id_db = 'alba03:10000'
-    id_energy_names = ['ideu71_motor_energy', 'ideu71_energy_plus']
-    id_phase_name = 'ideu71_motor_phase'  # pm/ideu71_pseudomotor_y/1
-    id_gap_name = 'ideu71_motor_gap'  # pm/ideu71_pseudomotor_z/1
-    gr_name = 'gr_pitch'
-    mg_name = 'bl29_cont'
-    pos_channel_name = 'energy_mono_ct'
-    encoder_resolution = 1
-    sample_clock = "/Dev1/PFI36"
+class grscanct(escanct):
+    """
+    Grating continuous scan
+    """
 
     param_def = [
-        ['energy_start', Type.Float, None, 'start energy'],
-        ['energy_final', Type.Float, None, 'end energy'],
-        ['nr_of_points', Type.Integer, None, 'number of points'],
-        ['integ_time', Type.Float, None, 'integration time for each point'],
-        ['antiphase', Type.Boolean, False, 'use antiphase mode (optional '
-                                           'True/False, False by default)'],
+        ['start', Type.Float,   None,
+            'start position'],
+        ['end', Type.Float,   None,
+            'final energy'],
+        ['nr_of_points', Type.Integer, None,
+            'number of points'],
+        ['integ_time',   Type.Float,   None,
+            'integration time'],
         ]
 
-    def prepare(self, start, final, nr_of_points,
-                integ_time, antiphase, **opts):
+    def prepare(self, *args, **kwargs):
+        """
+        This scan is the same as the escanct with 2 differences:
+        - It will scan the grating pitch motor instead of energy motor
+        - ID is not moved in under any condition
+        """
+        # dirty hack to get environment parameters from the parent
+        class_name = self.__class__.__name__
+        # we can do this because we use single inheritance (be careful!)
+        self.__class__.__name__ = self.__class__.__mro__[1].__name__
+        # call parent's prepare, but since this is a grating only scan avoid
+        # moving the ID
+        move_id = False
+        antiphase = False
+        lock_phase = False
+        args = list(args)
+        args.extend([move_id, antiphase, lock_phase])
+        super(self.__class__, self).prepare(*args, **kwargs)
+        self.__class__.__name__ = class_name  # restore our class name
         self.name = self.__class__.__name__
-        self.start_pos = start
-        self.final_pos = final
-        self.nr_of_points = nr_of_points
-        self.integ_time = integ_time
-        self.id_energy_name = self.id_energy_names[int(antiphase)]
-        # calculate gap and phase displacement
-        id_energy_name = self.id_energy_names[0]
-        id_energy_full_name = '/'.join([self.id_db, id_energy_name])
-        id_energy = PyTango.DeviceProxy(id_energy_full_name)
-        self.id_gap_start_pos, id_phase_start_pos = \
-            id_energy.CalcAllPhysical([start])
-        self.id_gap_final_pos, id_phase_final_pos = \
-            id_energy.CalcAllPhysical([final])
 
-        # if (id_phase_final_pos>0) & (id_phase_start_pos>0):
-        #     sig = +1
-        # elif (id_phase_final_pos<0) & (id_phase_start_pos<0):
-        #     sig = -1
-        # elif id_phase_final_pos>id_phase_start_pos:
-        #     sig = +1
-        # else:
-        #     sig = -1
-        self.id_phase_middle = (id_phase_final_pos + id_phase_start_pos) / 2.0
-        self.debug('gap_start = %f; gap_finish = %f' %
-                   (self.id_gap_start_pos, self.id_gap_final_pos))
-        self.debug('phase_start = %f; phase_finish = %f' %
-                   (id_phase_start_pos, id_phase_final_pos))
-        self.debug('phase_middle = %f' % self.id_phase_middle)
-
-    def preConfigure(self):
-        self.debug("preConfigure entering...")
-        self.pos_channel = PyTango.DeviceProxy(self.pos_channel_name)
-
-        # since sardana channels when written are also read, SampleClockSource
-        # can not be read after writing - probably bug in the ds
-
-        counterDevName = self.pos_channel['channelDevName'].value
-        counterDev = PyTango.DeviceProxy(counterDevName)
-        counterDev['SampleClockSource'] = self.sample_clock
-        counterDev['SampleTimingType'] = 'SampClk'
-        counterDev['ZIndexEnabled'] = False
-        counterDev['PulsesPerRevolution'] = self.encoder_resolution
-        counterDev['Units'] = 'Ticks'
-
-    def preStart(self):
-        self.debug('preStart entering...')
-        gr_motor = PyTango.DeviceProxy(self.gr_name)
-        initial_position = gr_motor['EncEncin'].value
-        self.debug('initial_position = %f' % initial_position)
-        self.pos_channel['InitialPosition'] = initial_position
-        # move phase to the middle of scan range
-        phase_motor_names = ['alba03:10000/ideu71_motor_y1',
-                             'alba03:10000/ideu71_motor_y2']
-        speeds = [1000, 1000]
-        accelerations = [0.1, 0.1]
-        decelerations = accelerations
-        for motor, speed, acceleration, deceleration in zip(phase_motor_names,
-                                                            speeds,
-                                                            accelerations,
-                                                            decelerations):
-            m = PyTango.DeviceProxy(motor)
-            m.write_attribute('velocity', speed)
-            m.write_attribute('acceleration', acceleration)
-            m.write_attribute('deceleration', deceleration)
-        self.debug('Moving phase to middle positions: %f' %
-                   self.id_phase_middle)
-        self.execMacro('mv %s %f' % (self.id_phase_name, self.id_phase_middle))
-
-    def run(self, *arg, **kwarg):
-        old_mg = self.getEnv('ActiveMntGrp')
-        var_name = 'ActiveMntGrp'
-        self.setEnv(var_name, self.mg_name)
+        # get grating pitch motor name from our own environment parameters
         try:
-            a2scanct, pars = self.createMacro(['a2scanct',
-                                              self.energy_name,
-                                              self.start_pos,
-                                              self.final_pos,
-                                              self.id_gap_name,
-                                              self.id_gap_start_pos,
-                                              self.id_gap_final_pos,
-                                              self.nr_of_points,
-                                              self.integ_time])
-
-            a2scanct.hooks = [(self.preConfigure, ['pre-configuration']),
-                              (self.preStart, ['pre-start'])]
-
-            self.runMacro(a2scanct)
-        finally:
-            self.setEnv(var_name,  old_mg)
-            motors = ['alba03:10000/ideu71_motor_y1',
-                      'alba03:10000/ideu71_motor_y2',
-                      'alba03:10000/ideu71_motor_z1',
-                      'alba03:10000/ideu71_motor_z2',
-                      'alba03:10000/ideu71_motor_z3',
-                      'alba03:10000/ideu71_motor_z4',
-                      'gr_pitch']
-            # speeds = [1000, 1000, 400.0, 400.0, 400.0, 400.0,
-            #           294.98525073746316]
-            # PLG reduced ID gap speeds to avoid ID taper problems
-            speeds = [1000, 1000, 200.0, 200.0, 200.0, 200.0,
-                      294.98525073746316]
-            accelerations = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
-                             0.29981099999999999]
-            decelerations = accelerations
-            for motor, speed in zip(motors, speeds):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('velocity', speed)
-            for motor, acceleration in zip(motors, accelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('acceleration', acceleration)
-            for motor, deceleration in zip(motors, decelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('deceleration', deceleration)
+            param_name = 'motor_name'
+            self.motor_name = self.getEnv(param_name, door_name=self.door_name,
+                                          macro_name=self.name)
+        except Exception, e:
+            self.error('Error while getting environment: %s' % str(e))
+            raise
 
 
-class mono_scanct(Macro):
-
-    energy_name = 'energy_mono'
-    gr_name = 'gr_pitch'
-    mg_name = 'BL29_CONT'
-    pos_channel_name = 'energy_mono_ct'
-    encoder_resolution = 1
-    sample_clock = "/Dev1/PFI36"
+class timescanct(escanct):
+    """
+    time continuous scan
+    """
 
     param_def = [
-        ['energy_start', Type.Float, None, 'start energy'],
-        ['energy_final', Type.Float, None, 'end energy'],
-        ['nr_of_points', Type.Integer, None, 'number of points'],
-        ['integ_time', Type.Float, None, 'integration time for each point'],
-        ['antiphase', Type.Boolean, False, 'use antiphase mode (optional '
-                                           'True/False, False by default)'],
+        ['nr_of_points', Type.Integer, None,
+            'number of points'],
+        ['integ_time',   Type.Float,   None,
+            'integration time'],
         ]
 
-    def prepare(self, start, final, nr_of_points,
-                integ_time, antiphase, **opts):
+    def prepare(self, *args, **kwargs):
+        """
+        This scan is the same as the escanct with 2 differences:
+        - It will use a dummy motor instead of energy motor
+        - ID is not moved in under any condition
+        """
+        # dirty hack to get environment parameters from the parent
+        class_name = self.__class__.__name__
+        # we can do this because we use single inheritance (be careful!)
+        self.__class__.__name__ = self.__class__.__mro__[1].__name__
+        points = args[0]
+        integ_time = args[1]
+        start = 0
+        end = 100
+        move_id = False
+        antiphase = False
+        lock_phase = False
+        args = [start, end, points, integ_time, move_id, antiphase, lock_phase]
+        super(self.__class__, self).prepare(*args, **kwargs)
+        self.__class__.__name__ = class_name  # restore our class name
         self.name = self.__class__.__name__
-        self.start_pos = start
-        self.final_pos = final
-        self.nr_of_points = nr_of_points
-        self.integ_time = integ_time
 
-    def preConfigure(self):
-        self.debug("preConfigure entering...")
-        self.pos_channel = PyTango.DeviceProxy(self.pos_channel_name)
-
-        # since sardana channels when written are also read, SampleClockSource
-        # can not be read after writing - probably bug in the ds
-
-        counterDevName = self.pos_channel['channelDevName'].value
-        counterDev = PyTango.DeviceProxy(counterDevName)
-        counterDev['SampleClockSource'] = self.sample_clock
-        counterDev['SampleTimingType'] = 'SampClk'
-        counterDev['ZIndexEnabled'] = False
-        counterDev['PulsesPerRevolution'] = self.encoder_resolution
-        counterDev['Units'] = 'Ticks'
-
-    def preStart(self):
-        self.debug('preStart entering...')
-        gr_motor = PyTango.DeviceProxy(self.gr_name)
-        initial_position = gr_motor['EncEncin'].value
-        self.debug('initial_position = %f' % initial_position)
-        self.pos_channel['InitialPosition'] = initial_position
-
-    def run(self, *arg, **kwarg):
-        old_mg = self.getEnv('ActiveMntGrp')
-        var_name = 'ActiveMntGrp'
-        self.setEnv(var_name, self.mg_name)
+        # get dummy motor name from our own environment parameters
         try:
-            ascanct, pars = self.createMacro(['ascanct',
-                                              self.energy_name,
-                                              self.start_pos,
-                                              self.final_pos,
-                                              self.nr_of_points,
-                                              self.integ_time])
+            param_name = 'motor_name'
+            self.motor_name = self.getEnv(param_name, door_name=self.door_name,
+                                          macro_name=self.name)
+        except Exception, e:
+            self.error('Error while getting environment: %s' % str(e))
+            raise
 
-            ascanct.hooks = [(self.preConfigure, ['pre-configuration']),
-                             (self.preStart, ['pre-start'])]
-
-            self.runMacro(ascanct)
-        finally:
-            self.setEnv(var_name, old_mg)
-            motors = ['gr_pitch']
-            speeds = [294.98525073746316]
-            accelerations = [0.29981099999999999]
-            decelerations = accelerations
-            for motor, speed in zip(motors, speeds):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('velocity', speed)
-            for motor, acceleration in zip(motors, accelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('acceleration', acceleration)
-            for motor, deceleration in zip(motors, decelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('deceleration', deceleration)
-
-
-class grpitch_scanct(Macro):
-
-    energy_name = 'gr_pitch'
-    gr_name = 'gr_pitch'
-    mg_name = 'BL29_cont'
-    pos_channel_name = 'energy_mono_ct'
-    encoder_resolution = 1
-    sample_clock = "/Dev1/PFI36"
-
-    param_def = [
-        ['energy_start', Type.Float, None, 'start energy'],
-        ['energy_final', Type.Float, None, 'end energy'],
-        ['nr_of_points', Type.Integer, None, 'number of points'],
-        ['integ_time', Type.Float, None, 'integration time for each point'],
-        ['antiphase', Type.Boolean, False, 'use antiphase mode (optional '
-                                           'True/False, False by default)'],
-        ]
-
-    def prepare(self, start, final, nr_of_points,
-                integ_time, antiphase, **opts):
-        self.name = self.__class__.__name__
-        self.start_pos = start
-        self.final_pos = final
-        self.nr_of_points = nr_of_points
-        self.integ_time = integ_time
-
-    def preConfigure(self):
-        self.debug("preConfigure entering...")
-        self.pos_channel = PyTango.DeviceProxy(self.pos_channel_name)
-
-        # since sardana channels when written are also read, SampleClockSource
-        # can not be read after writing - probably bug in the ds
-
-        counterDevName = self.pos_channel['channelDevName'].value
-        counterDev = PyTango.DeviceProxy(counterDevName)
-        counterDev['SampleClockSource'] = self.sample_clock
-        counterDev['SampleTimingType'] = 'SampClk'
-        counterDev['ZIndexEnabled'] = False
-        counterDev['PulsesPerRevolution'] = self.encoder_resolution
-        counterDev['Units'] = 'Ticks'
-
-    def preStart(self):
-        self.debug('preStart entering...')
-        gr_motor = PyTango.DeviceProxy(self.gr_name)
-        initial_position = gr_motor['EncEncin'].value
-        self.debug('initial_position = %f' % initial_position)
-        self.pos_channel['InitialPosition'] = initial_position
-
-    def run(self, *arg, **kwarg):
-        old_mg = self.getEnv('ActiveMntGrp')
-        var_name = 'ActiveMntGrp'
-        self.setEnv(var_name, self.mg_name)
-        try:
-            ascanct, pars = self.createMacro(['ascanct',
-                                              self.energy_name,
-                                              self.start_pos,
-                                              self.final_pos,
-                                              self.nr_of_points,
-                                              self.integ_time])
-
-            ascanct.hooks = [(self.preConfigure, ['pre-configuration']),
-                             (self.preStart, ['pre-start'])]
-
-            self.runMacro(ascanct)
-        finally:
-            self.setEnv(var_name, old_mg)
-            motors = ['gr_pitch']
-            speeds = [294.98525073746316]
-            accelerations = [0.29981099999999999]
-            decelerations = accelerations
-            for motor, speed in zip(motors, speeds):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('velocity', speed)
-            for motor, acceleration in zip(motors, accelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('acceleration', acceleration)
-            for motor, deceleration in zip(motors, decelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('deceleration', deceleration)
-
-
-class useless_scanct(Macro):
-
-    energy_name = 'dummy_mot01'
-    gr_name = 'dummy_mot01'
-    mg_name = 'BL29_SCANC3_BRANCH_3'
-    pos_channel_name = 'energy_mono_ct'
-    encoder_resolution = 1
-    sample_clock = "/Dev1/PFI36"
-
-    param_def = [
-        ['energy_start', Type.Float, None, 'start energy'],
-        ['energy_final', Type.Float, None, 'end energy'],
-        ['nr_of_points', Type.Integer, None, 'number of points'],
-        ['integ_time', Type.Float, None, 'integration time for each point'],
-        ['antiphase', Type.Boolean, False, 'use antiphase mode (optional '
-                                           'True/False, False by default)'],
-        ]
-
-    def prepare(self, start, final, nr_of_points,
-                integ_time, antiphase, **opts):
-        self.name = self.__class__.__name__
-        self.start_pos = start
-        self.final_pos = final
-        self.nr_of_points = nr_of_points
-        self.integ_time = integ_time
-
-    def preConfigure(self):
-        self.debug("preConfigure entering...")
-        self.pos_channel = PyTango.DeviceProxy(self.pos_channel_name)
-
-        # since sardana channels when written are also read, SampleClockSource
-        # can not be read after writing - probably bug in the ds
-
-        counterDevName = self.pos_channel['channelDevName'].value
-        counterDev = PyTango.DeviceProxy(counterDevName)
-        counterDev['SampleClockSource'] = self.sample_clock
-        counterDev['SampleTimingType'] = 'SampClk'
-        counterDev['ZIndexEnabled'] = False
-        counterDev['PulsesPerRevolution'] = self.encoder_resolution
-        counterDev['Units'] = 'Ticks'
-
-    def preStart(self):
-        self.debug('preStart entering...')
-        self.pos_channel['InitialPosition'] = 0
-
-    def run(self, *arg, **kwarg):
-        old_mg = self.getEnv('ActiveMntGrp')
-        var_name = 'ActiveMntGrp'
-        self.output("Setting meas ... %s", self.mg_name)
-        self.setEnv(var_name, self.mg_name)
-        try:
-            ascanct, pars = self.createMacro(['ascanct',
-                                              self.energy_name,
-                                              self.start_pos,
-                                              self.final_pos,
-                                              self.nr_of_points,
-                                              self.integ_time])
-
-            ascanct.hooks = [(self.preConfigure, ['pre-configuration']),
-                             (self.preStart, ['pre-start'])]
-
-            self.runMacro(ascanct)
-        finally:
-            self.setEnv(var_name, old_mg)
-            motors = ['dummy_mot01']
-            speeds = [294.98525073746316]
-            accelerations = [0.29981099999999999]
-            decelerations = accelerations
-            for motor, speed in zip(motors, speeds):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('velocity', speed)
-            for motor, acceleration in zip(motors, accelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('acceleration', acceleration)
-            for motor, deceleration in zip(motors, decelerations):
-                m = PyTango.DeviceProxy(motor)
-                m.write_attribute('deceleration', deceleration)
+    def postScan(self):
+        self.debug('postScan entering...')
+        motor = PyTango.DeviceProxy(self.motor_name)
+        motor.write_attribute('velocity', 1e4)
+        motor.write_attribute('acceleration', 1e-3)
+        motor.write_attribute('position', self.start_pos)
