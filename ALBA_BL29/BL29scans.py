@@ -178,6 +178,21 @@ class rscan(Macro):
 class escanct(Macro):
     """
     Energy continuous scan.
+
+    This will scan the beamline monochromator and optionally (default is
+    enabled) the insertion device.
+
+    The scan will automatically detect if the ID (insertion device) is in
+    parallel or antiparallel mode and then it will use the appropriate ID
+    energy and phase (or antiphase in antiparallel mode) motors for performing
+    the ID scan (if ID is requested to be scanned in move_id parameter).
+
+    If the ID is scanned, then there is the option (true by default) to move
+    the [anti]phase to its mid position before the scan starts and then leave
+    it there while the scan is running: in most cases this is the most
+    convenient setup because the movement of the physical motors that determine
+    the [anti]phase position is so short that it's not worth moving them. If
+    this is enabled then only the ID gap will be scanned (not [anti]phase).
     """
 
     # @todo:would not be necessary if getMotor() worked with other pools motors
@@ -207,23 +222,22 @@ class escanct(Macro):
             'integration time'],
         ['move_id',      Type.Boolean, True,
             'move ID energy motor: if set to false only the mono will be moved'
-            ' and antiphase and lock_phase parameters will be ignored ('
-            'optional True/False, default True)'],
-        ['antiphase',    Type.Boolean, False,
-            'use antiphase mode (optional True/False, default False)'],
+            ' and lock_phase parameter will be ignored (optional True/False, '
+            'default True)'],
         ['lock_phase',   Type.Boolean, True,
-            'move ID phase motors to mid position and do not move during the '
-            'scan: in this case only ID gap motors will be moved (optional '
-            'True/False, default True)'],
+            'move ID phase (or antiphase) motors to mid position and do not '
+            'move them anymore during the scan: in this case only ID gap '
+            'motors will be moved (optional True/False, default True)'],
         ]
 
     env_params = {
         'motor_name': None,  # main motor to scan (usually 'energy_mono')
-        'id_energy_names': None,  # list of ID energy names (phase, antiphase)
-        'id_phase_name': None,  # name of ID phase pseudomotor
-        'id_phase_names': None,  # list of ID phase physical motors
+        'id_energy_names': None,  # list of ID energy names ([anti]parallel)
+        'id_phase_names': None,  # name of ID phase pseudo ([anti]parallel)
+        'id_phase_ph_names': None,  # list of ID phase physical motors
         'id_gap_name': None,  # ID gap motor name
         'id_gap_names': None,  # list of ID gap and taper physical motors
+        'id_polarization': None,  # pseudo used to find out parallel mode
         'gr_name': None,  # name of grating pitch motor
         'doors': None,  # list of doors to allow executing this scan
         'meas': None,   # list of meas to use on each of the allowed doors (set
@@ -236,7 +250,7 @@ class escanct(Macro):
     }
 
     def prepare(self, start, final, nr_of_points,
-                integ_time, move_id, antiphase, lock_phase, **opts):
+                integ_time, move_id, lock_phase, **opts):
         # get arguments
         self.name = self.__class__.__name__
         self.start_pos = start
@@ -245,7 +259,6 @@ class escanct(Macro):
         self.integ_time = integ_time
         self.move_id = move_id
         self.lock_phase = lock_phase
-        self.antiphase = antiphase
 
         # get macro parameters from environment
         try:
@@ -266,9 +279,6 @@ class escanct(Macro):
             for param_name in self.env_params.keys():
                 value = getattr(self, param_name)
                 self.debug('%s: %s' % (param_name, value))
-
-            # determine which energy motor to use
-            self.id_energy_name = self.id_energy_names[int(self.antiphase)]
 
             # check measurement groups and doors are correctly specified
             if len(self.doors) != len(self.meas):
@@ -293,13 +303,33 @@ class escanct(Macro):
             raise
 
         try:
+            # determine if ID is in parallel or antiparallel mode: this
+            # determines which ID energy and phase pseudomotors to use
+            # we can find out the ID mode (parallel/antiparallel) by checking
+            # if ID pseudomotor ideu71_polarization_plus is 0 (parallel mode)
+            polarization = PyTango.DeviceProxy(self.ID_DB+self.id_polarization)
+            if (polarization.read_attribute('Position').value == 0):
+                self.antiparallel = False
+            else:
+                self.antiparallel = True
+            self.id_energy_name = self.id_energy_names[int(self.antiparallel)]
+            self.id_phase_name = self.id_phase_names[int(self.antiparallel)]
+
             if self.move_id and self.lock_phase:
                 # calculate ID gap and phase displacement (only if move_id)
                 idev = PyTango.DeviceProxy(self.ID_DB+self.id_energy_name)
-                id_gap_start, id_phase_start = \
-                    idev.CalcAllPhysical([self.start_pos])
-                id_gap_final, id_phase_final = \
-                    idev.CalcAllPhysical([self.final_pos])
+                if self.antiparallel:  # antiparallel mode
+                    id_gap_start, id_phase_start, id_antiphase_start = \
+                        idev.CalcAllPhysical([self.start_pos])
+                    id_gap_final, id_phase_final, id_antiphase_final = \
+                        idev.CalcAllPhysical([self.final_pos])
+                    id_phase_start = id_antiphase_start
+                    id_phase_final = id_antiphase_final
+                else:  # parallel mode
+                    id_gap_start, id_phase_start = \
+                        idev.CalcAllPhysical([self.start_pos])
+                    id_gap_final, id_phase_final = \
+                        idev.CalcAllPhysical([self.final_pos])
                 self.id_phase_middle = (id_phase_final + id_phase_start) / 2.0
                 self.id_gap_start = id_gap_start
                 self.id_gap_final = id_gap_final
@@ -312,8 +342,8 @@ class escanct(Macro):
                 self.debug('Phase (middle): %f'
                            % self.id_phase_middle)
         except Exception, e:
-            msg = 'Error while computing gap positions'
-            self.error('%s: %s' % (msg, str(e)))
+            msg = 'Unable to compute ID gap positions'
+            self.debug('%s: %s' % (msg, str(e)))
             raise Exception(msg)
 
     def preConfigure(self):
@@ -349,7 +379,8 @@ class escanct(Macro):
             accelerations = self.ID_PHASE_ACC
             decelerations = self.ID_PHASE_DEC
             for motor_name, speed, acceleration, deceleration in zip(
-                    self.id_phase_names, speeds, accelerations, decelerations):
+                    self.id_phase_ph_names,
+                    speeds, accelerations, decelerations):
                 motor = PyTango.DeviceProxy(self.ID_DB+motor_name)
                 motor.write_attribute('velocity', speed)
                 motor.write_attribute('acceleration', acceleration)
@@ -362,7 +393,7 @@ class escanct(Macro):
         # the phase physical motors: in this case we have to set these speeds
         # to a minimum
         else:
-            for phase_motor_name in self.id_phase_names:
+            for phase_motor_name in self.id_phase_ph_names:
                 phase_mot = PyTango.DeviceProxy(self.ID_DB+phase_motor_name)
                 speed = phase_mot.read_attribute('velocity').value
                 if speed < self.phase_min_speed:
@@ -429,7 +460,7 @@ class escanct(Macro):
             accelerations = self.GR_ACC
             decelerations = self.GR_DEC
             if self.move_id:  # ID phases and gaps restored only if moved
-                motors.extend([self.ID_DB+mot for mot in self.id_phase_names])
+                motors.extend([self.ID_DB+m for m in self.id_phase_ph_names])
                 speeds.extend(self.ID_PHASE_VEL)
                 accelerations.extend(self.ID_PHASE_ACC)
                 decelerations.extend(self.ID_PHASE_DEC)
@@ -456,21 +487,30 @@ class escanct(Macro):
             if self.move_id:
                 #  @todo: use motor API when it works
                 #  id_phase = self.getMotor(self.id_phase_name)
-                id_phase = PyTango.DeviceProxy(self.ID_DB+self.id_phase_name)
-                if (id_phase.read_attribute('position').value -
-                        self.id_phase_middle) < 0.1:
-                    self.execMacro('mv %s %f' % (self.id_phase_name,
-                                                 self.id_phase_final))
-                else:
-                    self.execMacro('mv %s %f' % (self.id_phase_name,
-                                                 self.id_phase_start))
-                    self.execMacro('mv %s %f' % (self.id_gap_name,
-                                                 self.id_gap_start))
+                self.execMacro('mv %s %f' % (self.id_phase_name,
+                                             self.id_phase_final))
+                self.execMacro('mv %s %f' % (self.id_gap_name,
+                                             self.id_gap_final))
 
 
 class edscanct(escanct):
     """
     Energy continuous scan specifying energy delta per point
+
+    This will scan the beamline monochromator and optionally (default is
+    enabled) the insertion device.
+
+    The scan will automatically detect if the ID (insertion device) is in
+    parallel or antiparallel mode and then it will use the appropriate ID
+    energy and phase (or antiphase in antiparallel mode) motors for performing
+    the ID scan (if ID is requested to be scanned in move_id parameter).
+
+    If the ID is scanned, then there is the option (true by default) to move
+    the [anti]phase to its mid position before the scan starts and then leave
+    it there while the scan is running: in most cases this is the most
+    convenient setup because the movement of the physical motors that determine
+    the [anti]phase position is so short that it's not worth moving them. If
+    this is enabled then only the ID gap will be scanned (not [anti]phase).
     """
 
     param_def = [
@@ -486,8 +526,6 @@ class edscanct(escanct):
             'move ID energy motor: if set to false only the mono will be moved'
             ' and antiphase and lock_phase parameters will be ignored ('
             'optional True/False, default True)'],
-        ['antiphase',    Type.Boolean, False,
-            'use antiphase mode (optional True/False, default False)'],
         ['lock_phase',   Type.Boolean, True,
             'move ID phase motors to mid position and do not move during the '
             'scan: in this case only ID gap motors will be moved (optional '
@@ -495,7 +533,7 @@ class edscanct(escanct):
         ]
 
     def prepare(self, energy_start, energy_final, delta_e, integ_time,
-                move_id, antiphase, lock_phase, **kwargs):
+                move_id, lock_phase, **kwargs):
         # dirty hack to get environment parameters from the parent
         class_name = self.__class__.__name__
         # we can do this because we use single inheritance (be careful!)
@@ -503,7 +541,7 @@ class edscanct(escanct):
         # call parent's prepare
         points = int((energy_final - energy_start) / delta_e)
         args = [energy_start, energy_final, points, integ_time,
-                move_id, antiphase, lock_phase]
+                move_id, lock_phase]
         super(self.__class__, self).prepare(*args, **kwargs)
         self.__class__.__name__ = class_name  # restore our class name
         self.name = self.__class__.__name__
@@ -537,10 +575,9 @@ class monoscanct(escanct):
         # call parent's prepare, but since this is a grating only scan then
         # avoid moving the ID
         move_id = False
-        antiphase = False
         lock_phase = False
         args = list(args)
-        args.extend([move_id, antiphase, lock_phase])
+        args.extend([move_id, lock_phase])
         super(self.__class__, self).prepare(*args, **kwargs)
         self.__class__.__name__ = class_name  # restore our class name
         self.name = self.__class__.__name__
@@ -584,10 +621,9 @@ class grscanct(escanct):
         # call parent's prepare, but since this is a grating only scan avoid
         # moving the ID
         move_id = False
-        antiphase = False
         lock_phase = False
         args = list(args)
-        args.extend([move_id, antiphase, lock_phase])
+        args.extend([move_id, lock_phase])
         super(self.__class__, self).prepare(*args, **kwargs)
         self.__class__.__name__ = class_name  # restore our class name
         self.name = self.__class__.__name__
@@ -616,9 +652,9 @@ class timescanct(escanct):
 
     def prepare(self, *args, **kwargs):
         """
-        This scan is the same as the escanct with 2 differences:
+        This scan is the same as the escanct with 2 important differences:
         - It will use a dummy motor instead of energy motor
-        - ID is not moved in under any condition
+        - ID is not moved under any circumstance
         """
         # dirty hack to get environment parameters from the parent
         class_name = self.__class__.__name__
@@ -629,9 +665,8 @@ class timescanct(escanct):
         start = 0
         end = 100
         move_id = False
-        antiphase = False
         lock_phase = False
-        args = [start, end, points, integ_time, move_id, antiphase, lock_phase]
+        args = [start, end, points, integ_time, move_id, lock_phase]
         super(self.__class__, self).prepare(*args, **kwargs)
         self.__class__.__name__ = class_name  # restore our class name
         self.name = self.__class__.__name__
