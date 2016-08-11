@@ -107,7 +107,9 @@ class CLEAR(object):
         return pos
 
     def _move_motor(self, motor, pos):
-        mv_macro, _ = self.createMacro('mv', motor, pos)
+        self.output(motor)
+        self.output(pos)
+        mv_macro, _ = self.createMacro('mv', [[motor, pos]])
         self.runMacro(mv_macro)
 
     def set_xtal(self, xtal):
@@ -217,7 +219,7 @@ class clearmv(Macro, CLEAR):
         
         if motor.full_name == self.bragg.getFullName():
             self.move_bragg(pos)
-        elif motor.full_name == self.ENERGY.getFullName():
+        elif motor.full_name == self.energy.getFullName():
             self.move_energy(pos)
         else:
             bragg_name = self.bragg.getDisplayName().split()[0]

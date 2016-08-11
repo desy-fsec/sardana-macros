@@ -1,7 +1,7 @@
 import PyTango
 import time
-from sardana.macroserver.macro import macro, Type, Macro, \ 
-                                      ViewOption, ParamRepeat
+from sardana.macroserver.macro import macro, Type, Macro , \
+ViewOption, ParamRepeat
 
 XIA1_NAME = 'bl22/ct/xiapfcu-1'
 XIA2_NAME = 'bl22/ct/xiapfcu-2'
