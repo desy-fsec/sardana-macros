@@ -33,7 +33,7 @@ class oav_raster_config(Macro):
 
             config = self.getEnv('MXRasterConfig')
 
-            for key, value in param_list:
+            for key, value in param_list[0]:
                 if key not in self.PARAMS_ALLOWED:
                     raise ValueError('The allowed parameters are %s' % repr(self.PARAMS_ALLOWED))
                 config[key] = value
@@ -80,7 +80,7 @@ class oav_merit_method(Macro):
 
             config = self.getEnv('MXRasterConfig')
 
-            for value in param_list:
+            for value in param_list[0]:
                 if value not in self.PARAMS_ALLOWED:
                     raise ValueError('The allowed merit methods are %s' % repr(self.PARAMS_ALLOWED))
                 else:
