@@ -319,7 +319,7 @@ class ipap_homing(Macro):
         self.strict = args[1]
         self.motors = []
 
-        motors_directions = args[2:]
+        motors_directions = args[2]
         self.motorsInfoList = [create_motor_info_dict(m,d) for m,d in motors_directions]
 
         #getting motion object for automatic aborting
