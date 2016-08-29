@@ -311,7 +311,7 @@ class escanexafs_general(Macro):
         ["scan_regions", ParamRepeat(
                 ['estart', Type.Float, None, 'Start energy region'],
                 ['estop', Type.Float, None, 'Stop energy region'],
-                ['estep', Type.Integer, None, 'Energy step in region']),
+                ['estep', Type.Float, None, 'Energy step in region']),
          None, 'List of scan regions']
         ]
     
@@ -340,13 +340,13 @@ class escanexafs(Macro):
     param_def = [ 
         ['estart1', Type.Float, -999, 'Start energy region 1'],
         ['estop1', Type.Float, -999, 'Stop energy region 1'],
-        ['estep1', Type.Integer, -999, 'Energy step in region 1'],
+        ['estep1', Type.Float, -999, 'Energy step in region 1'],
         ['estart2', Type.Float, -999, 'Start energy region 2'],
         ['estop2', Type.Float, -999, 'Stop energy region 2'],
-        ['estep2', Type.Integer, -999, 'Energy step in region 2'],
+        ['estep2', Type.Float, -999, 'Energy step in region 2'],
         ['estart3', Type.Float, -999, 'Start energy region 3'],
         ['estop3', Type.Float, -999, 'Stop energy region 3'],
-        ['estep3', Type.Integer, -999, 'Energy step in region 3'],
+        ['estep3', Type.Float, -999, 'Energy step in region 3'],
         ['integ_time', Type.Float, -999, 'Integration time']
         ]
     
