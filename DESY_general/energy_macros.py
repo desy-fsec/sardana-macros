@@ -422,6 +422,8 @@ class escanxmcd(Macro):
         while current_energy < end:
             nr_interv = nr_interv + 1
             estep = (1./3.)*math.sqrt(math.fabs(current_energy-self.middle_energy))
+            if estep < self.estep_min:
+                estep = self.estep_min
             current_energy = current_energy + estep
             
         nr_interv = nr_interv + 1
