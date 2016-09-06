@@ -295,15 +295,15 @@ class mxraster(Macro):
         
     def move_y(self,pos):
         self.debug("    Y --> " + str(pos)  )
-        self.execMacro("mv", self.phiy, pos )
+        self.execMacro("mv %s %s" % (self.phiy, pos))
 
     def move_z(self,pos):
         self.debug("Z --> " + str(pos) )
-        self.execMacro("mv", self.phiz, pos )
+        self.execMacro("mv %s %s" % (self.phiz, pos))
 
     def move_att(self,pos):
         self.debug("ATT --> " + str(pos) )
-        self.execMacro("mv", self.att, pos )
+        self.execMacro("mv %s %s" % (self.att, pos))
 
     def scan_y(self,ypts):
         self.debug(" scanning y " + str(ypts) )
