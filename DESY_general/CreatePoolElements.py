@@ -21,7 +21,7 @@ class _create_controller(Macro):
          "", 'List of property pairs']
         ]
 
-    def run(self, ctrl_type, ctrl_filename, ctrl_classname, ctrl_name, *property_pairs):
+    def run(self, ctrl_type, ctrl_filename, ctrl_classname, ctrl_name, property_pairs):
         
         pools = self.getPools()
         pool = pools[0]
@@ -73,7 +73,7 @@ class create_motor_controller(Macro):
 
         tango_host = os.getenv('TANGO_HOST')
 
-        tmp_macro, pars= self.createMacro("_create_controller", "Motor", "HasyMotorCtrl.py", "HasyMotorCtrl", ctrl_name, "RootDeviceName", root_device_name, "TangoHost", tango_host)
+        tmp_macro, pars= self.createMacro("_create_controller", "Motor", "HasyMotorCtrl.py", "HasyMotorCtrl", ctrl_name, [["RootDeviceName", root_device_name], ["TangoHost", tango_host]])
 
         self.runMacro(tmp_macro)
 

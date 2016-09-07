@@ -4,7 +4,7 @@
 
 import fandango
 
-from sardana.macroserver.macro import Macro, Type, ParamRepeat
+from sardana.macroserver.macro import Macro, Type
 
 
 class startDS(Macro): 

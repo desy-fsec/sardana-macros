@@ -50,6 +50,8 @@ def nxselector(self, mode, selector, door):
     if door:
         args.append("-d%s" % door)
     my_env = os.environ.copy()
+    if 'GNOME_DESKTOP_SESSION_ID' not in my_env.keys():
+        my_env['GNOME_DESKTOP_SESSION_ID'] = 'qtconfig'
     if 'DISPLAY' not in my_env.keys():
         my_env['DISPLAY'] = ':0.0'
     if 'USER' not in my_env.keys():
@@ -71,6 +73,8 @@ def nxsmacrogui(self, selector, door):
     if door:
         args.append("-d%s" % door)
     my_env = os.environ.copy()
+    if 'GNOME_DESKTOP_SESSION_ID' not in my_env.keys():
+        my_env['GNOME_DESKTOP_SESSION_ID'] = 'qtconfig'
     if 'DISPLAY' not in my_env.keys():
         my_env['DISPLAY'] = ':0.0'
     if 'USER' not in my_env.keys():
@@ -97,7 +101,8 @@ def nxsprof(self):
             self.output(line)
 
         if not ismgupdated:
-            self.output("\nProfile is not set or MntGrp has been changed")
+            self.info("\nProfile is not set by nxselector(nxsmacros) "
+                      "or MntGrp has been changed")
 
 
 @macro()
@@ -185,7 +190,7 @@ class nxsetprof(Macro):
                 self.unsetEnv("ActiveMntGrp")
         if name:
             self.selector.mntgrp = name
-        self.selector.fetchProfile()
+        fetchProfile(self)
         self.selector.importMntGrp()
         self.selector.storeProfile()
         update_configuration(self)
@@ -202,7 +207,7 @@ class nxsimportmg(Macro):
         except UnknownEnv:
             name = self.selector.mntgrp
         self.selector.mntgrp = name
-        self.selector.fetchProfile()
+        fetchProfile(self)
         self.selector.importMntGrp()
         self.selector.storeProfile()
 
@@ -252,7 +257,7 @@ class nxsettimers(Macro):
          None, 'List of profile timers to set'],
     ]
 
-    def run(self, *timer_list):
+    def run(self, timer_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
 
@@ -274,7 +279,7 @@ class nxsadd(Macro):
          None, 'List of detector components to add'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
@@ -306,7 +311,7 @@ class nxset(Macro):
          None, 'List of detector components to add'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         timers = self.selector.availableTimers()
         stimers = [tm for tm in component_list if tm in timers]
@@ -350,7 +355,7 @@ class nxsrm(Macro):
          None, 'List of components to show'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentSelection"])
@@ -402,7 +407,7 @@ class nxsadddesc(Macro):
          None, 'List of description components to add'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentPreselection"])
@@ -448,7 +453,7 @@ class nxsrmdesc(Macro):
          None, 'List of descpription components to remove'],
     ]
 
-    def run(self, *component_list):
+    def run(self, component_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentPreselection"])
@@ -529,7 +534,7 @@ class nxsusetudata(Macro):
          None, 'List of user data names to delete'],
     ]
 
-    def run(self, *name_list):
+    def run(self, name_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         udata = json.loads(cnf["UserData"])
@@ -737,6 +742,23 @@ class nxshow(Macro):
         if dslist:
             self.output("\n    DataSource: %s\n" % name)
             printTable(self, dslist)
+
+
+def fetchProfile(mcr):
+        configold = getString(mcr, "ConfigDevice")
+        doorold = getString(mcr, "Door")
+        door = mcr.getDoorName()
+        if door and door != doorold:
+            mcr.selector.door = door
+        mcr.selector.fetchProfile()
+        confignew = getString(mcr, "ConfigDevice")
+        doornew = getString(mcr, "Door")
+        if configold and configold != confignew:
+            mcr.selector.configDevice = configold
+        if door and door != doornew:
+            mcr.selector.door = door
+            mcr.info("Profile's door '%s' was changed to '%s'" %
+                     (doornew, door))
 
 
 def wait_for_device(proxy, counter=100):
@@ -1008,8 +1030,11 @@ def setversion(mcr):
 
 def update_configuration(mcr):
     """ Synchonize profile with mntgrp """
-    mcr.selector.updateMntGrp()
-    mcr.selector.importMntGrp()
+    if hasattr(mcr.selector, "updateProfile"):
+        mcr.selector.updateProfile()
+    else:
+        mcr.selector.updateMntGrp()
+        mcr.selector.importMntGrp()
     if not isinstance(mcr.selector, PyTango.DeviceProxy):
         mcr.selector.exportEnvProfile()
 
@@ -1023,3 +1048,5 @@ def update_description(mcr):
             wait_for_device(mcr.selector)
         else:
             raise
+
+

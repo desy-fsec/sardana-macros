@@ -4,14 +4,16 @@ from taurus import Device
 from pyIcePAP import EthIcePAP
 import PyTango
 
-DEV_STATE_ALARM = PyTango._PyTango.DevState.ALARM
-DEV_STATE_MOVING = PyTango._PyTango.DevState.MOVING
-DEV_STATE_ON = PyTango._PyTango.DevState.ON
+DEV_STATE_ALARM = PyTango.DevState.ALARM
+DEV_STATE_MOVING = PyTango.DevState.MOVING
+DEV_STATE_ON = PyTango.DevState.ON
 IPAP_TIMEOUT = 1
 NR_STEPS = 1000
 
-class smaract_homming(Macro):
+class smaract_sdc_homing(Macro):
     """
+    Category: Configuration
+
     Macro to do a homing of the smaract controller. It executes a find
     reference command in the smaract device server and set the register of the
     icepap controller to synchronize them.
@@ -22,7 +24,7 @@ class smaract_homming(Macro):
     """
 
     param_def = [['motor', Type.Motor, None, 'smaract motor'],
-                 ['positive_limit'. Type.Boolean, True, ('move to the '
+                 ['positive_limit', Type.Boolean, True, ('move to the '
                                                          'positive limit')]]
 
     def _wait(self):
@@ -75,3 +77,89 @@ class smaract_homming(Macro):
         ipap.setEncoder(motor_axis, pos)
         set_pos = self.createMacro('set_user_pos', motor, 0)
         self.runMacro(set_pos)
+
+
+# util functions
+def isSmaractMCSMotor(macro, motor):
+    """
+    Checks if pool motor belongs to the SmaractMCSController
+    @param macro: macro object requesting the query.
+    @param motor: motor object belonging to the controller.
+    @return: Boolean indicating if the search was successful.
+    """
+    controllers = macro.getControllers()
+    ctrl_name = motor.controller
+    controller_obj = controllers[ctrl_name]
+    return isSmaractMCSController(macro, controller_obj)
+
+
+def isSmaractMCSController(macro, controller):
+    """
+    Checks if pool controller is of type SmaractMCSController
+    @param macro: macro object requesting the query.
+    @param controller: object to be evaluated.
+    @return: Boolean indicating if the search was successful.
+    """
+
+    if isinstance(controller, str):
+        controller_name = controller
+        controllers = macro.getControllers()
+        controller_obj = controllers[controller_name]
+    else:
+        controller_obj = controller
+    controller_class_name = controller_obj.getClassName()
+    if controller_class_name != "SmaractMCSController":
+        return False
+    return True
+
+
+class smaract_mcs_homing(Macro):
+    """
+    Category: Configuration
+
+    Macro to do a homing of the smaract MCS controller. It executes a find
+    reference command in the smaract device server and sets the upper and lower
+    limits of the controller according to the last values stored in the tango
+    database. The values for the limits are accessed via the PySmaractDS.
+    """
+
+    param_def = [['motor',
+                  Type.Motor,
+                  None,
+                  'smaract motor'],
+                 ['direction',
+                  Type.String,
+                  None,
+                  'search direction: {forward, backward}' ]
+                 ]
+
+    def run(self, motor, direction):
+
+        if direction == 'forward':
+            self.direction = 0
+        elif direction == 'backward':
+            self.direction = 1
+        else:
+            msg = 'Invalid direction. Possible values are: {forward, backward}'
+            raise Exception(msg)
+
+        # Check if motor is an axis of a smaract MCS controller
+        if not isSmaractMCSMotor(self, motor):
+            raise Exception('This is not a valid MCS Smaract motor controller.')
+
+        self.debug('motor; %s' % repr(motor))
+        # Get axis number:
+        self.debug('axis %s' % motor.axis)
+        # Get the pool and controller objects
+        pool = motor.getPoolObj()
+        ctrlName = motor.getControllerName()
+        self.debug('Pool: %s, Controller: %s' % (repr(pool), ctrlName))
+        # Sent a homming command to controller from pool:
+        # The HM_CMD are defined in the SmaractMCSController
+        HM_CMD = 'home_linial_single: %s %s' % (motor.axis, self.direction)
+        ans = pool.SendToController([ctrlName , HM_CMD])
+
+        if ans == "READY":
+            self.info(ans)
+        else:
+            self.error(ans)

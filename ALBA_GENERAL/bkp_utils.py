@@ -44,7 +44,7 @@ class bkp_sardana(Macro):
         with open(filename,'w') as f:
             f.write(data)
         if error_flg:
-            self.error(erro_msg)
+            self.error(error_msg)
         
 
        

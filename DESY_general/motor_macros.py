@@ -45,11 +45,11 @@ class wg(Macro):
             None, 'List of motors'],
         ]
 
-    def prepare(self, *motors, **opts):
+    def prepare(self, motors, **opts):
         self.all_motors = motors[0:]
         self.table_opts = {}
     
-    def run(self, *motors):
+    def run(self, motors):
         nr_motors = len(self.all_motors)
         if nr_motors == 0:
             self.output('No motor defined')
@@ -62,7 +62,7 @@ class wg(Macro):
             self.output('Current positions (user) on %s'%datetime.datetime.now().isoformat(' '))
         self.output('')
         
-        self.execMacro('_wm',*self.all_motors, **self.table_opts)
+        self.execMacro('_wm',self.all_motors, **self.table_opts)
 
 class wm_encoder(Macro):
     """ Show motor position from encoder readout """
@@ -79,66 +79,9 @@ class wm_encoder(Macro):
             return
         try:
             self.table_opts = {}
-            self.execMacro('_wm',motor, **self.table_opts)
+            self.execMacro('_wm', [motor], **self.table_opts)
             encoder_pos = motor_td.PositionEncoder
             self.output("Encoder " + str(encoder_pos))
         except:
             self.output("Not posible to read encoder position")
-            
-      
-        
-        
-class tw(iMacro):
-    """
-    tw - tweak motor by variable delta
-    """
-
-    param_def = [
-        ['motor', Type.Moveable, "test", 'Motor to move'],
-        ['delta',   Type.Float, -999, 'amount to tweak']
-    ]
-
-    def run(self, motor, delta):
-        if delta != -999:
-            self.output(
-                "Indicate direction with + (or p) or - (or n) or enter")
-            self.output(
-                "new step size. Type something else (or ctrl-C) to quit.")
-            self.output("")
-            if np.sign(delta) == -1:
-                a = "-"
-            if np.sign(delta) == 1:
-                a = "+"
-            while a in ('+', '-', 'p', 'n'):
-                pos = motor.position
-                a = self.input("%s = %s, which way? " % (
-                    motor, pos), default_value=a, data_type=Type.String)
-                try:
-                    a1 = float(a)
-                    check = "True"
-                except:
-                    check = "False"
-
-                if a == "p" and np.sign(delta) < 0:
-                    a = "+"
-                    delta = -delta
-                if a == "n" and np.sign(delta) > 0:
-                    a = "-"
-                    delta = -delta
-                if a == "+" and np.sign(delta) < 0:
-                    delta = -delta
-                if a == "-" and np.sign(delta) > 0:
-                    delta = -delta
-
-                if check == "True":
-                    delta = float(a1)
-                    if np.sign(delta) == -1:
-                        a = "-"
-                    if np.sign(delta) == 1:
-                        a = "+"
-                pos += delta
-                self.mv(motor, pos)
-
-        else:
-            self.output("usage: tw motor delta")
-
+  
