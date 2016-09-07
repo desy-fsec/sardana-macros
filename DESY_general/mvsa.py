@@ -174,5 +174,7 @@ class mvsa(Macro):
         result = "status=True"
         for elm in ( motorArr):
             self.output( "Motor %s is now at %g" % ( elm[ 'name'], elm[ 'proxy'].Position))
-            result = result + ", %s=%s" % (elm[ 'name'], str(elm[ 'proxy'].Position))
+            result = result + ",%s=%s" % (elm[ 'name'], str(elm[ 'proxy'].Position))
+
+        # self.output( "mvsa returns %s" % result)
         return result
