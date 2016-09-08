@@ -407,7 +407,7 @@ class escanxmcd(Macro):
         self.debug("Moving energy to the start value ...")
         self.execMacro("mv %s %f" % (self.energy_device_name, start_energy))
 
-        self.middle_energy = (end_energy + start_energy)/2
+        self.middle_energy = (end_energy + start_energy)/2.
         
         # compute number of steps to reach the end energy
         if start_energy < end_energy:
