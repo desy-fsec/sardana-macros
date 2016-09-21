@@ -15,7 +15,7 @@ class mvsa(Macro):
           Used environment variables: 
               ScanDir, ScanFile, ScanID  -> file name
               ScanHistory                -> motor name and scan type, 
-                                            supported: ascan, a2scan, a3scan, dscan, d2scan, d3scan
+                                            supported: ascan, a2scan, a3scan, dscan, d2scan, d3scan, hscan, kscan, lscan, hklscan
               SignalCounter              -> counter name   
           'mvsa show' shows the results, no move """
     param_def = [ 
@@ -54,117 +54,6 @@ class mvsa(Macro):
         argout = self.getEnv( 'ScanDir') + "/" + lst[0] + "_" + temp + "." + lst[1]
         return argout
 
-    def getMotorInfo( self, xpos):
-        """ 
-        finds the relevant motors in the ScanHistory and
-        uses the target position of the first motor to calculate
-        the target positions of the other motors
-        """
-        #
-        # d2scan exp_dmy01 -1.0 1.0 exp_dmy02 -2.0 2.0 11 0.1
-        # 
-        self.output( "Cmd: %s " % self.getEnv( "ScanHistory")[-1]['title'])
-
-        lst = self.getEnv( "ScanHistory")[-1]['title'].split()
-        if self.scanId != self.getEnv("ScanHistory")[-1]['serialno']:
-            self.output( "mvsa.getMotorInfo: previous scan ended incomplete")
-            return None
-
-        argout = []
-        if lst[0].lower() == "ascan":
-            dct = {}
-            dct[ 'motorName'] = lst[1]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            dct[ 'targetPos'] = xpos
-            argout.append( dct)
-        elif lst[0].lower() == "dscan":
-            dct = {}
-            dct[ 'motorName'] = lst[1]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            dct[ 'targetPos'] = xpos
-            argout.append( dct)
-        elif lst[0].lower() == "a2scan":
-            dct = {}
-            dct[ 'motorName'] = lst[1]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            dct[ 'targetPos'] = xpos
-            startPos = float( lst[2])
-            endPos   = float( lst[3])
-            ratio = (xpos - startPos)/(endPos - startPos)
-            argout.append( dct)
-            dct = {}
-            dct[ 'motorName'] = lst[4]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            startPos = float( lst[5])
-            endPos   = float( lst[6])
-            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
-            argout.append( dct)
-        elif lst[0].lower() == "a3scan":
-            dct = {}
-            dct[ 'motorName'] = lst[1]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            dct[ 'targetPos'] = xpos
-            startPos = float( lst[2])
-            endPos   = float( lst[3])
-            ratio = (xpos - startPos)/(endPos - startPos)
-            argout.append( dct)
-            dct = {}
-            dct[ 'motorName'] = lst[4]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            startPos = float( lst[5])
-            endPos   = float( lst[6])
-            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
-            argout.append( dct)
-            dct = {}
-            dct[ 'motorName'] = lst[7]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            startPos = float( lst[8])
-            endPos   = float( lst[9])
-            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
-            argout.append( dct)
-        elif lst[0].lower() == "d2scan":
-            dct = {}
-            dct[ 'motorName'] = lst[1]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            dct[ 'targetPos'] = xpos
-            startPos = dct['proxy'].Position + float(lst[2])
-            endPos   = dct['proxy'].Position + float(lst[3])
-            ratio = (xpos - startPos)/(endPos - startPos)
-            argout.append( dct)
-            dct = {}
-            dct[ 'motorName'] = lst[4]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            startPos = dct['proxy'].Position + float( lst[5])
-            endPos   = dct['proxy'].Position + float(lst[6])
-            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
-            argout.append( dct)
-        elif lst[0].lower() == "d3scan":
-            dct = {}
-            dct[ 'motorName'] = lst[1]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            dct[ 'targetPos'] = xpos
-            startPos = dct['proxy'].Position + float(lst[2])
-            endPos   = dct['proxy'].Position + float(lst[3])
-            ratio = (xpos - startPos)/(endPos - startPos)
-            argout.append( dct)
-            dct = {}
-            dct[ 'motorName'] = lst[4]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            startPos = dct['proxy'].Position + float( lst[5])
-            endPos   = dct['proxy'].Position + float(lst[6])
-            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
-            argout.append( dct)
-            dct = {}
-            dct[ 'motorName'] = lst[7]
-            dct[ 'proxy'] = PyTango.DeviceProxy( dct['motorName'])
-            startPos = dct['proxy'].Position + float( lst[8])
-            endPos   = dct['proxy'].Position + float(lst[9])
-            dct[ 'targetPos'] = startPos + (endPos - startPos)*ratio
-            argout.append( dct)
-        else:
-            return None
-        return argout
-        
     def run(self, mode, interactiveFlag):
 
         signalCounter = self.getEnv( "SignalCounter")
@@ -173,12 +62,13 @@ class mvsa(Macro):
         # mvsa only for ascan, dscan, a2scan, d2scan
         #
         scanType = self.getEnv( "ScanHistory")[-1]['title'].split()[0]
-        if not scanType.lower()  in ['ascan', 'dscan', 'a2scan', 'd2scan', 'a3scan', 'd3scan']:
-            self.output( "mvsa: scanType %s not in ['ascan', 'dscan', 'a2scan', 'd2scan']" % scanType)
+
+        if not scanType.lower()  in ['ascan', 'dscan', 'a2scan', 'd2scan', 'a3scan', 'd3scan', 'hscan', 'kscan', 'lscan', 'hklscan']:
+            self.output( "mvsa: scanType %s not in ['ascan', 'dscan', 'a2scan', 'd2scan', 'a3scan', 'd3scan', 'hscan', 'kscan', 'lscan', 'hklscan']" % scanType)
             return result
 
         fileName = self.getFullPathName()
-        if fileName is None:
+        if fileName is None: 
             self.output( "mvsa.run: terminated ")
             return result
         self.output( "mvsa.run: file %s " % fileName)
@@ -218,8 +108,37 @@ class mvsa(Macro):
             self.output( "ssa: l_back %g, r_back %g" % (ssaDct['l_back'], ssaDct['r_back']))
             return result
 
-        motorArr = self.getMotorInfo( xpos)
-        if motorArr is None:
+        self.scanInfo = HasyUtils.createScanInfo( self.getAllEnv())
+        #
+        # scanInfo:
+        #{
+        #  motors: [{'start': 0.0, 'stop': 0.1, 'name': 'e6cctrl_l', 'proxy': PseudoMotor(pm/e6cctrl/3)}],
+        #  serialno: 1230,
+        #  title: 'hscan 0.0 0.1 20 0.1",
+        # }
+        #
+        motorArr = self.scanInfo['motors']
+        if len( motorArr) == 0:
+            self.output( "mvsa: len( motorArr) == 0, soemthing is wrong")
+            return result
+        #
+        # xpos is the peak position w.r.t. the first motor. 
+        # the ratio r is used to calculate the target positions
+        # of the other motors
+        #
+        r = (xpos - motorArr[0]['start']) / \
+            (motorArr[0]['stop'] - motorArr[0]['start']) 
+            
+        if len( motorArr) == 1:
+            motorArr[0]['targetPos'] = xpos
+        elif len( motorArr) == 2:
+            motorArr[0]['targetPos'] = xpos
+            motorArr[1]['targetPos'] = (motorArr[1]['stop'] - motorArr[1]['start'])*r + motorArr[1]['start']
+        elif len( motorArr) == 3:
+            motorArr[0]['targetPos'] = xpos
+            motorArr[1]['targetPos'] = (motorArr[1]['stop'] - motorArr[1]['start'])*r + motorArr[1]['start']
+            motorArr[2]['targetPos'] = (motorArr[2]['stop'] - motorArr[2]['start'])*r + motorArr[2]['start']
+        else:
             return result
         #
         # prompt the user for confirmation, unless we have an uncoditional 'go'
@@ -227,14 +146,23 @@ class mvsa(Macro):
         if interactiveFlag == 1:
             self.output( "File name: %s " % fileName)
             for elm in motorArr:
-                self.output( "Move %s from %g to %g" % ( elm[ 'motorName'], elm[ 'proxy'].Position, elm[ 'targetPos']))
+                self.output( "Move %s from %g to %g" % ( elm[ 'name'], elm[ 'proxy'].Position, elm[ 'targetPos']))
             answer = self.input( "Exec move(s) [Y/N], def. 'N': ")
             if not (answer.lower() == "yes" or answer.lower() == "y"):
                 self.output( "Motor(s) not moved!")
                 return result
-
-        for elm in ( motorArr):
-            elm[ 'proxy'].write_attribute( "Position", elm[ 'targetPos'])
+        #
+        # start the move. for hklscans it is important to use 'br'. 
+        # We must not start 'single' motors ( e.g.: e6cctrl_h) because
+        # they are coupled.
+        #
+        if self.scanInfo['title'].find( 'hklscan') == 0:
+            self.execMacro( "br %g %g %g" % ( motorArr[0]['targetPos'], 
+                                              motorArr[1]['targetPos'], 
+                                              motorArr[2]['targetPos']))
+        else:
+            for elm in ( motorArr):
+                elm[ 'proxy'].write_attribute( "Position", elm[ 'targetPos'])
         moving = True
         while moving:
             moving = False
@@ -245,6 +173,8 @@ class mvsa(Macro):
             time.sleep( 0.1)
         result = "status=True"
         for elm in ( motorArr):
-            self.output( "Motor %s is now at %g" % ( elm[ 'motorName'], elm[ 'proxy'].Position))
-            result = result + ",%s=%s" % (elm[ 'motorName'], str(elm[ 'proxy'].Position))
+            self.output( "Motor %s is now at %g" % ( elm[ 'name'], elm[ 'proxy'].Position))
+            result = result + ",%s=%s" % (elm[ 'name'], str(elm[ 'proxy'].Position))
+
+        # self.output( "mvsa returns %s" % result)
         return result

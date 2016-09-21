@@ -311,7 +311,7 @@ class escanexafs_general(Macro):
         ["scan_regions", ParamRepeat(
                 ['estart', Type.Float, None, 'Start energy region'],
                 ['estop', Type.Float, None, 'Stop energy region'],
-                ['estep', Type.Integer, None, 'Energy step in region']),
+                ['estep', Type.Float, None, 'Energy step in region']),
          None, 'List of scan regions']
         ]
     
@@ -340,17 +340,99 @@ class escanexafs(Macro):
     param_def = [ 
         ['estart1', Type.Float, -999, 'Start energy region 1'],
         ['estop1', Type.Float, -999, 'Stop energy region 1'],
-        ['estep1', Type.Integer, -999, 'Energy step in region 1'],
+        ['estep1', Type.Float, -999, 'Energy step in region 1'],
         ['estart2', Type.Float, -999, 'Start energy region 2'],
         ['estop2', Type.Float, -999, 'Stop energy region 2'],
-        ['estep2', Type.Integer, -999, 'Energy step in region 2'],
+        ['estep2', Type.Float, -999, 'Energy step in region 2'],
         ['estart3', Type.Float, -999, 'Start energy region 3'],
         ['estop3', Type.Float, -999, 'Stop energy region 3'],
-        ['estep3', Type.Integer, -999, 'Energy step in region 3'],
+        ['estep3', Type.Float, -999, 'Energy step in region 3'],
         ['integ_time', Type.Float, -999, 'Integration time']
         ]
     
     def run(self, estart1, estop1, estep1, estart2, estop2, estep2, estart3, estop3, estep3, integ_time):
         
         macro,pars = self.createMacro('escanexafs_general', integ_time, [[estart1, estop1, estep1], [estart2, estop2, estep2], [estart3, estop3, estep3]])
+        self.runMacro(macro)
+
+
+  
+class escanxmcd(Macro):
+    """Energy scan with variable energy step size"""
+    
+    param_def = [ 
+        ['start_energy',  Type.Float,None, 'Scan start energy'],
+        ['end_energy',  Type.Float,  None, 'Scan final energy'],
+        ['integ_time', Type.Float,   None, 'Integration time'],
+        ['estep_min', Type.Float, None, 'Minimum step size'] 
+        ]
+    
+
+    def move_energy(self):
+        self.debug("\tCalling move energy hook")
+        
+        current_energy = self.energy_device.read_attribute("Position").value
+        estep = (1./3.)*math.sqrt(math.fabs(current_energy-self.middle_energy))
+        
+        if estep < self.estep_min:
+            estep = self.estep_min
+        self.execMacro("mv %s %f" % (self.energy_device_name, current_energy + estep)) 
+
+    def run(self,  start_energy, end_energy, integ_time, estep_min):
+        
+
+        self.energy_device = self.getObj("mnchrmtr")
+        self.energy_device_name = "mnchrmtr"
+        self.estep_min = estep_min
+        
+        try: # if the device exists gives error if comparing to None
+            if self.energy_device == None:
+                self.warning("mnchrmtr device does not exist.")
+                self.warning("Trying to get the energy device name from the EnergyDevice environment variable")
+                try:
+                    self.energy_device_name = self.getEnv('EnergyDevice')
+                except:
+                    self.error("EnergyDevice not defined. Macro exiting")
+                    return
+                try:
+                    self.energy_device = self.getObj(self.energy_device_name)
+                except:
+                    self.error("Unable to get energy device %s. Macro exiting" % self.energy_device_name)
+                    return
+        except:
+            pass
+
+        # set the motor to the initial position for having the right position at the first hook
+
+        self.debug("Moving energy to the start value ...")
+        self.execMacro("mv %s %f" % (self.energy_device_name, start_energy))
+
+        self.middle_energy = (end_energy + start_energy)/2.
+        
+        # compute number of steps to reach the end energy
+        if start_energy < end_energy:
+            start = start_energy
+            end = end_energy
+        else:
+            start = end_energy
+            end = start_energy
+            
+        current_energy = start
+        nr_interv = 0
+        while current_energy < end:
+            nr_interv = nr_interv + 1
+            estep = (1./3.)*math.sqrt(math.fabs(current_energy-self.middle_energy))
+            if estep < self.estep_min:
+                estep = self.estep_min
+            current_energy = current_energy + estep
+            
+        nr_interv = nr_interv + 1
+            
+        self.info("Number of scan points %d" % nr_interv)
+            
+        macro,pars = self.createMacro("ascan", "exp_dmy01", start_energy, end_energy, nr_interv, integ_time)
+
+        
+        macro.hooks = [ (self.move_energy, ["post-acq"]), ] 
+
         self.runMacro(macro)

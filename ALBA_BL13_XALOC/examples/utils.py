@@ -3,13 +3,14 @@ import os
 
 
 class which_user(Macro):
-    '''
-    Category: Test
-    '''
+    """
+    Category: Diagnostics
+
+    Returns the user currently running the MacroServer instance.
+    """
     param_def = []
  
     def run(self):
-
         if 'USER' in os.environ.keys():
             self.info("user %s" % os.environ['USER'])
         else:

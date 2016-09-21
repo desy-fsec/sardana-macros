@@ -7,6 +7,8 @@ PSEUDO='pentaaper'
 
 class pentaaper_update(Macro):
     """
+    Category: Configuration
+
     Macro intended to send tha calibration (dynamic attribute) to the
     penta aperture pseudo motor (pentaaper). The calibration is constructed
     by importing the list of values and tolerances of each pseudomotor from
