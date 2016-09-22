@@ -36,53 +36,117 @@ def device_groups(self):
             }
 
 
-@macro([["mode", Type.String, '',
-         "interface mode, i.e. simple, user, advanced, expert"],
-        ["selector", Type.String, '', "Selector server"],
-        ["door", Type.String, '', "Door"]])
-def nxselector(self, mode, selector, door):
-    """ Run NeXus Component Selector """
+@imacro([["options_list",
+         ParamRepeat(['option', Type.String, 'None', 'option'],
+                     ['value', Type.String, 'None', 'value']),
+         ['None', 'None'],
+         "List of options and values"]])
+def nxselector(self, options_list):
+    """
+    nxselector -m <interface_mode> -d <door_device> -s <selector_server> \
+-x <display> -u <user>
+
+    Run NeXus Component Selector. All parameters are optional.
+      -m <interface_mode>: interface mode,
+                           i.e. simple, user, advanced, expert
+      -d <door_device>:  door device name
+      -s <selector_server>: selector server device name
+      -x <display>: display environment variable, \
+ i.e. value of the linux $DISPLAY variable.
+                   In spock one can get it via the `!echo $DISPLAY` command.
+                   It is useful to start nxselector on remote computer/monitor.
+                   Other option is to run nxselector \
+from the linux command-line.
+      -u <user>: remote user name
+
+    Example:
+      nxselector -m expert -d p09/door/haso228 -s p09/nxsrecselector/haso228 \
+-x localhost:10.0 -u p09user
+    """
+    opt_dict = {}
+    for opt_par in options_list:
+        opt_dict[opt_par[0]] = opt_par[1]
     args = ["nxselector"]
-    if mode:
-        args.append("-m%s" % mode)
-    if selector:
-        args.append("-s%s" % selector)
-    if door:
-        args.append("-d%s" % door)
+    if '-m' in opt_dict.keys():
+        args.append("-m%s" % opt_dict['-m'])
+    if '-d' in opt_dict.keys():
+        args.append("-d%s" % opt_dict['-d'])
+    if '-s' in opt_dict.keys():
+        args.append("-s%s" % opt_dict['-s'])
     my_env = os.environ.copy()
     if 'GNOME_DESKTOP_SESSION_ID' not in my_env.keys():
         my_env['GNOME_DESKTOP_SESSION_ID'] = 'qtconfig'
-    if 'DISPLAY' not in my_env.keys():
-        my_env['DISPLAY'] = ':0.0'
-    if 'USER' not in my_env.keys():
-        if 'TANGO_USER' in my_env.keys():
-            my_env['USER'] = my_env['TANGO_USER']
-        else:
-            import getpass
-            my_env['USER'] = getpass.getuser()
+    if '-x' not in opt_dict.keys():
+        if 'DISPLAY' not in my_env.keys():
+            my_env['DISPLAY'] = ':0.0'
+    else:
+        my_env['DISPLAY'] = opt_dict['-x']
+        if 'XAUTHORITY' in my_env.keys():
+            my_env.pop('XAUTHORITY')
+    if '-u' not in opt_dict.keys():
+        if 'USER' not in my_env.keys():
+            if 'TANGO_USER' in my_env.keys():
+                my_env['USER'] = my_env['TANGO_USER']
+            else:
+                import getpass
+                my_env['USER'] = getpass.getuser()
+    else:
+        my_env['USER'] = opt_dict['-u']
     subprocess.Popen(args, env=my_env)
 
 
-@macro([["selector", Type.String, '', "Selector server"],
-        ["door", Type.String, '', "Door"]])
-def nxsmacrogui(self, selector, door):
-    """ Run NeXus MacroGUI """
+@imacro([["options_list",
+         ParamRepeat(['option', Type.String, 'None', 'option'],
+                     ['value', Type.String, 'None', 'value']),
+         ['None', 'None'],
+         "List of options and values"]])
+def nxsmacrogui(self, options_list):
+    """
+    nxsmacrogui -d <door_device> -s <selector_server> \
+-x <display> -u <user>
+
+    Run NeXus MacroGUI. All parameters are optional.
+      -d <door_device>:  door device name
+      -s <selector_server>: selector server device name
+      -x <display>: display environment variable, \
+i.e. value of the linux $DISPLAY variable.
+                   In spock one can get it via the `!echo $DISPLAY` command.
+                   It is useful to start nxselector on remote computer/monitor.
+                   Other option is to run nxselector \
+from the linux command-line.
+      -u <user>: remote user name
+
+    Example:
+      nxsmacrogui -d p09/door/haso228 -s p09/nxsrecselector/haso228 \
+-x localhost:10.0 -u p09user
+    """
+    opt_dict = {}
+    for opt_par in options_list:
+        opt_dict[opt_par[0]] = opt_par[1]
     args = ["nxsmacrogui"]
-    if selector:
-        args.append("-s%s" % selector)
-    if door:
-        args.append("-d%s" % door)
+    if '-d' in opt_dict.keys():
+        args.append("-d%s" % opt_dict['-d'])
+    if '-s' in opt_dict.keys():
+        args.append("-s%s" % opt_dict['-s'])
     my_env = os.environ.copy()
     if 'GNOME_DESKTOP_SESSION_ID' not in my_env.keys():
         my_env['GNOME_DESKTOP_SESSION_ID'] = 'qtconfig'
-    if 'DISPLAY' not in my_env.keys():
-        my_env['DISPLAY'] = ':0.0'
-    if 'USER' not in my_env.keys():
-        if 'TANGO_USER' in my_env.keys():
-            my_env['USER'] = my_env['TANGO_USER']
-        else:
-            import getpass
-            my_env['USER'] = getpass.getuser()
+    if '-x' not in opt_dict.keys():
+        if 'DISPLAY' not in my_env.keys():
+            my_env['DISPLAY'] = ':0.0'
+    else:
+        my_env['DISPLAY'] = opt_dict['-x']
+        if 'XAUTHORITY' in my_env.keys():
+            my_env.pop('XAUTHORITY')
+    if '-u' not in opt_dict.keys():
+        if 'USER' not in my_env.keys():
+            if 'TANGO_USER' in my_env.keys():
+                my_env['USER'] = my_env['TANGO_USER']
+            else:
+                import getpass
+                my_env['USER'] = getpass.getuser()
+    else:
+        my_env['USER'] = opt_dict['-u']
     subprocess.Popen(args, env=my_env)
 
 
@@ -1048,5 +1112,3 @@ def update_description(mcr):
             wait_for_device(mcr.selector)
         else:
             raise
-
-
