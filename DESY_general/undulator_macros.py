@@ -41,6 +41,11 @@ class set_harmonic(Macro):
         except:
             self.error("Unable to set harmonic in Tango Undulator device %s" % undulator_device.TangoDevice)
             return
+
+        # Read limits for updating them in sardana
+
+        lim = undulator_device.UnitLimitMin
+        lim = undulator_device.UnitLimitMax
         
         try:
             current_position = undulator_tango_device.read_attribute("Position").value
