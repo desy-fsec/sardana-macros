@@ -36,7 +36,7 @@ def device_groups(self):
             }
 
 
-@imacro([["options_list",
+@macro([["options_list",
          ParamRepeat(['option', Type.String, 'None', 'option'],
                      ['value', Type.String, 'None', 'value']),
          ['None', 'None'],
@@ -95,7 +95,7 @@ from the linux command-line.
     subprocess.Popen(args, env=my_env)
 
 
-@imacro([["options_list",
+@macro([["options_list",
          ParamRepeat(['option', Type.String, 'None', 'option'],
                      ['value', Type.String, 'None', 'value']),
          ['None', 'None'],
