@@ -129,3 +129,44 @@ class dscan_regions(Macro):
 
             self.runMacro(macro)
         self.mv( motor, posOld)  
+
+
+
+class fscan_regions(Macro):
+    """ Scan in regions """
+
+    param_def = [ 
+        ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
+        ["scan_regions", ParamRepeat(
+                ['start', Type.Float, None, 'Start position'],
+                ['stop', Type.Float, None, 'Stop position'],
+                ['nbstep', Type.Integer, None, 'Nb of steps'],
+                ['integ_time', Type.Float, None, 'Integration time']),
+         None, 'List of scan regions']
+        ]
+    
+    def run(self, motor, scan_regions): 
+        nregions = len(scan_regions)
+        x_points = []
+        time_arr = []
+        for i in range(0, nregions):
+            start = scan_regions[i][0]
+            stop = scan_regions[i][1]
+            nbsteps = scan_regions[i][2]
+            int_time = scan_regions[i][3]
+            step_length = (stop - start)/nbsteps
+            for j in range(0,nbsteps + 1):
+                x_points.append(start + j*step_length)
+                time_arr.append(int_time)
+
+        x_str = "x=["
+        time_str = "["
+        for i in range(0,len(x_points)):
+            x_str = x_str + str(x_points[i]) + ", "
+            time_str = time_str + str(time_arr[i]) + ", "
+        x_str = x_str + "]"
+        time_str = time_str + "]"
+        
+        macro,pars = self.createMacro('fscan', x_str, time_str, motor, "x")
+        
+        self.runMacro(macro)
