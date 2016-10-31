@@ -100,6 +100,146 @@ class constKscan(Macro, Hookable):
         return self._gScan.data
 
 
+class cdscan(Macro):
+    """
+    Macro to execute the continuous scan.
+    """
+    
+    param_def = [["motor", Type.Moveable, None, "Motor"],
+                 ["startPos", Type.Float, None, "Starting position"],
+                 ["endPos", Type.Float, None, "Ending pos value"],
+                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                 ["inttime", Type.Float, None, "Integration time per point"],
+
+                 ["speedLim", Type.Boolean, True, ("Active the verification "
+                                                   "of the speed and "
+                                                   "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")]]
+    
+    def run(self, motor, startPos, finalPos, nrOfTriggers, intTime, speedLim, wait_fe):
+        pos = motor.position
+        st_pos = pos + startPos
+        end_pos = pos + finalPos
+        try:
+            scan_macro, pars = self.createMacro("cascan", motor, 
+                                                st_pos, end_pos,
+                                                nrOfTriggers,
+                                                intTime,
+                                                speedLim,
+                                                wait_fe)
+        
+            self.runMacro(scan_macro)
+        except Exception as e:
+            self.error(e)
+        finally:
+            self.info('Moving %s to %s' % (motor, pos))
+            self.execMacro('mv %s %s' % (motor, pos))
+
+class cascan(Macro):
+    """
+    Macro to execute the continuous scan.
+    """
+
+    env = ('CascanMG',)
+    
+    masterTriggerName = "bl22/io/ibl2202-dev1-ctr0"
+
+    mem_overload = 1000000
+    hints = {}
+
+    param_def = [["motor", Type.Moveable, None, "Motor"],
+                 ["startPos", Type.Float, None, "Starting position"],
+                 ["endPos", Type.Float, None, "Ending pos value"],
+                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                 ["inttime", Type.Float, None, "Integration time per point"],
+
+                 ["speedLim", Type.Boolean, True, ("Active the verification "
+                                                   "of the speed and "
+                                                   "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")]]
+
+    def preConfigure(self):
+        self.debug("preConfigure entering...")
+        if self.run_startup:
+            self.execMacro('qExafsStartup')
+        if self.wait_fe:
+            try:
+                self.execMacro('waitFE')
+            except Exception as e:
+                self.error('There was an exception with the waitFE macro: '
+                           '%s' % e)
+                raise RuntimeError()
+
+    def postConfigure(self):
+        self.debug('postConfigure entering...')
+       
+
+    def preStart(self):
+        self.debug('preStart entering....')
+       
+    def postMove(self):
+        self.debug('postMove entering....')
+       
+    def postCleanup(self):
+        self.debug("postCleanup entering...")
+       
+    def prepare(self, *args, **kwargs):
+        # self.mg_bck = self.getEnv('ActiveMntGrp')
+        mg = self.getEnv('CascanMG')
+        self.setEnv('ActiveMntGrp', mg)
+        self.execMacro('feauto 1')
+
+    def run(self, motor, startPos, finalPos, nrOfTriggers, intTime, speedLim, wait_fe):
+        moveable = motor
+        scanTime =  intTime * nrOfTriggers
+        if speedLim:
+            if int_time < 0.5:
+                raise Exception(('You must use a higher integration time '
+                                 '(integration time = scanTime/nrOfTriggers).'
+                                 ' The minimum value is 0.5'))
+        else:
+            self.warning('The speed verification is desactive')
+
+        mem = nrOfTriggers * scanTime
+        if mem > self.mem_overload:
+            raise Exception(('You can not send this scan, because there is not '
+                             'enough memory. The combination of the nrOfTrigger'
+                             '*scanTime < 1000000'))
+
+        self.run_startup = True
+        self.run_cleanup = True
+        self.wait_fe = wait_fe
+
+        try:
+    
+            quickScanPosCapture, pars = self.createMacro("ascanct_ni",
+                                                         moveable,
+                                                         startPos,
+                                                         finalPos,
+                                                         nrOfTriggers,
+                                                         intTime)
+            quickScanPosCapture.hooks = [(self.preConfigure,
+                                          ["pre-configuration"]),
+                                         (self.postConfigure,
+                                          ["post-configuration"]),
+                                         (self.postCleanup,
+                                          ["post-cleanup"]),
+                                         (self.preStart,
+                                          ["pre-start"]),
+                                         (self.postMove,
+                                          ["post-move"])]
+            self.runMacro(quickScanPosCapture)
+
+        finally:
+            if self.run_cleanup:
+                mg = self.getEnv('DefaultMG')
+                self.setEnv('ActiveMntGrp', mg)
+                self.execMacro('qExafsCleanup')
+
+
+            
 class qExafs(Macro):
     """
     Macro to execute the quick Exafs experiment.
