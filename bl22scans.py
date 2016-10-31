@@ -196,7 +196,7 @@ class cascan(Macro):
         moveable = motor
         scanTime =  intTime * nrOfTriggers
         if speedLim:
-            if int_time < 0.5:
+            if intTime < 0.5:
                 raise Exception(('You must use a higher integration time '
                                  '(integration time = scanTime/nrOfTriggers).'
                                  ' The minimum value is 0.5'))
