@@ -184,6 +184,8 @@ class mxraster(Macro):
         self.lima_prefix = prefix 
         self.lima_runno = int(datetime.datetime.now().strftime('%Y%m%d%H%M'))
         self.lima_save_dir = save_dir
+        self.lima_save_dir = self.getEnv('MXCollectDir')
+        self.lima_prefix = self.getEnv('MXCollectPrefix')
 
         self.phiy_org = self.phiy.position
         self.phiz_org = self.phiz.position
@@ -210,7 +212,7 @@ class mxraster(Macro):
         self.execMacro("collect_prepare")
         self.execMacro("collect_saving", self.lima_save_dir, 
                        self.lima_prefix, 
-                       self.lima_runno)
+                       self.lima_runno, 'raster')
                
     def calc_points(self, beg, end, nbivals):
         vals = numpy.array([])
@@ -332,9 +334,24 @@ class mxraster(Macro):
         self.debug(" scanning y done " )
 
     def do_one_collect(self):
+        self.prepare_one()
         self.collect_one()
         self.process_one()
         self.send_one_result()
+
+    def prepare_one(self):
+        self.debug("      - preparing.." )
+        str_idx = '%s_%s' % (self.zidx, self.yidx)
+        self._add_custom_suffix(str_idx)
+        self.execMacro('pilatus_set_first_image','pilatus_custom',self.curpt+1)
+        self.execMacro('lima_prepare', 'pilatus', self.int_time, 
+                       self.PILATUS_LATENCY, 1, self.LIMA_TRIGGER)
+        
+    def _add_custom_suffix(self, word):
+        lima = taurus.Device('pilatus')
+        suffix = '_' + str(word) + '.cbf'
+        lima.write_attribute('saving_suffix', suffix)
+        self.debug('new suffix is %s' % suffix)
 
     def collect_one(self):
         self.debug("      - collecting.." )
@@ -349,9 +366,6 @@ class mxraster(Macro):
         self.execMacro(['ni660x_shutter_open_close','close'])
 
     def get_one_image(self):
-        self.execMacro('pilatus_set_first_image','pilatus_custom',self.curpt+1)
-        self.execMacro('lima_prepare', 'pilatus', self.int_time, 
-                       self.PILATUS_LATENCY, 1, self.LIMA_TRIGGER)
         self.execMacro("lima_acquire", "pilatus")
 
         if self.curpt == 0:
@@ -384,8 +398,6 @@ class mxraster(Macro):
         self.debug("        * result is: %s " % self.last_result )
 
     def send_one_result(self):
-#        mxraster_results = [ (self.yidx, self.zidx, self.last_result), ]
-
         mxraster_results = [{'sample_x':self.yidx, 'sample_y':self.zidx,
                              'value': self.last_result, 'image_file_name':
                                  self.last_image},]
@@ -402,9 +414,11 @@ class mxraster(Macro):
         id = str("%04d" % inumber)
         format = self.execMacro('lima_getconfig','pilatus','FileFormat'
                              ).getResult() 
-        suffix = '.'+ format.lower()
 
+        lima = taurus.Device('pilatus')
+        suffix = lima.read_attribute('saving_suffix').value
         return dir + prefix + id + suffix
+
 
     def on_abort(self): 
         self.warning('MXRASTER WARNING: User abort')
