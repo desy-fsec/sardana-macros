@@ -220,6 +220,10 @@ class escanct(Macro):
             'number of points'],
         ['integ_time',   Type.Float,   None,
             'integration time'],
+      # ['mode',         Type.String,  'auto',
+      #    'ID mode to use (only makes sense if move_id is true): auto (auto '
+      #    'detect mode: this is the default) parallel (force parallel mode) '
+      #    'or antiparallel (force antiparallel mode)'],
         ['move_id',      Type.Boolean, True,
             'move ID energy motor: if set to false only the mono will be moved'
             ' and lock_phase parameter will be ignored (optional True/False, '
@@ -312,6 +316,7 @@ class escanct(Macro):
                 self.antiparallel = False
             else:
                 self.antiparallel = True
+            self.antiparallel = False  # temporal force requested by user
             self.id_energy_name = self.id_energy_names[int(self.antiparallel)]
             self.id_phase_name = self.id_phase_names[int(self.antiparallel)]
 
@@ -348,25 +353,14 @@ class escanct(Macro):
 
     def preConfigure(self):
         self.debug('preConfigure entering...')
-        # since sardana channels when written are also read, SampleClockSource
-        # can not be read after writing - probably bug in the ds
-        ct_device_name = self.pos_channel['channelDevName'].value
-        ct_device = PyTango.DeviceProxy(ct_device_name)
-        ct_device['SampleClockSource'] = self.sample_clock
-        ct_device['SampleTimingType'] = 'SampClk'
-        ct_device['ZIndexEnabled'] = False
-        # @todo: for some reason PulsesPerRevolution only admits int
-        ct_device['PulsesPerRevolution'] = int(self.enc_resolution)
-        ct_device['Units'] = 'Ticks'
+        self.pos_channel['sampleClockSource'] = self.sample_clock
+        # @todo: for some reason pulsesPerRevolution only admits int
+        self.pos_channel['zIndexEnabled'] = False
+        self.pos_channel['pulsesPerRevolution'] = int(self.enc_resolution)
+        self.pos_channel['Units'] = 'Ticks'
 
     def preStart(self):
         self.debug('preStart entering...')
-
-        # initializations
-        gr_motor = PyTango.DeviceProxy(self.gr_name)
-        initial_position = gr_motor['EncEncin'].value
-        self.debug('initial_position: %f' % initial_position)
-        self.pos_channel['InitialPosition'] = initial_position
 
         # if we are told not to move the ID then quit now
         if not self.move_id:

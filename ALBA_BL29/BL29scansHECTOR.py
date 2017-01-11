@@ -274,7 +274,7 @@ class planemagscan(Macro):
             positions = numpy.linspace(region_start,
                                        region_stop, region_nr_intervals+1)
             for position in positions:
-                if numpy.sqrt(position**2 + self.bias ** 2) >= 1:
+                if numpy.sqrt(position**2 + self.bias ** 2) >= 2:
                     raise Exception('MACRO CAN NOT BE EXECUTED, %f position is'
                                     ' forbidden' % position)
             region_start = region_stop

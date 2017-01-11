@@ -11,7 +11,7 @@ from sardana.macroserver.macro import Macro, Type, ParamRepeat
 __all__ = ['femto', 'k428', 'speak']
 
 
-class femto(Macro):
+class femtonew(Macro):
     # this macro substitutes the femto macro defined in BLmares.py: the later
     # was designed to change the gain of only 1 femto (which was controlled by
     # using DIO signals of the EPS)
@@ -266,3 +266,60 @@ class speak(Macro):
         self.output(speech)
         speech_dev = PyTango.DeviceProxy(self.SPEAK_DEV)
         speech_dev.command_inout('Play_Sequence', speech)
+
+import time
+class femto(Macro):
+    """
+    Macro to get/set the femto gain value
+
+    For GETTING the gain value simply run the macro without parameters
+
+    For SETTING the gain value run the macro with the target gain value. These
+    values can range from 4 (which means 1e4) to 13 (which means 1e13): any
+    other value will simply be ignored by the hardware.
+    The macro will check that the set value had been correctly written in the
+    hardware for some time and will show an error message if target value is
+    not correctly set in the hardware after that time
+    On success, the macro will return the target gain value. On failure it will
+    return 0
+    """
+
+    RANGE = range(4, 13+1)
+    ATTRIBUTE_NAME = 'BL29/CT/EPS-PLC-01/EX_AMP_EH02_01_GAIN_A'
+    TIMEOUT = 15
+
+    param_def = [
+        ['gain', Type.Integer, 0, 'Gain to set (4..13: meaning 1e4..1e13)']
+    ]
+
+    def prepare(self, gain, *args, **kwargs):
+        if (gain != 0) and not (gain in self.RANGE):
+            self.error('Invalid gain: %d. Valid values are %s. Set value will '
+                       'be ignored by the hardware.' % (gain, str(self.RANGE)))
+
+    def run(self, gain, *args, **kwargs):
+        attr = PyTango.AttributeProxy(self.ATTRIBUTE_NAME)
+        if gain in self.RANGE:
+            self.output('Setting gain value...')
+            attr.write(gain)
+            self.output('Checking gain value...')
+            gain_now = attr.read().value
+            start = time.time()
+            timeout = False
+            while gain_now != gain and not timeout:
+                time.sleep(0.2)
+                gain_now = attr.read().value
+                if time.time() - start > self.TIMEOUT:
+                    timeout = True
+            if timeout:
+                self.error('Timeout while checking if value was correctly set '
+                           'to hardware')
+            if gain_now != gain:
+                self.error('Gain read from hardware %d is not the target '
+                           'value %d. Please check!' % (gain_now, gain))
+        elif gain == 0:
+            gain_now = attr.read().value
+            self.output('Femto gain %d' % gain_now)
+            return gain_now
+        else:
+            return 0
