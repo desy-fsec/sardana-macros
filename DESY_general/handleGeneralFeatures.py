@@ -60,7 +60,7 @@ class gf_disable(Macro):
         self.execMacro("gh_disable")
         self.execMacro("gs_disable")
         
-        self.output( "All general features disabled")
+        self.info( "All general features disabled")
 
 #
 # general hooks feature
@@ -84,7 +84,7 @@ class gh_enable(Macro):
                         'post-step': ['gh_post_step'],
                         'post-scan': ['gh_post_scan']}
         if hook_pos == "default":
-            self.output("Enabling all general hooks with default names")
+            self.info("Enabling all general hooks with default names")
                 
             gh_macros_dict = {}
             for elem in positions:
@@ -113,11 +113,28 @@ class gh_enable(Macro):
 class gh_disable(Macro):
     """disable general hooks """
 
-    def run(self):
+    param_def = [
+        ['hook_pos', Type.String, "all", 'Position of the general hook to be disabled'],
+    ]
+
+    def run(self, hook_pos):
         try:
-            self.unsetEnv("GeneralHooks")
+            gh_macros_dict = self.getEnv("GeneralHooks")
         except:
-            pass
+            return
+
+        if hook_pos == "all":
+            self.unsetEnv("GeneralHooks")
+            self.info("All hooks disabled")
+        else:
+            try:
+                del gh_macros_dict[hook_pos]
+                self.info("Hook at position %s disabled" % hook_pos)
+            except:
+                self.info("Nothing disable. Wrong hook position or not enabled")
+                return
+            
+            self.setEnv("GeneralHooks", gh_macros_dict)
         
 class gh_isEnabled(Macro):
     """return True, if the general hooks feature is enabled """    

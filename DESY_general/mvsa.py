@@ -67,6 +67,11 @@ class mvsa(Macro):
             self.output( "mvsa: scanType %s not in ['ascan', 'dscan', 'a2scan', 'd2scan', 'a3scan', 'd3scan', 'hscan', 'kscan', 'lscan', 'hklscan']" % scanType)
             return result
 
+        self.scanInfo = HasyUtils.createScanInfo()
+        if self.scanInfo is None:
+            self.output( "mvsa: last scan aborted?")
+            return result
+
         fileName = self.getFullPathName()
         if fileName is None: 
             self.output( "mvsa.run: terminated ")
@@ -107,8 +112,6 @@ class mvsa(Macro):
             self.output( "ssa: xpeak %g, cms %g midp %g" % (ssaDct['peak_x'], ssaDct['cms'], ssaDct['midpoint']))
             self.output( "ssa: l_back %g, r_back %g" % (ssaDct['l_back'], ssaDct['r_back']))
             return result
-
-        self.scanInfo = HasyUtils.createScanInfo( self.getAllEnv())
         #
         # scanInfo:
         #{
