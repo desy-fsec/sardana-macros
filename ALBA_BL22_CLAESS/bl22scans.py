@@ -322,12 +322,15 @@ class BL22ContScan(object):
                 self._post_move_hook()
     
     def run_qexafs(self, start_pos, end_pos, nr_trigger, scan_time, speed_check, 
-              wait_fe, config_pid, time_mode=True):
+              wait_fe, config_pid, time_mode=True, mythen=False):
 
         self.flg_pmac = True
         self.flg_time_trigger = time_mode
-        
-        mg = self.getEnv('ContScanMG')
+
+        if mythen:
+            mg = self.getEnv('ContqMythenMG')
+        else:
+            mg = self.getEnv('ContScanMG')
         self.setEnv('ActiveMntGrp', mg)
         self.execMacro('feauto 1')
        
@@ -345,12 +348,15 @@ class BL22ContScan(object):
 
 
     def run_cascan(self, motor, start_pos, end_pos, nr_trigger, int_time,
-               speed_check, wait_fe):
+               speed_check, wait_fe, mythen=False):
 
         self.flg_pmac = False
         self.flg_time_trigger = True
 
-        mg = self.getEnv('CascanMG')
+        if mythen:
+            mg = self.getEnv('ContMythenMG')
+        else:
+            mg = self.getEnv('CascanMG')
         self.setEnv('ActiveMntGrp', mg)
         self.execMacro('feauto 1')
         
@@ -368,6 +374,7 @@ class BL22ContScan(object):
                     speed_check, wait_fe)
         self.info('Moving %s to %s' %(motor, pos))
         self.execMacro( 'mv %s %s' % (motor, pos))
+
 
 
 
@@ -427,7 +434,9 @@ class cascan(Macro, BL22ContScan):
         self.run_cascan(motor, startPos, finalPos, nrOfTriggers, intTime, 
                         speedLim, wait_fe)
 
-            
+
+
+
 class qExafs(Macro, BL22ContScan):
     """
     Macro to execute the quick Exafs experiment.
@@ -495,6 +504,58 @@ class qExafsPos(Macro, BL22ContScan):
         
         self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim, 
                         wait_fe, config_PID, time_mode=False)
+
+
+class qMythen(Macro, BL22ContScan):
+    """
+    Macro to execute the quick Exafs experiment.
+    """
+
+    env = ('ContqMythenMG',)
+
+    hints = {}
+
+    param_def = [["startPos", Type.Float, None, "Starting position"],
+                 ["endPos", Type.Float, None, "Ending pos value"],
+                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                 ["scanTime", Type.Float, None, "Scan time"],
+
+                 ["speedLim", Type.Boolean, True, ("Active the verification "
+                                                   "of the speed and "
+                                                   "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")],
+
+                 ["configPID", Type.Boolean, True, ("Active the configuration"
+                                                 " of the bragg PID ")]]
+
+
+    def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, wait_fe,
+            config_PID):
+
+        self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim,
+                        wait_fe, config_PID, mythen=True)
+
+class tMythen(Macro, BL22ContScan):
+    """
+    Macro to execute the continuous scan.
+    """
+
+    env = ('ContMythenMG',)
+
+    hints = {}
+
+    param_def = [["nrOfFrames", Type.Integer, None, "Nr of frames"],
+                 ["inttime", Type.Float, None, "Integration time per point"],
+
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")]]
+
+
+    def run(self, nrOfTriggers, intTime, wait_fe):
+        motor = self.getMotor('dmot1')
+        self.run_cascan(motor, 0, 1000, nrOfTriggers, intTime, False, wait_fe,
+                        mythen=True)
 
 
 
