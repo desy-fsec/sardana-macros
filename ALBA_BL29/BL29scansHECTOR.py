@@ -8,7 +8,7 @@ import time
 import numpy
 import PyTango
 
-from sardana.macroserver.macro import Macro, Type, ParamRepeat, Hookable
+from sardana.macroserver.macro import Macro, Type, Hookable
 from sardana.macroserver.scan import SScan
 from sardana.macroserver.scan.gscan import ScanException
 from sardana.taurus.core.tango.sardana.pool import Ready
@@ -236,15 +236,16 @@ class planemagscan(Macro):
                                                 'movement'],
 
         ['start_pos',  Type.Float,    None,  'start position'],
-        ['step_region', ParamRepeat(
+        ['step_region', [
             ['next_pos',            Type.Float, None, 'next position'],
             ['region_nr_intervals', Type.Float, None, 'Region number of '
-                                                      'intervals']),
-         None, 'List of tuples: (next_pos, region_nr_intervals']
+                                                      'intervals']],
+            None,
+            'List of pairs: next_pos, region_nr_intervals']
     ]
 
     def prepare(self, move_id, integ_time, energy1, energy2, angle, bias,
-                start_pos, *regions, **opts):
+                start_pos, regions, **opts):
         self.name = self.__class__.__name__
         self.move_id = move_id
         self.integ_time = integ_time
@@ -371,16 +372,16 @@ class regmagscan(Macro):
                                              'point (set to <=0 if not desired'
                                              ')'],
         ['start_pos',  Type.Float,    None,  'start position'],
-        ['step_region',
-         ParamRepeat(
+        ['step_region', [
             ['next_pos',            Type.Float, None, 'next position'],
             ['region_nr_intervals', Type.Float, None, 'Region number of '
-                                                      'intervals']),
-         None, 'List of tuples: (next_pos, region_nr_intervals']
+                                                      'intervals']],
+            None,
+            'List of pair: next_pos, region_nr_intervals']
     ]
 
     def prepare(self, move_id, magnet, integ_time, energy1, energy2,
-                start_pos, *regions, **opts):
+                start_pos, regions, **opts):
         self.name = self.__class__.__name__
         self.move_id = move_id
         self.magnet = magnet

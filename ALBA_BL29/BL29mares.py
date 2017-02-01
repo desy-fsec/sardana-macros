@@ -6,7 +6,7 @@ Specific Alba BL29 MARES (RSXS end station) utility macros
 
 import PyTango
 
-from sardana.macroserver.macro import Macro, Type, ParamRepeat
+from sardana.macroserver.macro import Macro, Type
 
 __all__ = ['mares_sample_temp_control']
 
@@ -20,9 +20,11 @@ class mares_sample_temp_control(Macro):
 
     For GETTING the parameters, provide the macro with pairs consisting in the
     string get + param_name. You can also simply provide 'get all' and all the
-    parameters will be retrieved. For example:
+    parameters will be retrieved. Also note that running the macro without
+    parameters is equivalent to running it with \'get all\'. For example:
         mares_sample_temp_control get setpoint
         mares_sample_temp_control get all
+        mares_sample_temp_control (same as previous one)
 
     For SETTING the parameters, these are passed as pairs consisting on
     param_name + param_value. For example, to set the temperature setpoint, you
@@ -69,24 +71,11 @@ class mares_sample_temp_control(Macro):
     """
 
     param_def = [
-        ['name_value',
-         ParamRepeat(['param_name',  Type.String, None, 'parameter name'],
-                     ['param_value', Type.String, None, 'parameter value']),
-         None, 'List of tuples: (param_name, param_value)']
+        ['name_value', [
+            ['param_name',  Type.String, 'get', 'parameter name'],
+            ['param_value', Type.String, 'all', 'parameter value']],
+            None, 'List of pairs: param_name, param_value']
     ]
-
-#    @todo: replace DEPRECATED old style when bug solved:
-#    https://sourceforge.net/p/sardana/tickets/65/
-#    @todo: see new style param repeat
-#    http://www.sardana-controls.org/en/stable/devel/howto_macros/\
-#    macros_general.html#repeat-parameters
-#    param_def = [
-#        [ 'param_value', [
-#             [ 'param_name',  Type.String, None, 'parameter name' ],
-#             [ 'param_value', Type.String, None, 'parameter value'],
-#               { 'min' : 1, 'max' : 4 } ],
-#         None, 'List of param_name/param_value pairs']
-#    ]
 
     ctrl_dev = 'MARES/CT/TC'
     ctrl_attr_output = 'Loop1Output'
@@ -135,10 +124,10 @@ class mares_sample_temp_control(Macro):
         hw_params = []
         # check parameters if provided
         self.data = {
-            'setpoint':     None,
             'control_type': None,
             'range':        None,
             'rate':         None,
+            'setpoint':     None,
             'state':        None,
         }
         control_types = [type.lower() for type in self.control_types]
@@ -217,7 +206,7 @@ class mares_sample_temp_control(Macro):
 
         return hw_params
 
-    def prepare(self, *pairs, **opts):
+    def prepare(self, pairs):
         """Check hardware"""
         # check temperature controller state
         msg = ''
@@ -231,7 +220,7 @@ class mares_sample_temp_control(Macro):
             self.error(msg)
             raise Exception(msg)
 
-    def run(self, *pairs, **opts):
+    def run(self, pairs):
         """Set requested parameters and check that they were correctly set in
         the hardware"""
         # getting parameters requested
@@ -264,12 +253,15 @@ class mares_sample_temp_control(Macro):
                 msg = 'Error while getting controller parameters'
                 self.output(msg)
                 raise Exception(msg)
+            rv = []
             if value == 'all':
                 for param in sorted(self.data.keys()):
                     self.output('%s: %s' % (param, str(self.data[param])))
+                    rv.append(self.data[param])
             else:
                 self.output('%s: %s' % (value, str(self.data[value])))
-            return
+                rv.append(self.data[value])
+            return rv
 
         # check and get requested parameters to really set in the hardware
         hw_params = self.extract_and_check_params(pairs)

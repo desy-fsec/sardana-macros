@@ -7,7 +7,7 @@ Specific scan macros for beamline Alba BL29
 import numpy
 import PyTango
 
-from sardana.macroserver.macro import Macro, Type, ParamRepeat
+from sardana.macroserver.macro import Macro, Type
 from sardana.macroserver.scan import SScan
 
 
@@ -105,8 +105,10 @@ class rscan(Macro):
      intervals for each region.
     It uses the gscan framework.
 
-    NOTE: Due to a ParamRepeat limitation, integration time has to be
-    specified before the regions.
+    NOTE: Due to an historical ParamRepeat limitation (this limitation no
+    longer exist), the integration time has to be specified before the regions:
+    thought this could be now avoid we keep old parameters order for backward
+    compatibility.
     """
 
     hints = {'scan': 'rscan'}
@@ -116,21 +118,15 @@ class rscan(Macro):
         ['motor',      Type.Motor,   None, 'Motor to move'],
         ['integ_time', Type.Float,   None, 'Integration time'],
         ['start_pos',  Type.Float,   None, 'Start position'],
-        ['step_region',
-         ParamRepeat([
-                        'next_pos',
-                        Type.Float,
-                        None,
-                        'next position'],
-                     [
-                        'region_nr_intervals',
-                        Type.Float,
-                        None,
-                        'Region number of intervals']),
-         None, 'List of tuples: (next_pos, region_nr_intervals']
+        ['step_region', [
+            ['next_pos', Type.Float, None, 'next position'],
+            ['region_nr_intervals', Type.Float, None,
+                'Region number of intervals']],
+            None,
+            'List of pairs: next_pos, region_nr_intervals']
     ]
 
-    def prepare(self, motor, integ_time, start_pos, *regions, **opts):
+    def prepare(self, motor, integ_time, start_pos, regions, **opts):
         self.name = self.__class__.__name__
         self.integ_time = integ_time
         self.start_pos = start_pos
@@ -680,3 +676,56 @@ class timescanct(escanct):
         motor.write_attribute('velocity', 1e4)
         motor.write_attribute('acceleration', 1e-3)
         motor.write_attribute('position', self.start_pos)
+
+
+class xbpm_timescanct(Macro):
+    """
+    timescanct meant to be measure front end xbpm values
+
+    Note that the macro doesn't require any parameter, but it does requires
+    two environment parameters to be correctly set:
+        - dummy_scan: dummy scan to be run to trigger measurements
+            * it must be typed between brackets (e.g.
+                'ascanct dummy_mot01 0 100 0.1 0.2')
+        - meas: the measurement group to be used for reading xbpm values
+    """
+    env_params = {
+        'dummy_scan': None,  # dummy scan to run
+        'meas': None,        # measurement group to use
+    }
+
+    def prepare(self, *args, **opts):
+        # get macro parameters from environment
+        self.name = self.__class__.__name__
+        try:
+            # get parameters
+            for param_name in self.env_params.keys():
+                if not hasattr(self, param_name):
+                    value = self.getEnv(param_name, macro_name=self.name)
+                    type_ = self.env_params[param_name]
+                    if type_ is not None:
+                        value = type_(value)
+                    setattr(self, param_name, value)
+                    print param_name, value
+        except Exception, e:
+            self.error('Error while getting environment: %s' % str(e))
+            raise
+
+    def run(self, *args, **opts):
+        # run macro
+        try:
+            key = 'ActiveMntGrp'
+            # backup and set measurement group if necessary
+            if self.meas != '':
+                meas_back = self.getEnv(key)
+                self.info('Setting env %s to %s' % (key, self.meas))
+                self.setEnv(key, self.meas)
+            scan_params = self.dummy_scan.split()
+            scan, pars = self.createMacro(scan_params)
+            # run scan
+            self.runMacro(scan)
+        # cleanup actions
+        finally:
+            if self.meas != '':
+                self.info('Restoring env %s to %s' % (key, meas_back))
+                self.setEnv(key, meas_back)

@@ -9,12 +9,7 @@ import PyTango
 import time
 import numpy
 
-# @todo: REMOVE ParamRepeat when fixed bug:
-# https://sourceforge.net/p/sardana/tickets/65/
-# @todo: New ParamRepeat syntax:
-# http://www.sardana-controls.org/en/stable/devel/howto_macros/macros_general.\
-#        html#repeat-parameters
-from sardana.macroserver.macro import Macro, Type, ParamRepeat
+from sardana.macroserver.macro import Macro, Type
 
 __all__ = ['xmcd_4kpot_set_refill', 'xmcd_sample_temp_control',
            'xmcd_sample_align']
@@ -206,31 +201,13 @@ class xmcd_sample_temp_control(Macro):
     """
 
     param_def = [
-        ['name_value',
-         ParamRepeat(['param_name',  Type.String, None, 'parameter name'],
-                     ['param_value', Type.String, None, 'parameter value']),
-         None, 'List of tuples: (param_name, param_value)']
+        ['name_value', [
+            ['param_name',  Type.String, None, 'parameter name'],
+            ['param_value', Type.String, None, 'parameter value']
+            ],
+            None,
+            'Pairs of param_name, param_value']
     ]
-
-# @todo: REMOVE ParamRepeat when fixed bug:
-# https://sourceforge.net/p/sardana/tickets/65/
-# @todo: New ParamRepeat syntax:
-# http://www.sardana-controls.org/en/stable/devel/howto_macros/macros_general.\
-#        html#repeat-parameters
-#    param_def = [
-#        ['param_value',
-#         [['param_name',
-#           Type.String,
-#           None,
-#           'parameter name' ],
-#        ['param_value',
-#         Type.String,
-#         None,
-#         'parameter value'],
-#         { 'min' : 1, 'max' : 4 } ],
-#         None,
-#         'List of param_name/param_value pairs']
-#    ]
 
     ctrl_dev = 'XMCD/CT/TC'
     ctrl_attr_output = 'Loop1Output'
@@ -376,7 +353,7 @@ class xmcd_sample_temp_control(Macro):
             self.error(msg)
             raise Exception(msg)
 
-    def run(self, *pairs, **opts):
+    def run(self, pairs):
         """Set requested parameters and check that they were correctly set in
         the hardware"""
         # getting requested parameters
@@ -484,10 +461,11 @@ class xmcd_sample_align(Macro):
 
     The macro can be run simply typing this command (note the absence of
     parameters):
-        xmcd_align
+        xmcd_sample_align
 
-    The macro will ask the user for confirmation, but if after a given time it
-    gets no answer then it will assume that the confirmation is received.
+    The macro will ask the user for confirmation before moving the target motor
+    to the peak position, but if after a given time it gets no answer then it
+    will assume that the confirmation is received.
 
     The macro needs some environment parameters that must be set prior to its
     first execution. These parameters are then permanently stored and can be
@@ -527,18 +505,15 @@ class xmcd_sample_align(Macro):
 
     param_def = [
         ['get_set',
-         Type.String,
-         '',
-         'get for getting parameters, set for setting parameters or empty to '
-         'run'],
-        ['params', ParamRepeat([
-            'param_name',
             Type.String,
+            '',
+            'get for getting parameters, set for setting parameters or empty '
+            'to run'],
+        ['params', [
+            ['param_name', Type.String, [], 'parameter name']],
             None,
-            'parameter name']),
-         [''],
-         'parameters: it may be a list of param names to retrieve or a list of'
-         ' param_nam param_value to stored']
+            'parameters: it may be a list of param names to retrieve or a list'
+            ' of param_nam param_value to stored']
     ]
 
     interactive = True
@@ -547,27 +522,26 @@ class xmcd_sample_align(Macro):
         """"""
         pass
 
-    def run(self, *args, **kwargs):
+    def run(self, get_set, args):
         """"""
         # prepare environment
         env_prefix = 'Macros.%s.' % self.__class__.__name__
         environment = self.getGlobalEnv()
 
         # check first argument
-        get_set = args[0]
-        if not args[0] in ('get', 'set', ''):
-            msg = 'Invalid argument %s (should be get, set or none)' % args[0]
+        if get_set not in ('get', 'set', ''):
+            msg = 'Invalid argument %s (should be get, set or none)' % get_set
             self.error(msg)
             return
 
         # requested to set environment parameters
         if get_set == 'set':
-            if len(args[1:]) % 2 != 0:
+            if len(args) % 2 != 0:
                 msg = 'When setting environment parameters you must provide ' \
                       'pairs consisting on name and value'
                 self.error(msg)
                 return
-            for arg, value in zip(args[1::2], args[2::2]):
+            for arg, value in zip(args[::2], args[1::2]):
                 try:
                     self.setEnv(env_prefix+arg, value)
                     self.output('%s correctly set to %s' % (arg, value))
@@ -583,8 +557,6 @@ class xmcd_sample_align(Macro):
         if get_set == 'get':
             if 'all' in args:
                 args = sorted(self.arguments.keys())
-            else:
-                args = args[1:]
             for arg in args:
                 try:
                     value = environment[env_prefix+arg]

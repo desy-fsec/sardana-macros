@@ -6,7 +6,7 @@ Utility macros specifically developed for Alba BL29 Boreas beamline
 
 import PyTango
 
-from sardana.macroserver.macro import Macro, Type, ParamRepeat
+from sardana.macroserver.macro import Macro, Type
 
 __all__ = ['femto', 'k428', 'speak']
 
@@ -173,12 +173,10 @@ class k428(Macro):
             str(['all'] + sorted(keithleys.keys()))],
         ['operation', Type.String, None,
             'Operation to perform [get/set/run/info]'],
-        ['param_list', ParamRepeat([
-            'param',
-            Type.String,
+        ['param_list',
+            [['param', Type.String, None, 'pair of parameters or command']],
             None,
-            'pair(s) of (parameter + value) or '
-            'command(s)']), '', '']
+            'pair(s) of (parameter + value) or command(s)']
     ]
 
     def prepare_keithleys(self, keithley_id):
@@ -202,11 +200,11 @@ class k428(Macro):
                                 'check its tango device (%s) state' %
                                 (id, dev_name))
 
-    def prepare(self, keithley_id, operation, *param_list):
+    def prepare(self, keithley_id, operation, param_list):
         """Check that the Keithley(s) is(are) reachable"""
         self.prepare_keithleys(keithley_id)
 
-    def run(self, keithley_id, operation, *param_list):
+    def run(self, keithley_id, operation, param_list):
         result = {}
         for key in sorted(self.devs.keys()):
             dev = self.devs[key]
@@ -257,11 +255,13 @@ class speak(Macro):
     SPEAK_DEV = 'BL29/CT/VOICE'
 
     param_def = [
-        ['words', ParamRepeat(['word',  Type.String, None, 'one word']), [''],
+        ['words',
+            [['word',  Type.String, None, 'one word']],
+            '',
             'words forming the phrase to be played']
     ]
 
-    def run(self, *words):
+    def run(self, words):
         speech = ' '.join(words)
         self.output(speech)
         speech_dev = PyTango.DeviceProxy(self.SPEAK_DEV)
