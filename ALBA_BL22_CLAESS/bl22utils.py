@@ -153,7 +153,7 @@ class configpmac(Macro):
         pmac.SetIVariable([135, 500])
 
         bragg = PyTango.DeviceProxy(self.bragg_name)
-        bragg.velocity = 2.5 #4
+        bragg.velocity = 4
         bragg.acceleration = 0.1
         bragg.deceleration = 0.1
 
@@ -264,4 +264,105 @@ class getScanID(Macro):
     def run(self):
         scanid = self.getEnv('ScanID')
         return scanid
+
+
+
+class HVread(Macro):
+    """
+    Macro to set the high voltage of the IO chambers power supplies.
+    """
+
+    param_def = [['chambers', [['chamber', Type.String, None, 'i0,i1 or i2'],
+                               {'min': 1, 'max': 3}],
+                  None, 'List of IO chambers']]
+
+
+    I0_DsName = 'bl22/ct/nhq_x0xx_01'
+    I1I2_DSName = 'bl22/ct/nhq_x0xx_02'
+    AttrNames = {'i0': 'voltageA', 'i1': 'voltageA', 'i2': 'voltageB'}
+
+    def run(self, chambers):
+        factor = 10
+        msg = ''
+        for io in chambers:
+            io = io.lower()
+            if io not in self.AttrNames.keys():
+                self.error('Wrong name of the chamber %s. It should be %s' %
+                           (io, self.AttrNames.keys()))
+                return
+            if io == 'i0':
+                ds_name = self.I0_DsName
+            else:
+                ds_name = self.I1I2_DSName
+            attr_name = ds_name + '/' + self.AttrNames[io]
+            attr = PyTango.AttributeProxy(attr_name)
+            current_value = attr.read().value / factor
+            msg += '%s = %fV \n' % (io, current_value)
+
+        self.info(msg)
+
+    
+class HVset(Macro):
+    """
+    Macro to set the high voltage of the IO chambers power supplies.
+    """
+
+    param_def = [['chambers', [['chamber', Type.String, None, 'i0,i1 or i2'],
+                               ['voltage', Type.Float, None, 'Voltage'],
+                               {'min': 1, 'max': 3}],
+                  None, 'List of IO chambers']]
+
+
+    I0_DsName = 'bl22/ct/nhq_x0xx_01'
+    I1I2_DSName = 'bl22/ct/nhq_x0xx_02'
+    AttrNames = {'i0': 'voltageA', 'i1': 'voltageA', 'i2': 'voltageB'}
+    
+    TOLERANCE = 10  # value in volts
+    RAMPSPEED = 100  # V/s
+
+    def run(self, chambers):
+        attrs = []
+        wait_time = 0
+        factor = 10
+        for io, value in chambers:
+            io = io.lower()
+            if io not in self.AttrNames.keys():
+                self.error('Wrong name of the chamber %s. It should be %s' %
+                           (io, self.AttrNames.keys()))
+                return
+            if io == 'i0':
+                ds_name = self.I0_DsName
+            else:
+                ds_name = self.I1I2_DSName
+            attr_name = ds_name + '/' + self.AttrNames[io]
+            attr = PyTango.AttributeProxy(attr_name)
+            attr.write(value)
+            attrs.append([io, value, attr])
+            t = value/self.RAMPSPEED
+            if t > wait_time:
+                wait_time = t
+        wait_time += 5
+        self.info('Waiting to set value: %f ....' % wait_time)
+        time.sleep(wait_time)
+        msg = ''
+        while len(attrs):
+            rm = []
+            for chamber in attrs:
+                io, value, attr = chamber
+                current_value = attr.read().value / factor
+                error = abs(abs(current_value) - abs(value))
+                if error <= self.TOLERANCE:
+                    msg += '%s = %fV [Error: %f]\n' % (io, current_value, error)
+                    rm.append(chamber)
+            for i in rm:
+                attrs.remove(i)
+            self.checkPoint()
+            time.sleep(0.1)
+
+        self.info(msg)
+
+
+
+
+
 
