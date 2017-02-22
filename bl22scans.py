@@ -3,11 +3,18 @@ from sardana.macroserver.scan import SScan
 from sardana.macroserver.macros.scan import ascan, getCallable, UNCONSTRAINED
 import taurus
 import PyTango
-from numpy import linspace, sqrt
-import time
+from numpy import sqrt
+
+
+PMAC_REGISTERS = {'MotorDir': 4080, 'StartBuffer': 4081, 'RunProgram': 4082,
+                  'NrTriggers': 4083, 'Index': 4084, 'StartPos': 4085,
+                  'PulseWidth': 4086, 'AutoInc': 4087}
 
 EV2REVA = 0.2624682843
-
+c = 299792458
+h = 4.13566727*10**(-15)
+aSi = 5.43102088*10**(-10) # Simo macro su spec
+overflow_pmac = 8388608
 
 class BL22ContScan(object):
     """
@@ -18,9 +25,9 @@ class BL22ContScan(object):
     masterTriggerName = "bl22/io/ibl2202-dev1-ctr0"    
     mem_overload = 1000000
     min_itime = 0.5
-    pmacName = "pmac"
     motName = "energy"
-    bragg_Name = "oh_dcm_bragg"
+    braggName = "oh_dcm_bragg"
+    pmac = taurus.Device('pmac')
     
 
 
@@ -39,53 +46,6 @@ class BL22ContScan(object):
             raise Exception(('You can not send this scan, because there is not '
                              'enough memory. The combination of the nrOfTrigger'
                              '*scanTime < 1000000'))
-    
-    def getNrOfPoints(self, e0, e1, deltaE):
-        nr_points, modulo = divmod(abs(e0 - e1), deltaE)
-        if modulo != 0:
-            nr_points += 1
-                
-        return int(nr_points)
-
-    def energy_bragg_encoder(self, energy_values):
-        """
-        :param energy_values: Array with the energy values
-        :return: Array with the bragg encoder values
-        """
-
-        energy_motor = taurus.Device(self.motName)  # energy
-        bragg_motor = taurus.Device(self.bragg_Name)  # oh_dcm_bragg
-        pmac = taurus.Device(self.pmacName)
-
-        # Translations from  degrees to raw counts. Getting an offset between
-        # position and encoder register (offset = 2683367)
-        stepPerUnit = bragg_motor.read_attribute('step_per_unit').value
-        braggMotorOffset = bragg_motor.read_attribute('offset').value
-        braggMotorOffsetEncCounts = braggMotorOffset * stepPerUnit
-        braggPosCounts = float(pmac.SendCtrlChar("P").split()[0])
-        encRegCounts = float(pmac.GetMVariable(101))
-        offset = braggPosCounts - encRegCounts + braggMotorOffsetEncCounts
-
-        # Transform from energy to bragg angle, the first motor is bragg the
-        # second on is the perpendicular
-        maxCounts = 2**23  # encoder register 24 bits overflow
-
-        calc_bragg = lambda energy: energy_motor.CalcAllPhysical([energy])[0]
-        calc_enc = lambda bragg: (bragg * stepPerUnit) - offset
-
-        enc_values = []
-        for energy in energy_values:
-            # transform energy to bragg angle
-            bragg = calc_bragg(energy)
-            enc = calc_enc(bragg)
-            if enc > maxCounts:
-                enc_value = enc - 2 * maxCounts
-            elif enc < - maxCounts:
-                enc_value = enc + 2 * maxCounts
-            else:
-                enc_value = enc
-                enc_values.append(int(enc_value))
-        return enc_values
 
 
     def _pre_configure_hook(self):
@@ -93,54 +53,55 @@ class BL22ContScan(object):
        
         if self.flg_pmac:
             self.debug('Configuring Pmac...')
-            pmac = taurus.Device(self.pmacName)
             if self.flg_time_trigger:
-                self.debug('Pmac capture trigger mode')
+                self.debug('Pmac time mode')
                 # select the capture program
-                pmac.SetPVariable([4077, 1])
-                # configuring position capture control
-                pmac.SetIVariable([7012, 2])
-                # configuring position capture flag select
-                pmac.SetIVariable([7013, 3])
-                # after enabling position capture, M117 is set to 1, forcing readout
-                # of M103, to reset it, so PLC0 won't copy outdated data
-                pmac.GetMVariable(103)
+                self.pmac.SetPVariable([PMAC_REGISTERS['RunProgram'], 1])
             else:
-                self.debug('Pmac generate trigger mode')
-                # select the compare program
-                pmac.SetPVariable([4077, 2])
-                # prepare encoder table
-                energy_values = linspace(self.startPos, self.finalPos,
-                                         self.nrOfTriggers)
-                enc_values = self.energy_bragg_encoder(energy_values)
-                first_point_register_a = enc_values[0]
+                self.debug('Pmac position mode')
+                # select the capture program
+                self.pmac.SetPVariable([PMAC_REGISTERS['RunProgram'], 3])
+                energy_motor = self.getMoveable(self.motName)
+                bragg_motor = self.getMoveable(self.braggName)
+                bragg_spu = bragg_motor.read_attribute('step_per_unit').value
+                bragg_offset = bragg_motor.read_attribute('offset').value
+                bragg_pos = bragg_motor.read_attribute('position').value
+                bragg_enc = float(self.pmac.GetMVariable(101))
+                th1 = energy_motor.CalcAllPhysical([self.startPos])[0]
+                th2 = energy_motor.CalcAllPhysical([self.finalPos])[0]
+                delta_th = abs((abs(th1) - abs(th2)) / self.nrOfTriggers)
+
+                offset = ((bragg_pos+bragg_offset)*bragg_spu) - bragg_enc
+
+                start_enc = th1*bragg_spu - offset
+
+                if start_enc > overflow_pmac:
+                    start_enc = start_enc - 2 * overflow_pmac
+                elif start_enc < -overflow_pmac:
+                    start_enc = start_enc + 2 * overflow_pmac
+
                 if (self.startPos < self.finalPos):
                     direction = 0
-                    first_point_register_b = first_point_register_a + 5
                 else:
                     direction = 1
-                    first_point_register_b = first_point_register_a - 5
-                pmac.SetPVariable([4075, direction])
-                pmac.SetPVariable([4078, self.nrOfTriggers])
-                start_buffer = int(pmac.GetPVariable(4076))
-                end_buffer = start_buffer + self.nrOfTriggers
-                for p_reg, value in zip(range(start_buffer, end_buffer), enc_values):
-                    pmac.SetPVariable([p_reg, value])
+                self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], direction])
+                self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], start_enc])
+                self.pmac.SetPVariable([PMAC_REGISTERS['PulseWidth'], 5])
+                self.pmac.SetPVarialbe([PMAC_REGISTERS['AutoInc'], delta_th])
 
-                # Configure the PLC0:
-                # first point on the compare register A&B
-                # set auto-increment to 0 to avoid the eneble of the compare circuit
-                # set output to start on Low Level
-                # update the signal output
 
-                pmac.SetMVariable([108, first_point_register_a])
-                pmac.SetMVariable([109, first_point_register_b])
-                pmac.SetMVariable([110, 0])
-                pmac.SetMVariable([112, 0])
-                pmac.SetMVariable([111, 1])
-   
+            self.pmac.SetPVariable([PMAC_REGISTERS['NrTriggers'],
+                                    self.nrOfTriggers])
+
+            # configuring position capture control
+            self.pmac.SetIVariable([7012, 2])
+            # configuring position capture flag select
+            self.pmac.SetIVariable([7013, 3])
+            # after enabling position capture, M117 is set to 1, forcing readout
+            # of M103, to reset it, so PLC0 won't copy outdated data
+            self.pmac.GetMVariable(103)
             # enabling plc0 execution
-            pmac.SetIVariable([5, 3])
+            self.pmac.SetIVariable([5, 3])
         
         if self.run_startup:
             self.startup()
@@ -284,8 +245,7 @@ class BL22ContScan(object):
             self.config_PID = config_pid
             self.flg_post_move = False
             self.wait_fe = wait_fe
-        
-        
+            
             if back_forth:
                 nr_repeat *= 2
 
@@ -336,10 +296,10 @@ class BL22ContScan(object):
        
         motor = self.getMoveable(self.motName)
         
-        int_time = scan_time / nr_trigger
+        self.int_time = scan_time / nr_trigger
         
         
-        self.run_scan(motor, start_pos, end_pos, nr_trigger, int_time,
+        self.run_scan(motor, start_pos, end_pos, nr_trigger, self.int_time,
                       speed_check, wait_fe, config_pid)
 
 
@@ -491,17 +451,20 @@ class qExafsPos(Macro, BL22ContScan):
                                                  "opening of Front End")],
                  
                  ["configPID", Type.Boolean, True, ("Active the configuration"
-                                                 " of the bragg PID ")]]
+                                                 " of the bragg PID ")],
+                 ["GenerateTable", Type.Boolean, True, ("Generate table if not"
+                                                 " you should run qExafs before ")],]
 
    
    
     def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, 
-            wait_fe,config_PID):
+            wait_fe,config_PID, load_table):
         
+        self.load_table = load_table
         self.startPos = startPos
         self.finalPos = finalPos
         self.nrOfTriggers = nrOfTriggers
-        
+        self.scanTime = scanTime
         self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim, 
                         wait_fe, config_PID, time_mode=False)
 
