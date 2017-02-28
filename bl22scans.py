@@ -69,8 +69,9 @@ class BL22ContScan(object):
                 bragg_enc = float(self.pmac.GetMVariable(101))
                 th1 = energy_motor.CalcAllPhysical([self.startPos])[0]
                 th2 = energy_motor.CalcAllPhysical([self.finalPos])[0]
-                delta_th = abs((abs(th1) - abs(th2)) / self.nrOfTriggers)
-
+                delta_th = abs((abs(th1) - abs(th2)) / self.nrOfTriggers) * bragg_spu
+                self.info('#RH TH1 %f TH2 %f' %(th1, th2))
+                self.info('#RH AutoInc %f' % delta_th)
                 offset = ((bragg_pos+bragg_offset)*bragg_spu) - bragg_enc
 
                 start_enc = th1*bragg_spu - offset
@@ -81,13 +82,13 @@ class BL22ContScan(object):
                     start_enc = start_enc + 2 * overflow_pmac
 
                 if (self.startPos < self.finalPos):
-                    direction = 0
+                    direction = long(0)
                 else:
-                    direction = 1
+                    direction = long(1)
                 self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], direction])
-                self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], start_enc])
+                self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], long(start_enc)])
                 self.pmac.SetPVariable([PMAC_REGISTERS['PulseWidth'], 5])
-                self.pmac.SetPVarialbe([PMAC_REGISTERS['AutoInc'], delta_th])
+                self.pmac.SetPVariable([PMAC_REGISTERS['AutoInc'], long(delta_th/2)])
 
 
             self.pmac.SetPVariable([PMAC_REGISTERS['NrTriggers'],
@@ -119,13 +120,13 @@ class BL22ContScan(object):
         if self.flg_pmac: 
             self.debug('Setting Pmac starting delay...')
             dev = PyTango.DeviceProxy('bl22/io/ibl2202-dev1-ctr0')
-            if self.flg_time_trigger:
-                delay = dev.read_attribute('InitialDelayTime').value
-                total_delay = delay + self.pmac_dt
-                #dev.write_attribute('InitialDelayTime', total_delay)
-            else:
-                total_delay = 0
-                dev.write_attribute('InitialDelayTime', total_delay)
+            # if self.flg_time_trigger:
+            #     delay = dev.read_attribute('InitialDelayTime').value
+            #     total_delay = delay + self.pmac_dt
+            #     #dev.write_attribute('InitialDelayTime', total_delay)
+            # else:
+            total_delay = 0
+            dev.write_attribute('InitialDelayTime', total_delay)
     
     def _pre_strat_hook(self):
         self.debug('preStart entering....')
@@ -133,24 +134,24 @@ class BL22ContScan(object):
             if not self.config_PID:
                 self.info('Did not config bragg PID')
                 return
-            bragg = taurus.Device(self.bragg_Name)
+            bragg = taurus.Device(self.braggName)
             self.info(bragg.velocity)
             # TODO Load from file the configuration
             
             self.info('Configuring bragg PID....')
-            pmac = taurus.Device(self.pmacName)
+            
             #Kp I130
-            pmac.SetIVariable([130, 30000])
+            self.pmac.SetIVariable([130, 30000])
             #Kd I131
-            pmac.SetIVariable([131, 375])
+            self.pmac.SetIVariable([131, 375])
             #Kvff I132
-            pmac.SetIVariable([132, 30000])
+            self.pmac.SetIVariable([132, 30000])
             #K1 I133
-            pmac.SetIVariable([133, 5000])
+            self.pmac.SetIVariable([133, 5000])
             #IM I134
-            pmac.SetIVariable([134, 0])
+            self.pmac.SetIVariable([134, 0])
             #Kaff I135
-            pmac.SetIVariable([135, 3500])
+            self.pmac.SetIVariable([135, 3500])
 
     def _post_move_hook(self):
         self.debug('postMove entering....')
@@ -163,11 +164,11 @@ class BL22ContScan(object):
         self.debug("postCleanup entering...")
         if self.flg_pmac:
             pmac = taurus.Device(self.pmacName)
-            if self.flg_time_trigger:
+            #if self.flg_time_trigger:
                 # setting position capture control to its default value
-                pmac.SetIVariable([7012, 1])
+            pmac.SetIVariable([7012, 1])
                 # setting position capture flag select to its default value
-                pmac.SetIVariable([7013, 0])
+            pmac.SetIVariable([7013, 0])
             # disabling plc0 execution
             pmac.SetIVariable([5, 2])
 
@@ -196,7 +197,7 @@ class BL22ContScan(object):
             dev = taurus.Device(master_trigger)
             dev["StartTriggerSource"] = '/Dev1/PFI39' #Channel 0 source
             dev["StartTriggerType"] = "DigEdge"
-
+            #dev['Retrigable'] = True
 
         self.info("qExafs startup is done")
 
@@ -424,6 +425,11 @@ class qExafs(Macro, BL22ContScan):
     def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, wait_fe,
             config_PID):
 
+        self.startPos = startPos
+        self.finalPos = finalPos
+        self.nrOfTriggers = nrOfTriggers
+        self.scanTime = scanTime
+       
         self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim, 
                         wait_fe, config_PID)
 
