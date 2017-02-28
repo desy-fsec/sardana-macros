@@ -185,8 +185,9 @@ class BL22ContScan(object):
             dev = taurus.Device(master_trigger)
             dev["StartTriggerSource"] = '/Dev1/PFI39' #Channel 0 source
             dev["StartTriggerType"] = "DigEdge"
-
-        self.info("qExafs startup is done")
+            if not self.flg_time_trigger:
+                dev.write_attribute('Retriggerable', 1)
+            self.info("qExafs startup is done")
 
 
     def cleanup(self):
@@ -419,6 +420,47 @@ class qExafs(Macro, BL22ContScan):
        
         self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim, 
                         wait_fe, config_PID)
+
+
+
+
+class qExafsPos(Macro, BL22ContScan):
+    """
+    Macro to execute the quick Exafs experiment.
+    """
+
+    env = ('ContScanMG',)
+
+    hints = {}
+
+    param_def = [["startPos", Type.Float, None, "Starting position"],
+                 ["endPos", Type.Float, None, "Ending pos value"],
+                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                 ["scanTime", Type.Float, None, "Scan time"],
+
+                 ["speedLim", Type.Boolean, True, ("Active the verification "
+                                                   "of the speed and "
+                                                   "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")],
+
+                 ["configPID", Type.Boolean, True, ("Active the configuration"
+                                                 " of the bragg PID ")],
+                 ["GenerateTable", Type.Boolean, True, ("Generate table if not"
+                                                 " you should run qExafs before ")],]
+
+
+
+    def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim,
+            wait_fe,config_PID, load_table):
+
+        self.load_table = load_table
+        self.startPos = startPos
+        self.finalPos = finalPos
+        self.nrOfTriggers = nrOfTriggers
+        self.scanTime = scanTime
+        self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim,
+                        wait_fe, config_PID, time_mode=False)
 
 
 class qMythen(Macro, BL22ContScan):
