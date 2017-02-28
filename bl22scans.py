@@ -53,42 +53,35 @@ class BL22ContScan(object):
        
         if self.flg_pmac:
             self.debug('Configuring Pmac...')
-            if self.flg_time_trigger:
-                self.debug('Pmac time mode')
-                # select the capture program
-                self.pmac.SetPVariable([PMAC_REGISTERS['RunProgram'], 1])
+            self.debug('Pmac position mode')
+            # select the capture program
+            self.pmac.SetPVariable([PMAC_REGISTERS['RunProgram'], 3])
+            energy_motor = self.getMoveable(self.motName)
+            bragg_motor = self.getMoveable(self.braggName)
+            bragg_spu = bragg_motor.read_attribute('step_per_unit').value
+            bragg_offset = bragg_motor.read_attribute('offset').value
+            bragg_pos = bragg_motor.read_attribute('position').value
+            bragg_enc = float(self.pmac.GetMVariable(101))
+            th1 = energy_motor.CalcAllPhysical([self.startPos])[0]
+            th2 = energy_motor.CalcAllPhysical([self.finalPos])[0]
+            delta_th = abs((abs(th1) - abs(th2)) / self.nrOfTriggers) * bragg_spu
+            offset = ((bragg_pos+bragg_offset)*bragg_spu) - bragg_enc
+
+            start_enc = th1*bragg_spu - offset
+
+            if start_enc > overflow_pmac:
+                start_enc = start_enc - 2 * overflow_pmac
+            elif start_enc < -overflow_pmac:
+                start_enc = start_enc + 2 * overflow_pmac
+
+            if (self.startPos < self.finalPos):
+                direction = long(0)
             else:
-                self.debug('Pmac position mode')
-                # select the capture program
-                self.pmac.SetPVariable([PMAC_REGISTERS['RunProgram'], 3])
-                energy_motor = self.getMoveable(self.motName)
-                bragg_motor = self.getMoveable(self.braggName)
-                bragg_spu = bragg_motor.read_attribute('step_per_unit').value
-                bragg_offset = bragg_motor.read_attribute('offset').value
-                bragg_pos = bragg_motor.read_attribute('position').value
-                bragg_enc = float(self.pmac.GetMVariable(101))
-                th1 = energy_motor.CalcAllPhysical([self.startPos])[0]
-                th2 = energy_motor.CalcAllPhysical([self.finalPos])[0]
-                delta_th = abs((abs(th1) - abs(th2)) / self.nrOfTriggers) * bragg_spu
-                self.info('#RH TH1 %f TH2 %f' %(th1, th2))
-                self.info('#RH AutoInc %f' % delta_th)
-                offset = ((bragg_pos+bragg_offset)*bragg_spu) - bragg_enc
-
-                start_enc = th1*bragg_spu - offset
-
-                if start_enc > overflow_pmac:
-                    start_enc = start_enc - 2 * overflow_pmac
-                elif start_enc < -overflow_pmac:
-                    start_enc = start_enc + 2 * overflow_pmac
-
-                if (self.startPos < self.finalPos):
-                    direction = long(0)
-                else:
-                    direction = long(1)
-                self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], direction])
-                self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], long(start_enc)])
-                self.pmac.SetPVariable([PMAC_REGISTERS['PulseWidth'], 5])
-                self.pmac.SetPVariable([PMAC_REGISTERS['AutoInc'], long(delta_th/2)])
+                direction = long(1)
+            self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], direction])
+            self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], long(start_enc)])
+            self.pmac.SetPVariable([PMAC_REGISTERS['PulseWidth'], 5])
+            self.pmac.SetPVariable([PMAC_REGISTERS['AutoInc'], long(delta_th/2)])
 
 
             self.pmac.SetPVariable([PMAC_REGISTERS['NrTriggers'],
@@ -120,11 +113,6 @@ class BL22ContScan(object):
         if self.flg_pmac: 
             self.debug('Setting Pmac starting delay...')
             dev = PyTango.DeviceProxy('bl22/io/ibl2202-dev1-ctr0')
-            # if self.flg_time_trigger:
-            #     delay = dev.read_attribute('InitialDelayTime').value
-            #     total_delay = delay + self.pmac_dt
-            #     #dev.write_attribute('InitialDelayTime', total_delay)
-            # else:
             total_delay = 0
             dev.write_attribute('InitialDelayTime', total_delay)
     
@@ -190,14 +178,13 @@ class BL22ContScan(object):
         self.ni_connect_channels(output_signals)
         self.ni_config_counter('continuous')
 
-        if not self.flg_time_trigger:
+        if not self.flg_pmac:
             self.debug('Configuring MasterTrigger to wait Pmac trigger')
             # Configure  NI channel master to wait for external trigger
             master_trigger = self.getEnv('NIMasterTrigger')
             dev = taurus.Device(master_trigger)
             dev["StartTriggerSource"] = '/Dev1/PFI39' #Channel 0 source
             dev["StartTriggerType"] = "DigEdge"
-            #dev['Retrigable'] = True
 
         self.info("qExafs startup is done")
 
@@ -432,47 +419,6 @@ class qExafs(Macro, BL22ContScan):
        
         self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim, 
                         wait_fe, config_PID)
-
-
-
-
-class qExafsPos(Macro, BL22ContScan):
-    """
-    Macro to execute the quick Exafs experiment.
-    """
-
-    env = ('ContScanMG',)
-
-    hints = {}
-
-    param_def = [["startPos", Type.Float, None, "Starting position"],
-                 ["endPos", Type.Float, None, "Ending pos value"],
-                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
-                 ["scanTime", Type.Float, None, "Scan time"],
-
-                 ["speedLim", Type.Boolean, True, ("Active the verification "
-                                                   "of the speed and "
-                                                   "integration time")],
-                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
-                                                 "opening of Front End")],
-                 
-                 ["configPID", Type.Boolean, True, ("Active the configuration"
-                                                 " of the bragg PID ")],
-                 ["GenerateTable", Type.Boolean, True, ("Generate table if not"
-                                                 " you should run qExafs before ")],]
-
-   
-   
-    def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, 
-            wait_fe,config_PID, load_table):
-        
-        self.load_table = load_table
-        self.startPos = startPos
-        self.finalPos = finalPos
-        self.nrOfTriggers = nrOfTriggers
-        self.scanTime = scanTime
-        self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim, 
-                        wait_fe, config_PID, time_mode=False)
 
 
 class qMythen(Macro, BL22ContScan):
