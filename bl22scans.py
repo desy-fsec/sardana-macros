@@ -178,7 +178,7 @@ class BL22ContScan(object):
         self.ni_connect_channels(output_signals)
         self.ni_config_counter('continuous')
 
-        if not self.flg_pmac:
+        if self.flg_pmac:
             self.debug('Configuring MasterTrigger to wait Pmac trigger')
             # Configure  NI channel master to wait for external trigger
             master_trigger = self.getEnv('NIMasterTrigger')
