@@ -634,11 +634,9 @@ class timescanct(escanct):
     """
 
     param_def = [
-        ['nr_of_points', Type.Integer, None,
-            'number of points'],
-        ['integ_time',   Type.Float,   None,
-            'integration time'],
-        ]
+        ['nr_of_points', Type.Integer, None, 'number of points'],
+        ['integ_time',   Type.Float,   None, 'integration time'],
+    ]
 
     def prepare(self, *args, **kwargs):
         """
@@ -680,13 +678,12 @@ class timescanct(escanct):
 
 class xbpm_timescanct(Macro):
     """
-    timescanct meant to be measure front end xbpm values
+    timescanct meant to measure front end xbpm values
 
-    Note that the macro doesn't require any parameter, but it does requires
-    two environment parameters to be correctly set:
-        - dummy_scan: dummy scan to be run to trigger measurements
-            * it must be typed between brackets (e.g.
-                'ascanct dummy_mot01 0 100 0.1 0.2')
+    Note that the macro requires environment parameters to be correctly set:
+        - dummy_scan: dummy motor and positions to be used to run the scan
+                      used to trigger measurements
+            * must be typed between brackets (e.g. 'ascanct dummy_mot01 0 10')
         - meas: the measurement group to be used for reading xbpm values
     """
     env_params = {
@@ -694,7 +691,13 @@ class xbpm_timescanct(Macro):
         'meas': None,        # measurement group to use
     }
 
-    def prepare(self, *args, **opts):
+    param_def = [
+        ['nr_of_points', Type.Integer, None, 'Number of points'],
+        ['integ_time',   Type.Float,   None, 'Integration time'],
+        ['latency_time', Type.Float,   0,    'Latency time'],
+    ]
+
+    def prepare(self, points, integration, latency, **opts):
         # get macro parameters from environment
         self.name = self.__class__.__name__
         try:
@@ -711,7 +714,7 @@ class xbpm_timescanct(Macro):
             self.error('Error while getting environment: %s' % str(e))
             raise
 
-    def run(self, *args, **opts):
+    def run(self, points, integration, latency, **opts):
         # run macro
         try:
             key = 'ActiveMntGrp'
@@ -721,6 +724,9 @@ class xbpm_timescanct(Macro):
                 self.info('Setting env %s to %s' % (key, self.meas))
                 self.setEnv(key, self.meas)
             scan_params = self.dummy_scan.split()
+            scan_params.append(points)
+            scan_params.append(integration)
+            scan_params.append(latency)
             scan, pars = self.createMacro(scan_params)
             # run scan
             self.runMacro(scan)
