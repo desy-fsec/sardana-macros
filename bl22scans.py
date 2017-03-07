@@ -59,16 +59,15 @@ class BL22ContScan(object):
             energy_motor = self.getMoveable(self.motName)
             bragg_motor = self.getMoveable(self.braggName)
             bragg_spu = bragg_motor.read_attribute('step_per_unit').value
-            bragg_offset = bragg_motor.read_attribute('offset').value
-            bragg_pos = bragg_motor.read_attribute('position').value
+            bragg_offset = (bragg_motor.read_attribute('offset').value) * bragg_spu
+            bragg_pos =  float(self.pmac.SendCtrlChar("P").split()[0])
             bragg_enc = float(self.pmac.GetMVariable(101))
             th1 = energy_motor.CalcAllPhysical([self.startPos])[0]
             th2 = energy_motor.CalcAllPhysical([self.finalPos])[0]
             delta_th = abs((abs(th1) - abs(th2)) / self.nrOfTriggers) * bragg_spu
-            offset = ((bragg_pos+bragg_offset)*bragg_spu) - bragg_enc
+            offset = bragg_pos - bragg_enc + bragg_offset 
 
-            start_enc = th1*bragg_spu - offset
-
+            start_enc = (th1*bragg_spu) - offset
             if start_enc > overflow_pmac:
                 start_enc = start_enc - 2 * overflow_pmac
             elif start_enc < -overflow_pmac:
