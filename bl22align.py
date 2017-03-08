@@ -115,6 +115,8 @@ class ConfigAling(object):
         ior = self.get_ioregisters()
 
         for element in self.config_file.options(self.config):
+            if element == 'xtal2_pitch_d':
+                continue
             if element in self.motors_cal:
                 if element == 'oh_dcm_xtal2_pitch':
                     self.save_xtal2_pitch()
