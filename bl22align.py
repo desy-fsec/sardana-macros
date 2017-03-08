@@ -5,7 +5,7 @@ import time
 BL_ENERGY_CONFIG = {'2.4keV': 'en < 7 and en >= 2.4',
                     '7keV' : 'en < 14 and en >= 7' ,
                     '14keV': 'en < 35 and en >= 14',
-                    '35kev': 'en < 62.5 and en >=35'}
+                    '35keV': 'en < 62.5 and en >=35'}
 
 CLEAR_111_ENERGY_CONFIG = {'6keV': 'en <= 13 and en >= 6'}
 
@@ -21,6 +21,7 @@ class ConfigAling(object):
         self.config_file.read(config_path)
         self.config_path = config_path
         
+
         try:
             self.energy =  energy / 1000.0 # to use keV
         except Exception as e:
@@ -69,8 +70,8 @@ class ConfigAling(object):
 
     def calc_xtal2_pitch(self):
         equation = self.config_file.get(self.config, 'oh_dcm_xtal2_pitch')
-        xtal2_pitch_d = self.config_file.get(self.config, 'xtal2_pitch_d')
-        pos = eval(equation, {'en': self.energy, 'd': xtal2_pitch_d})
+        d = float(self.config_file.get(self.config, 'xtal2_pitch_d'))
+        pos = eval(equation, {'en': self.energy, 'd': d})
         return pos
 
     def save_xtal2_pitch(self):
@@ -208,7 +209,7 @@ class MoveBeamline(ConfigAling):
                 pos = self.config_file.get(self.config, motor)
                 if motor in self.motors_cal:
                     equation = pos
-                    if motor == 'oh_dcm_pitch':
+                    if motor == 'oh_dcm_xtal2_pitch':
                         pos = self.calc_xtal2_pitch()
                     else:
                         pos = eval(equation,{'en': self.energy})
@@ -220,13 +221,13 @@ class MoveBeamline(ConfigAling):
 
             dev = self.getDevice('oh_dcm_z')
             current_dcm_z = dev.read_attribute('position').value
-
+            energy = self.energy*1000
             if current_dcm_z < new_dcm_z:
-                cmd1 = 'mv energy %s' % self.energy
+                cmd1 = 'mv energy %s' % energy
                 cmd2 = 'mv oh_dcm_z %s' % new_dcm_z
             else:
                 cmd1 = 'mv oh_dcm_z %s' % new_dcm_z
-                cmd2 = 'mv energy %s' % self.energy
+                cmd2 = 'mv energy %s' % energy
 
             self.execMacro(cmd1)
             self.execMacro(cmd2)
