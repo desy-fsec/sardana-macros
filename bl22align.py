@@ -224,7 +224,7 @@ class MoveBeamline(ConfigAling):
             dev = self.getDevice('oh_dcm_z')
             current_dcm_z = dev.read_attribute('position').value
             energy = self.energy*1000
-            if current_dcm_z < new_dcm_z:
+            if current_dcm_z > new_dcm_z:
                 cmd1 = 'mv energy %s' % energy
                 cmd2 = 'mv oh_dcm_z %s' % new_dcm_z
             else:
