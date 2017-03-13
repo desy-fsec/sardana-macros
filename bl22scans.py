@@ -55,36 +55,34 @@ class BL22ContScan(object):
             self.debug('Configuring Pmac...')
             self.debug('Pmac position mode')
             # select the capture program
-            self.pmac.SetPVariable([PMAC_REGISTERS['RunProgram'], 3])
-            energy_motor = self.getMoveable(self.motName)
-            bragg_motor = self.getMoveable(self.braggName)
-            bragg_spu = bragg_motor.read_attribute('step_per_unit').value
-            bragg_offset = (bragg_motor.read_attribute('offset').value) * bragg_spu
-            bragg_pos =  float(self.pmac.SendCtrlChar("P").split()[0])
-            bragg_enc = float(self.pmac.GetMVariable(101))
-            th1 = energy_motor.CalcAllPhysical([self.startPos])[0]
-            th2 = energy_motor.CalcAllPhysical([self.finalPos])[0]
-            delta_th = abs((abs(th1) - abs(th2)) / self.nrOfTriggers) * bragg_spu
-            offset = bragg_pos - bragg_enc + bragg_offset 
+            if self.flg_time_trigger:
+                self.pmac.SetPVariable([PMAC_REGISTERS['RunProgram'], 3])
+                energy_motor = self.getMoveable(self.motName)
+                bragg_motor = self.getMoveable(self.braggName)
+                bragg_spu = bragg_motor.read_attribute('step_per_unit').value
+                bragg_offset = (bragg_motor.read_attribute('offset').value) * bragg_spu
+                bragg_pos =  float(self.pmac.SendCtrlChar("P").split()[0])
+                bragg_enc = float(self.pmac.GetMVariable(101))
+                th1 = energy_motor.CalcAllPhysical([self.startPos])[0]
+                th2 = energy_motor.CalcAllPhysical([self.finalPos])[0]
+                delta_th = abs((abs(th1) - abs(th2)) / self.nrOfTriggers) * bragg_spu
+                offset = bragg_pos - bragg_enc + bragg_offset 
 
-            start_enc = (th1*bragg_spu) - offset
-            if start_enc > overflow_pmac:
-                start_enc = start_enc - 2 * overflow_pmac
-            elif start_enc < -overflow_pmac:
-                start_enc = start_enc + 2 * overflow_pmac
+                start_enc = (th1*bragg_spu) - offset
+                if start_enc > overflow_pmac:
+                    start_enc = start_enc - 2 * overflow_pmac
+                elif start_enc < -overflow_pmac:
+                    start_enc = start_enc + 2 * overflow_pmac
 
-            if (self.startPos < self.finalPos):
-                direction = long(0)
-            else:
-                direction = long(1)
-            self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], direction])
-            self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], long(start_enc)])
-            self.pmac.SetPVariable([PMAC_REGISTERS['PulseWidth'], 5])
-            self.pmac.SetPVariable([PMAC_REGISTERS['AutoInc'], long(delta_th/2)])
+                if (self.startPos < self.finalPos):
+                    direction = long(0)
+                else:
+                    direction = long(1)
+                self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], direction])
+                self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], long(start_enc)])
 
-
-            self.pmac.SetPVariable([PMAC_REGISTERS['NrTriggers'],
-                                    self.nrOfTriggers])
+                self.pmac.SetPVariable([PMAC_REGISTERS['NrTriggers'],
+                                        self.nrOfTriggers])
 
             # configuring position capture control
             self.pmac.SetIVariable([7012, 2])
@@ -422,44 +420,44 @@ class qExafs(Macro, BL22ContScan):
 
 
 
+# TODO: Implement the table generation on the base class
+# class qExafsPos(Macro, BL22ContScan):
+#     """
+#     Macro to execute the quick Exafs experiment.
+#     """
 
-class qExafsPos(Macro, BL22ContScan):
-    """
-    Macro to execute the quick Exafs experiment.
-    """
+#     env = ('ContScanMG',)
 
-    env = ('ContScanMG',)
+#     hints = {}
 
-    hints = {}
+#     param_def = [["startPos", Type.Float, None, "Starting position"],
+#                  ["endPos", Type.Float, None, "Ending pos value"],
+#                  ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+#                  ["scanTime", Type.Float, None, "Scan time"],
 
-    param_def = [["startPos", Type.Float, None, "Starting position"],
-                 ["endPos", Type.Float, None, "Ending pos value"],
-                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
-                 ["scanTime", Type.Float, None, "Scan time"],
+#                  ["speedLim", Type.Boolean, True, ("Active the verification "
+#                                                    "of the speed and "
+#                                                    "integration time")],
+#                  ["waitFE", Type.Boolean, True, ("Active the waiting for "
+#                                                  "opening of Front End")],
 
-                 ["speedLim", Type.Boolean, True, ("Active the verification "
-                                                   "of the speed and "
-                                                   "integration time")],
-                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
-                                                 "opening of Front End")],
-
-                 ["configPID", Type.Boolean, True, ("Active the configuration"
-                                                 " of the bragg PID ")],
-                 ["GenerateTable", Type.Boolean, True, ("Generate table if not"
-                                                 " you should run qExafs before ")],]
+#                  ["configPID", Type.Boolean, True, ("Active the configuration"
+#                                                  " of the bragg PID ")],
+#                  ["GenerateTable", Type.Boolean, True, ("Generate table if not"
+#                                                  " you should run qExafs before ")],]
 
 
 
-    def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim,
-            wait_fe,config_PID, load_table):
+#     def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim,
+#             wait_fe,config_PID, load_table):
 
-        self.load_table = load_table
-        self.startPos = startPos
-        self.finalPos = finalPos
-        self.nrOfTriggers = nrOfTriggers
-        self.scanTime = scanTime
-        self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim,
-                        wait_fe, config_PID, time_mode=False)
+#         self.load_table = load_table
+#         self.startPos = startPos
+#         self.finalPos = finalPos
+#         self.nrOfTriggers = nrOfTriggers
+#         self.scanTime = scanTime
+#         self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim,
+#                         wait_fe, config_PID, time_mode=False)
 
 
 class qMythen(Macro, BL22ContScan):
