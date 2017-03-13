@@ -5,7 +5,7 @@ import time
 BL_ENERGY_CONFIG = {'2.4keV': 'en < 7 and en >= 2.4',
                     '7keV' : 'en < 14 and en >= 7' ,
                     '14keV': 'en < 35 and en >= 14',
-                    '35kev': 'en < 62.5 and en >=35'}
+                    '35keV': 'en < 62.5 and en >=35'}
 
 CLEAR_111_ENERGY_CONFIG = {'6keV': 'en <= 13 and en >= 6'}
 
@@ -21,6 +21,7 @@ class ConfigAling(object):
         self.config_file.read(config_path)
         self.config_path = config_path
         
+
         try:
             self.energy =  energy / 1000.0 # to use keV
         except Exception as e:
@@ -55,7 +56,10 @@ class ConfigAling(object):
             pos = self.config_file.get(self.config, motor)
             if motor in self.motors_cal:
                 equation = pos
-                pos = eval(equation,{'en': self.energy})
+                if motor == 'oh_dcm_xtal2_pitch':
+                    pos = self.calc_xtal2_pitch()
+                else:
+                    pos = eval(equation,{'en': self.energy})
             cmd += ' %s %s' % (motor, pos)
             if not all_motors:
                 cmds.append(cmd)
@@ -63,6 +67,20 @@ class ConfigAling(object):
         if all_motors:
             cmds.append(cmd)
         return cmds
+
+    def calc_xtal2_pitch(self):
+        equation = self.config_file.get(self.config, 'oh_dcm_xtal2_pitch')
+        d = float(self.config_file.get(self.config, 'xtal2_pitch_d'))
+        pos = eval(equation, {'en': self.energy, 'd': d})
+        return pos
+
+    def save_xtal2_pitch(self):
+        old_pos = self.calc_xtal2_pitch()
+        dev = self.getDevice('oh_dcm_xtal2_pitch')
+        new_pos = dev.read_attribute('position').value
+        new_d = new_pos - old_pos
+        self.config_file.set(self.config, 'xtal2_pitch_d', new_d)
+
 
     def get_motors(self, instrument):
         return self._tolist(self.config_file.get(instrument, 'motors'))
@@ -97,7 +115,11 @@ class ConfigAling(object):
         ior = self.get_ioregisters()
 
         for element in self.config_file.options(self.config):
+            if element == 'xtal2_pitch_d':
+                continue
             if element in self.motors_cal:
+                if element == 'oh_dcm_xtal2_pitch':
+                    self.save_xtal2_pitch()
                 continue
             if element in ior:
                 attr = 'value'
@@ -178,7 +200,43 @@ class MoveBeamline(ConfigAling):
         self.initConfig(energy, config_range, config_path)
         self.update_config()
 
-   
+    def runMoveMono(self, energy, config_env, config_range, retries):
+        try:
+            config_path = self.getEnv(config_env)
+            self.initConfig(energy, config_range, config_path)
+
+            motors = self.get_motors('mono')
+            self.info('Moving motors except oh_dcm_z and energy')
+            for motor in motors:
+                pos = self.config_file.get(self.config, motor)
+                if motor in self.motors_cal:
+                    equation = pos
+                    if motor == 'oh_dcm_xtal2_pitch':
+                        pos = self.calc_xtal2_pitch()
+                    else:
+                        pos = eval(equation,{'en': self.energy})
+                if motor == 'oh_dcm_z':
+                    new_dcm_z = pos
+                    continue
+
+                self.execMacro('mv %s %s' % (motor, pos))
+
+            dev = self.getDevice('oh_dcm_z')
+            current_dcm_z = dev.read_attribute('position').value
+            energy = self.energy*1000
+            if current_dcm_z > new_dcm_z:
+                cmd1 = 'mv energy %s' % energy
+                cmd2 = 'mv oh_dcm_z %s' % new_dcm_z
+            else:
+                cmd1 = 'mv oh_dcm_z %s' % new_dcm_z
+                cmd2 = 'mv energy %s' % energy
+
+            self.execMacro(cmd1)
+            self.execMacro(cmd2)
+
+        except Exception as e:
+            self.error('Exception with alignment: %s' % e)
+
 class mvblE(Macro, MoveBeamline):
     """
     Macro to align the beamline to a specific energy. The macro move different
@@ -198,6 +256,26 @@ class mvblE(Macro, MoveBeamline):
     def run(self, energy, retries):
         self.info('Enter mvblE')
         self.runMoveBeamline(energy, 'BeamlineEnergyConfig', BL_ENERGY_CONFIG,
+                             retries)
+
+
+class mvE(Macro, MoveBeamline):
+    """
+    Macro to align the mono to a specific energy. The macro move different
+    motor of the mono. The sign of the oh_dcm_z movement determines if the
+    macro moves first the energy or the high of the mono.
+
+    The macro need the an environment variable (BeamlineEnergyConfig) with
+    the configuration of the beamline for different energies.
+    """
+
+    param_def = [['energy', Type.Float, None, 'Beamline energy in eV'],
+                 ['retries', Type.Integer, 3,
+                  'Number of retries to move the motors']]
+
+    def run(self, energy, retries):
+        self.info('Enter mvE')
+        self.runMoveMono(energy, 'BeamlineEnergyConfig', BL_ENERGY_CONFIG,
                              retries)
 
 
@@ -246,6 +324,29 @@ class mvblEc(Macro, MoveBeamline):
         config_env, config_range = selectCrystal(self, crystal)
 
         self.runMoveBeamline(energy, config_env, config_range, retries)
+
+
+class mvEc(Macro, MoveBeamline):
+    """
+    Macro to align the mono to a specific energy. The macro move different
+    motor of the mono. The sign of the oh_dcm_z movement determines if the
+    macro moves first the energy or the high of the mono.
+
+    The macro need the an environment variables Clear311BeamlineEnergyConfig
+    and Clear111BeamlineEnergyConfig with the configuration of the beamline
+    for different energies by using the CLEAR.
+    """
+
+
+    param_def = [['energy', Type.Float, None, 'Beamline energy in eV'],
+                 ['crystal', Type.String, None, 'Monochromator crystal'],
+                 ['retries', Type.Integer, 3,
+                  'Number of retries to move the motors']]
+
+    def run(self, energy, crystal, retries):
+        config_env, config_range = selectCrystal(self, crystal)
+
+        self.runMoveMono(energy, config_env, config_range, retries)
 
 
 class saveblEc(Macro, MoveBeamline):
