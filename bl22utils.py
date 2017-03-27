@@ -176,7 +176,14 @@ class reconfig(Macro):
         self.setEnv('ActiveMntGrp', mg)
         self.info('Reconfig pcmac')
         self.execMacro('configpmac')
+
+        self.info('Reconfig dmot1')
+        dev = PyTango.DeviceProxy('dmot1')
+        dev.write_attribute('velocity', 1000000)
+        dev.write_attribute('base_rate', 0)
+        dev.write_attribute('acceleration', 0.1)
         
+ 
         self.info('Reconfig fluo_x')
         fluo_x = PyTango.DeviceProxy('motor/eh_ipap_ctrl/53')
         fluo_x.velocity = 0.8
