@@ -172,7 +172,7 @@ class CLEAR(object):
             self._move_motor(self.bragg, next_position)
 
     def move_energy(self, pos):
-        bragg_pos = self.energy.CalcPhysical(pos)
+        bragg_pos = self.energy.CalcPhysical(pos)[0]
         self.move_bragg(bragg_pos)
 
 

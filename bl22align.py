@@ -2,8 +2,9 @@ import ConfigParser
 from sardana.macroserver.macro import Macro, Type
 import time
 
-BL_ENERGY_CONFIG = {'2.4keV': 'en < 7 and en >= 2.4',
-                    '7keV' : 'en < 14 and en >= 7' ,
+BL_ENERGY_CONFIG = {'2.4keV': 'en < 5.6 and en >= 2.4',
+                    '5.6keV': 'en < 7.6 and en >= 5.6',
+                    '7.6keV' : 'en < 14 and en >= 7.6' ,
                     '14keV': 'en < 35 and en >= 14',
                     '35keV': 'en < 62.5 and en >=35'}
 
@@ -174,8 +175,11 @@ class MoveBeamline(ConfigAling):
             self.info('Moving energy to: %f' % eng)
             self.execMacro('mv energy %f' % eng)
 
-            # It will be possible whit the new EPS configuration. 
-            self.execMacro('feopen')
+
+            try:
+                self.execMacro('feopen')
+            except:
+                self.error('There was not possible to open de front end')
 
             self.info('Moving table_z....')
             for cmd in self.get_cmds_mov('table_z'):
