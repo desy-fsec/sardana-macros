@@ -50,7 +50,6 @@ class BL22ContScan(object):
 
     def _pre_configure_hook(self):
         self.debug("preConfigure entering...")
-       
         if self.flg_pmac:
             self.debug('Configuring Pmac...')
             self.debug('Pmac position mode')
@@ -73,15 +72,17 @@ class BL22ContScan(object):
                     start_enc = start_enc - 2 * overflow_pmac
                 elif start_enc < -overflow_pmac:
                     start_enc = start_enc + 2 * overflow_pmac
-
+                
                 if (self.startPos < self.finalPos):
-                    direction = long(0)
+                    self.direction = long(0)
+                    end_enc = start_enc -5
                 else:
-                    direction = long(1)
-                self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], direction])
+                    self.direction = long(1)
+                    end_enc = start_enc +5
+                self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], self.direction])
                 self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], long(start_enc)])
 
-                self.pmac.SetPVariable([PMAC_REGISTERS['NrTriggers'],
+            self.pmac.SetPVariable([PMAC_REGISTERS['NrTriggers'],
                                         self.nrOfTriggers])
 
             # configuring position capture control
@@ -91,6 +92,7 @@ class BL22ContScan(object):
             # after enabling position capture, M117 is set to 1, forcing readout
             # of M103, to reset it, so PLC0 won't copy outdated data
             self.pmac.GetMVariable(103)
+            
             # enabling plc0 execution
             self.pmac.SetIVariable([5, 3])
         
@@ -121,10 +123,18 @@ class BL22ContScan(object):
                 return
             bragg = taurus.Device(self.braggName)
             self.info(bragg.velocity)
-            # TODO Load from file the configuration
+            #TODO verify calculation of the start position on gscan
+            # We need to move relative the bragg to solve the problem.
+            self.info('Moving to new start position....')
+            if self.flg_time_trigger:
+                if self.direction:
+                    self.execMacro('mvr oh_dcm_bragg -0.005')
+                else:
+                    self.execMacro('mvr oh_dcm_bragg 0.005')
             
+
             self.info('Configuring bragg PID....')
-            
+            # TODO Load from file the configuration
             #Kp I130
             self.pmac.SetIVariable([130, 30000])
             #Kd I131
@@ -137,6 +147,7 @@ class BL22ContScan(object):
             self.pmac.SetIVariable([134, 0])
             #Kaff I135
             self.pmac.SetIVariable([135, 3500])
+
 
     def _post_move_hook(self):
         self.debug('postMove entering....')
@@ -484,9 +495,17 @@ class qMythen(Macro, BL22ContScan):
                                                  " of the bragg PID ")]]
 
 
+        
     def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, wait_fe,
             config_PID):
 
+       
+        
+        # TODO DR: Oncall                                           
+        self.startPos = startPos
+        self.finalPos = finalPos
+        self.nrOfTriggers = nrOfTriggers
+        self.scanTime = scanTime    
         self.run_qexafs(startPos, finalPos, nrOfTriggers,scanTime,speedLim,
                         wait_fe, config_PID, mythen=True)
 
