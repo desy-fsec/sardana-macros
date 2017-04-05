@@ -21,7 +21,7 @@ class oav_raster_config(Macro):
     raster configuration.
     """
     # TODO: param repeat will change on the future.
-    PARAMS_ALLOWED = ['PhiY', 'PhiZ', 'Att', 'MeritMethod'] 
+    PARAMS_ALLOWED = ['Att', 'MeritMethod']
 
     param_def = [['param_list', ParamRepeat(['Param', Type.String, None, 'Name of the parameter'],
                                             ['Value', Type.String, None, 'Value of the parameter'], min=0, max=4),
@@ -151,9 +151,11 @@ class mxraster(Macro):
     The macro is intended to be used through a graphical user interface.
     """
     env = ('MXRasterConfig',)
-    param_def = [['phiy_start_pos', Type.Float, None, 'Starting position'],
+    param_def = [['phiy_name', Type.String, None, 'Motor name'],
+                 ['phiy_start_pos', Type.Float, None, 'Starting position'],
                  ['phiy_end_pos', Type.Float, None, 'Ending pos value'],
                  ['phiy_steps', Type.Integer, None, 'Steps'],
+                 ['phiz_name', Type.String, None, 'Motor name'],
                  ['phiz_start_pos', Type.Float, None, 'Starting position'],
                  ['phiz_end_pos', Type.Float, None, 'Ending pos value'],
                  ['phiz_steps', Type.Integer, None, 'Moveable name'],
@@ -161,25 +163,25 @@ class mxraster(Macro):
                  ['bidir', Type.Boolean, None, 'Bidirectional scan'],
                  ['prefix', Type.String, 'mxraster', 'Filename prefix '],
                  ['save_dir', Type.String, '/beamlines/bl13/controls/tmp/mxraster' , ' '],
-                 ['att', Type.String, '8', 'Attenuation value (%)'],
-                 ]
+                 ['att', Type.String, '8', 'Attenuation value (%)'],]
 
     
     SIMULATION = False
     PILATUS_LATENCY = 0.0023
     LIMA_TRIGGER = 'INTERNAL_TRIGGER'
 
-    def prepare(self, phiy_start_position, phiy_end_position, phiy_steps, 
-                phiz_start_position, phiz_end_position, phiz_steps, 
-                int_time, bidir, prefix, save_dir, att):
+    def prepare(self, phiy_name, phiy_start_position, phiy_end_position,
+                phiy_steps, phiz_name,  phiz_start_position,
+                phiz_end_position, phiz_steps, int_time, bidir, prefix,
+                save_dir, att):
 
         config = self.getEnv('MXRasterConfig')
         self.debug("Config: " + str(config))
         self.merit_method = config['MeritMethod']
 
-        self.phiy = self.getMoveable( config['PhiY'] )
-        self.phiz = self.getMoveable( config['PhiZ'] )
-        self.att = self.getMoveable( config['Att'] )
+        self.phiy = self.getMoveable(phiy_name)
+        self.phiz = self.getMoveable(phiz_name)
+        self.att = self.getMoveable(config['Att'])
 
         self.lima_prefix = prefix 
         self.lima_runno = int(datetime.datetime.now().strftime('%Y%m%d%H%M'))
