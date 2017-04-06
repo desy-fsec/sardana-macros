@@ -81,11 +81,21 @@ class MntGrpController:
     def getMntGrpResults(self):
         self.macro.debug("MntGrpController.getMntGrpResults() entering...")
         channels = self.mntGrp.getChannels()
+        #self.macro.debug("channels1: " + repr(channels))
+
+        #self.macro.warning(dir(self.mntGrp))
+        #channels = self.mntGrp.getChannelsInfoList(True)
         values = self.mntGrp.getValues()
         
         self.macro.debug("channels: " + repr(channels))
         self.macro.debug("values: " + repr(values))
-        results = [ch["name"] + " " + str(values[ch["full_name"]]) for ch in channels]
+        #results = [ch["name"] + " " + str(values[ch["full_name"]]) for ch in channels]
+
+        # Fix show disable channels.
+        results = []
+        for ch in channels:
+            if ch['enabled']:
+                results.append(ch["name"] +" "+str(values[ch["full_name"]]))
         resultsStr = " ".join(results)
         self.macro.debug("MntGrpController.getMntGrpResults() leaving...")
         return resultsStr
