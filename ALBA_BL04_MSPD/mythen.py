@@ -637,13 +637,16 @@ class mythen_setPositions(Macro):
     param_def = [['positions', ParamRepeat(['position', Type.Float, None, 'Position to be moved'],min=0), None, 'Positions']]
     result_def = [['positions', Type.String, None, 'Position to be moved']]
     
-    def prepare(self, *args, **kwargs):
-        self.positions = args
+    def prepare(self, *args):
+        self.positions = args[0]
         self.nrOfPositions = len(self.positions)
-        positions = map(str,self.positions)        
+#        positions = map(str,self.positions)        
+        positions = self.positions
         nrOfPositions = str(self.nrOfPositions)
         args = ["positions", nrOfPositions]
-        args += positions
+        for i in positions:
+          args.append(str(i))
+        self.debug(args)
         self.slsDetectorProgram = SlsDetectorPut(args)
 
     def run(self, *args, **kwargs):
@@ -875,15 +878,18 @@ class mythen_acquire(Macro):
         return (outPath, return_positions_str)
     
     def on_abort(self):
-        self.output("on_abort() entering...")
+        self.output("mythen_acquire: on_abort() entering...")
         if not self.slsDetectorProgram.isTerminated():
             abortProgram = SlsDetectorPut(["status", "stop"])            
             abortProgram.execute()
             output = abortProgram.getStdOut()
             error = abortProgram.getStdErr()
             while True:
-                outLine = output.readline();self.debug( "outLine: " + outLine)
-                errLine = error.readline();self.debug("errLine: "  + errLine)
+                outLine = output.readline()                
+                errLine = error.readline()
+                self.debug( "outLine: " + outLine)
+                self.debug("errLine: "  + errLine)
+                
                 lenOutLine = len(outLine)
                 lenErrLine = len(errLine)
                 if lenOutLine != 0:
@@ -1610,6 +1616,10 @@ class mythen_getDr(Macro):
                 break
         if dr is None:
             raise Exception("It was not able to retrieve binSize.")
+      
+        mrt = MythenReadoutTime()
+        self.readOutTime = mrt[dr]
+        self.info('ReadOutTime = %f sec' %(self.readOutTime))
         return dr
     
     def on_abort(self):
@@ -1751,6 +1761,451 @@ class mythen_setSettings(Macro):
             time.sleep(1)
         if not self.slsDetectorProgram.isTerminated():
             self.slsDetectorProgram.kill()            
+
+
+class mythen_getScan0Prec(Macro):
+    """Gets mythen threshold."""
+
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
+
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(["scan0prec"])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0prec" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_setScan0Prec(Macro):
+    """Gets mythen threshold."""
+
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+
+    def prepare(self, *args, **kwargs):
+        parval = str(args[0]) 
+        self.slsDetectorProgram = SlsDetectorPut(["scan0prec",parval])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0prec" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_getScan0Script(Macro):
+    """Gets mythen Scan0Script."""
+
+    result_def =  [['parval',Type.String, None, 'Threshold']]
+
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(["scan0script"])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0script" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = outLine.split()[1]
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_setScan0Script(Macro):
+    """Gets mythen Scan0Script."""
+
+    param_def =  [['parval',Type.String, None, 'Parameter to set']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
+
+    SCRIPTS_ALLOW = ['position','threshold', 'energy', 'trimbits']
+
+
+    def prepare(self, *args, **kwargs):
+        parval = args[0]
+        parval = parval.lower()
+        if parval in self.SCRIPTS_ALLOW:
+            self.slsDetectorProgram = SlsDetectorPut(["scan0script",parval])
+        else:
+            msg = 'The type %s is not Allowed, try: %s' %(parval, str(self.SCRIPTS_ALLOW))
+            self.error(msg)
+            raise ValueError
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0script" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = outLine.split()[1]
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_setScan1Script(Macro):
+    """Gets mythen Scan1Script."""
+
+    param_def =  [['parval',Type.String, None, 'Parameter to set']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
+
+    SCRIPTS_ALLOW = ['position','threshold', 'energy', 'trimbits','none']
+
+
+    def prepare(self, *args, **kwargs):
+        parval = args[0]
+        parval = parval.lower()
+        if parval in self.SCRIPTS_ALLOW:
+            self.slsDetectorProgram = SlsDetectorPut(["scan1script",parval])
+        else:
+            msg = 'The type %s is not Allowed, try: %s' %(parval, str(self.SCRIPTS_ALLOW))
+            self.error(msg)
+            raise ValueError
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan1script" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = outLine.split()[1]
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+
+class mythen_getAngcallog(Macro):
+    """Gets mythen AngCalLog."""
+
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
+
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(["angcallog"])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "angcallog" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_setAngcallog(Macro):
+    """Sets mythen AngCalLog."""
+
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+
+    def prepare(self, *args, **kwargs):
+        parval = str(args[0]) 
+        self.slsDetectorProgram = SlsDetectorPut(["angcallog",parval])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "angcallog" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+
+class mythen_getScan0Range(Macro):
+    """Gets mythen Scan0Range."""
+
+    result_def =  [['parval',Type.String, None, 'par value']]
+
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(["scan0range"])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0range" in outLine:
+                   _parval = outLine.split()
+                   nrparval = _parval[1]
+                   if nrparval > 0 :
+                       parval = _parval[2:]
+                       try:
+                         parval = map(float,parval)
+                       except Exception, e:
+                         self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                         raise e
+                   else : parval = [] 
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return repr(parval)
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+
+class mythen_setScan0Range(Macro):
+    """Sets mythen Scan0Range."""
+
+    param_def = [['positions', ParamRepeat(['position', Type.Float, None, 'Position to be moved'],min=0), None, 'Positions']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
+
+    def prepare(self, *args, **kwargs):
+
+        self.positions = args                                                                                                                                              
+        self.nrOfPositions = len(self.positions)                                                                                                                           
+        positions = map(str,self.positions)                                                                                                                                
+        nrOfPositions = str(self.nrOfPositions)                                                                                                                            
+        args = ["scan0range"]                                                                                                                                
+        args += positions                                                                                                                                                  
+        self.slsDetectorProgram = SlsDetectorPut(args)
+
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0range" in outLine:
+                   _parval = outLine.split()
+                   nrparval = _parval[1]
+                   if nrparval > 0 :
+                       parval = _parval[2:]
+                       try:
+                         parval = map(float,parval)
+                       except Exception, e:
+                         self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                         raise e
+                   else : parval = []
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return repr(parval)
+
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
             
 class mythen_take(Macro, MntGrpController):
     
@@ -1768,33 +2223,35 @@ class mythen_take(Macro, MntGrpController):
         valueProperties = DicProperties["applicationType"]
         value = list(valueProperties)[0]
 
-	self.info(value)      
         if value == "CIPulseWidthChan":
-            self.info("Entering in value == CIPulseWidthChan") 	    
+            self.info("Entering in value == CIPulseWidthChan")      
             self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
 
         self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
         self._pauseTriggerWhen = channel.read_attribute('PauseTriggerWhen').value
-        self._pauseTriggerSource = channel.read_attribute('PauseTriggerSource').value
-        self.debug('PauseTriggerType: %s' % self._pauseTriggerType)
-        self.debug('PauseTriggerWhen: %s' % self._pauseTriggerWhen)
-        self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)        
+        self._pauseTriggerSource = channel.read_attribute('PauseTriggerSource').value      
         positions = self.execMacro("mythen_getPositions").getResult()
         self.spc = long(len(eval(positions)))
-	
+    
         if self.spc>1:
-
             self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
         
     def _restoreChannel(self, channel):
-        if self.spc>1:
-		self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+     
+        if self.spc>1:  
+            # does not work with abort procedure, apply manualy
+            #self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+
+            property = {'applicationType':['CICountEdgesChan']}
+            channel.put_property(property)
+            channel.Init()   
+
         channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
         channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
         channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
-        #channel.Init()
         
     def _configureChannel(self, channel):
+        channel.Init()
         positions = self.execMacro("mythen_getPositions").getResult()
         self.spc = long(len(eval(positions)))
         if self.spc > 1:
@@ -1827,81 +2284,126 @@ class mythen_take(Macro, MntGrpController):
     def prepare(self, *args, **kwargs):
         MntGrpController.init(self, self)
         self.monitorChannel = PyTango.DeviceProxy(self.MONITOR_CHANNEL)
-        #self.monitorChannel.set_timeout_millis(10000)
         self.monitorChannel.Stop()
+
         #preparing Mythen to generate gate while acquiring
-        self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
+        self.execMacro('mythen_setExtSignal 0 gate_out_active_high')
         
     def run(self, *args, **kwargs):
 
         t0 = time.time()
-        try:
-            mode_safe = self.getEnv('MythenTakeCountingModeSafe')
-        except UnknownEnv, e:
-            mode_safe = True
-        if mode_safe:
-            self._backupChannel(self.monitorChannel)
+
+    	#170202
+        Temps  = []
+        tempsOut = ''
+        Temp0 = ''
+        snap = self.getEnv("_snap")
+        if 'blower' in snap: 
+            Temps = ["blowerT","blowerSP"]
+            Temp0 = " T0 %.2f"%(taurus.Device(Temps[0]).value)
+        if 'cryo' in snap: 
+            Temps = ["cryoT","cryoSP"]
+            Temp0 = " T0 %.2f"%(taurus.Device(Temps[0]).value)
+        if 'dyna' in snap: 
+            Temps = ["dynTa","dynSP1"]
+            Temp0 = " T0 %.2f"%(taurus.Device(Temps[0]).value)
+
+
         softscan = args[0]
         startpos = args[1]
         endpos = args[2]
 
-        self._configureChannel(self.monitorChannel)
 
-        try:
+        try:    
+            # Add backup and configuration in try to force finally in exception case
+            self._backupChannel(self.monitorChannel)
+            self._configureChannel(self.monitorChannel)
+
+
             self.monitorChannel.Start()
             outFileName, positions = self.execMacro("mythen_acquire").getResult()
             nrOfPositions = len(eval(positions))
+            self.debug(nrOfPositions)
+
+            
             if nrOfPositions == 0:
-                nrOfPositions = 1
+                nrOfPositions = 1        
+           
             if nrOfPositions > 1:
                 monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
+                self.debug(monitorValueList)
                 monitorValueList = list(monitorValueList)
 
             else:
                 monitorValue = self.monitorChannel.read_attribute('Count').value
-                #monitorValueList = list(monitorValueList)
                 monitorValuePerPosition = int(monitorValue / nrOfPositions)
                 monitorValueList = [monitorValuePerPosition for i in range(nrOfPositions)]
             
 
             self.info('MonitorValuePerPosition: %s' % monitorValueList)
-            #self.info('MonitorValuePerPosition: %d' % monitorValuePerPosition)
         except Exception, e:
             self.error('Exception during acquisition')
             self.warning(e)
             raise e
         finally:
             self.monitorChannel.Stop()
-            if mode_safe:
-                self._restoreChannel(self.monitorChannel)
+            self._restoreChannel(self.monitorChannel)
 
         self.info("Data stored: %s" % outFileName)
         self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )
         t1=time.time()
-        
-        mnt_grp_time = 0.1
-        mnt_grp_results = None
-        for i in range(3):
-            msg = 'Measurement group count of time: %s [s]' % mnt_grp_time
-            self.output(msg)
-            mnt_grp_results = self._count(mnt_grp_time)
-            if mnt_grp_results != None:
-                break
-        else:
-            msg = 'It was not able to count with the measurement within 3 attempts'
-            self.error(msg)
-            msg = 'Measurement group data will be skipped in the par file'
-            self.info(msg)
 
-        self.warning('Elapsed time to get Mnt_grp: %.4f sec' %(time.time() - t1) )                               
+    #FF 12Dec2016 Modif to get rid of the ct in mythen_take
+        try:
+            countsOut = ''
+            countsOut = "Iring %.2f mocoIn %.4e mocoOut %.4f"%(taurus.Device('icurr').value,taurus.Device('mocoIn').value,taurus.Device('mocoOut').value)
+            self.debug("%s"%(countsOut))
+#            Temps  = []
+#            tempsOut = ''
+#            if 'blower' in self.getEnv("_snap") : Temps = ["blowerT","blowerSP"]
+#            if 'cryo' in self.getEnv("_snap") : Temps = ["cryoT","cryoSP"]
+            for _t in Temps : 
+                tempsOut = tempsOut +" %s %.2f"%(_t,taurus.Device(_t).value)
+            tempsOut = tempsOut + Temp0
+            self.debug("%s"%(tempsOut))
+        except:
+            msg = 'It was not able to read the attributes'
+            self.error(msg)
+            msg = 'Attributes data will be skipped in the par file'
+            self.info(msg)
+        self.warning('Elapsed time to get Attributes: %.4f sec' %(time.time() - t1) )                               
+
+    #FF End modif
+        
+
+
+        # NOT longer used,
+        #mnt_grp_time = 0.1
+        #mnt_grp_results = None
+        
+        #for i in range(3):
+        #    msg = 'Measurement group count of time: %s [s]' % mnt_grp_time
+        #    self.output(msg)
+           # mnt_grp_results = self._count(mnt_grp_time)
+        #    if mnt_grp_results != None:
+        #        break
+        #else:
+        #    msg = 'It was not able to count with the measurement within 3 attempts'
+        #    self.error(msg)
+        #    msg = 'Measurement group data will be skipped in the par file'
+        #    self.info(msg)
+
         self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )                               
         parFileName = outFileName[:-3] + "par"
         try:
             parFile = open(parFileName,"w")
-            #parFile.write("# imon %d " % monitorValuePerPosition)
-            parFile.write("# imon %d " % monitorValueList[0])
-            if mnt_grp_results != None:
-                parFile.write(mnt_grp_results)
+            #imon as an average
+            parFile.write("# imon %d %s %s " %(int(sum(monitorValueList)/nrOfPositions),countsOut,tempsOut))
+
+            #only the first value
+            #parFile.write("# imon %d " % monitorValueList[0])
+            #if mnt_grp_results != None:
+            #    parFile.write(mnt_grp_results)
             
             parFile.write('\nMonitor = %d' % monitorValueList[0])
             parFile.write('\nIsMon = %s' % monitorValueList)
@@ -1918,10 +2420,9 @@ class mythen_take(Macro, MntGrpController):
             raise e
         finally:
             parFile.close()
-        #return outFileName
         monitors = monitorValueList
-        #return outFileName,nrOfPositions,positions,monitorValueList
-        self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )                               
+        self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )   
+                            
         return outFileName,nrOfPositions,positions,monitors
 
 
@@ -2227,8 +2728,7 @@ class mythen_softscan(Macro, MoveableController, SoftShutterController): #, MntG
             self.execMacro('mythen_setExpTime',count_time) 
             self.execMacro("mythen_take True %f %f" %(self.start_pos, self.end_pos)) 
 
-
-	    #sleep_time = self.accTime
+            #sleep_time = self.accTime
             #time.sleep(sleep_time)                
             #self.openShutter()                                 
             #outFileName = self.execMacro("mythen_acquire").getResult()
@@ -2268,10 +2768,10 @@ def mythenAcquire(macro):
         errLine = error.readline();macro.debug("errLine: "  + errLine)
         lenOutLine = len(outLine)
         lenErrLine = len(errLine)
-        if lenOutLine != 0:
-            macro.output(outLine)
-        if lenErrLine != 0:
-            macro.error(errLine)
+        #if lenOutLine != 0:
+        #    macro.output(outLine)
+        #if lenErrLine != 0:
+        #    macro.error(errLine)
         if slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
             break
             
@@ -2382,9 +2882,9 @@ class mythen_timeResolved(Macro, MntGrpController):
         self.masterTrigger.write_attribute("LowTime", 0.001) #sec      
                 
     def _restoreNi(self):
-         self.execMacro('ni_default %s' % self.MYTHEN_TRIG_DEVICE[0])
-         self.execMacro('ni_default %s' % self.EXT_TRIG_DEVICE[0])
-         self.execMacro('ni_default %s' % self.MASTER_TRIG_DEVICE[0])
+        self.execMacro('ni_default %s' % self.MYTHEN_TRIG_DEVICE[0])
+        self.execMacro('ni_default %s' % self.EXT_TRIG_DEVICE[0])
+        self.execMacro('ni_default %s' % self.MASTER_TRIG_DEVICE[0])
 
     def run(self, *args, **kwargs):
         import threading
@@ -2404,7 +2904,7 @@ class mythen_timeResolved(Macro, MntGrpController):
         
             self.getManager().add_job(mythenAcquire, done, self)
        
-	    #self.execMacro("mythen_acquire")
+            #self.execMacro("mythen_acquire")
             #waiting for detector till it arms
             while True:
                 self.checkPoint()
@@ -2594,27 +3094,27 @@ class mythen_timeResolvedAUTO(Macro, MntGrpController):
 class mythen_fastTake(Macro, MntGrpController):
                                                    
 
-    param_def = [['frames', Type.Float, None, 'Total experiment time'],
-                 ['expTime', Type.Float, None, 'Exposure time per frame']]
+    param_def = [
+                 ['expTime', Type.Float, None, 'Exposure time per frame'],
+                 ['frames', Type.Integer, None, 'Total number of Frames']
+                ]
     
     
     #NI channels to read values while the Mythen is acquiring
     MONITOR_CHANNEL = 'bl04/io/ibl0403-dev2-ctr0' #i14
     MONITOR_CHANNEL_GATE = '/Dev2/PFI38'    #i14 Gate
     MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'  #i14 Source  
+    MOTOR_NAME = 'pd_mc'
     
     
-    
-    #Make Bakup for the channels used to count
+    ##Make Bakup for the channels used to count
     def _backupChannel(self, channel):
         DicProperties = channel.get_property('applicationType')
         valueProperties = DicProperties["applicationType"]
         value = list(valueProperties)[0]
 
-        self.info(value)      
-        #if value == "CIPulseWidthChan":
-        #    self.info("Entering in value == CIPulseWidthChan")      
-        #    self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+        if value == "CIPulseWidthChan":
+            self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
 
         self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
         self._pauseTriggerWhen = channel.read_attribute('PauseTriggerWhen').value
@@ -2624,42 +3124,54 @@ class mythen_fastTake(Macro, MntGrpController):
         self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)        
         
     def _restoreChannel(self, channel):
-        if self.spc>1:
-                self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+        self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
         channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
         channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
         channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
-        #channel.Init()
+       ##Dchannel.Init()
         
     def _configureChannel(self, channel):
         self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
-
+        
         channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
         channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
-        channel.write_attribute("SampPerChan", self.spc)
+        channel.write_attribute("SampPerChan", long(self.nrOfFrames))
         channel.write_attribute("SampleclockRate", 100.0)
 
     def prepare(self, *args, **kwargs):                                   
         MntGrpController.init(self, self)                                 
-        self.nrOfFrames = args[0]                                          
-        self.exposureTime = args[1]  
-                     
+        self.nrOfFrames = args[1]                                          
+        self.exposureTime = args[0]  
+                 
+        self.monitorChannel = taurus.Device(self.MONITOR_CHANNEL)
+#        self.monitorChannel.set_timeout_millis(10000)
+        self.monitorChannel.Stop()
+
+    
         self.debug("nrOfFrames: %d" % self.nrOfFrames)            
 
         #configuring mythen detector                                                            
-        self.execMacro("mythen_setTiming", 'auto')                                           
-        #self.execMacro("mythen_setExtSignal", 2, "trigger_in_rising_edge")                      
-        #self.execMacro("mythen_setNrOfTriggers", 1)                                             
+        self.execMacro("mythen_setTiming", 'auto')                                                                                       
         self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)                       
         self.execMacro("mythen_setExpTime", self.exposureTime)                                  
         self.execMacro('mythen_setPositions')   
         self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
 
         self.firstIndex = self.execMacro("mythen_getIndex").getResult()                         
-        self.debug('FirstIndex = %d' %self.firstIndex)   
+        self.debug('FirstIndex = %d' %self.firstIndex)  
         
-    def run(self, *args, **kwargs):        
+        #To calculate the readOutTime
+        dr = self.execMacro('mythen_getDr').getResult()
+        mrt = MythenReadoutTime()
+        self.readOutTime = mrt[dr]
+        
+    def run(self, *args, **kwargs):  
+    
 
+
+        total_time = self.nrOfFrames * (self.exposureTime+self.readOutTime)
+        self.output('Collecting %s Frames of %f sec (+ %f readoutTime)' %(self.nrOfFrames, self.exposureTime,self.readOutTime))
+        self.output('Overall time : %f sec' %(total_time))
 
         #Backup the Actual NI configuration
         self._backupChannel(self.monitorChannel)
@@ -2672,30 +3184,15 @@ class mythen_fastTake(Macro, MntGrpController):
         
         def done(job_ret):                                                                           
             self._event.set()                                                                        
-                                                                                                    
-        self.mntGrpAcqTime = 0.1                                                                     
-        MntGrpController.prepareMntGrp(self)                                                         
-        MntGrpController.acquireMntGrp(self)                                                         
-        MntGrpController.waitMntGrp(self)                                                            
-        firstMntGrpResults = MntGrpController.getMntGrpResults(self)                                 
-        
+                                                                                                                                     
         #Start the Monitor channel
         self.monitorChannel.Start()
+        self.debug("Monitor channel State %s", self.monitorChannel.State())
 
         #Start to take frames in Mythen
         self.getManager().add_job(mythenAcquire, done, self)                                                                                                                                     
-        #self.execMacro("mythen_acquire")                                                            
-                                                            
-        #while True:                                                                                  
-        #    self.checkPoint()                                                                        
-        #    time.sleep(0.5)                                                                          
-        #    status = self.execMacro("mythen_getStatus").getResult()                                  
-        #    if status == "running":                                                                  
-        #        break                                                                                
-        #self.debug("mythen waiting for trigger")                                                     
-                                                                                                        
-        try:                                                                                         
-                                                                
+                                                                                                                                                    
+        try:                                                                                                                                                     
             self._event.wait()                                                                       
             self.debug("Mythen end acq")
             
@@ -2703,7 +3200,6 @@ class mythen_fastTake(Macro, MntGrpController):
             monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
             monitorValueList = list(monitorValueList)
             self.info('MonitorValuePerFrame: %s' % monitorValueList)
-
             
         finally:                                                                                     
                                                                                                         
@@ -2718,7 +3214,8 @@ class mythen_fastTake(Macro, MntGrpController):
             position = self.execMacro("mythen_getPositions").getResult()
 
 
-
+        self.mntGrpAcqTime = 0.1                                                                     
+        MntGrpController.prepareMntGrp(self) 
         MntGrpController.acquireMntGrp(self)
         MntGrpController.waitMntGrp(self)
         lastMntGrpResults = MntGrpController.getMntGrpResults(self)
@@ -2735,17 +3232,21 @@ class mythen_fastTake(Macro, MntGrpController):
         if acquiredFrames != 1:
             raise Exception("Nr of acquired images does not correspond to requested value.")
 
-        parFileName = outFileName[:-3] + "par"
+        parFileName = outDir + "/" + outFileName + "_" + str(lastIndex-1) + ".par"
+        self.info(parFileName)
         try:
+            motor = taurus.Device(self.MOTOR_NAME)
+            position = motor.read_attribute('position').value
             parFile = open(parFileName,"w")
-            #parFile.write("# imon %d " % monitorValuePerPosition)
             parFile.write("# imon %d " % monitorValueList[0])
-            if mnt_grp_results != None:
-                parFile.write(mnt_grp_results)
+            if lastMntGrpResults != None:
+                parFile.write(lastMntGrpResults)
             
             parFile.write('\nMonitor = %d' % monitorValueList[0])
             parFile.write('\nIsMon = %s' % monitorValueList)
-            parFile.write('\nMythen_frameResolved Pos: %s' %(position))
+            line=('\nIsPos = %s' %([round(position,6)]* self.nrOfFrames))
+            parFile.write(line)
+            parFile.write('\nMythen_fastTake Pos: %s' %(position))
 
             extraHeader = self.execMacro("_mythpar").getResult()
             parFile.write(extraHeader)
@@ -2756,9 +3257,473 @@ class mythen_fastTake(Macro, MntGrpController):
         finally:
             parFile.close()
 
-        return outFileName,nrOfPositions,position,monitorValueList
-
-        
-            
+        return outFileName,position,monitorValueList
 
 
+
+class mythen_getScan0Prec(Macro):
+
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
+
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(["scan0prec"])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0prec" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_setScan0Prec(Macro):
+
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+
+    def prepare(self, *args, **kwargs):
+        parval = str(args[0]) 
+        self.slsDetectorProgram = SlsDetectorPut(["scan0prec",parval])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0prec" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_getScan0Script(Macro):
+    """Gets mythen Scan0."""
+
+    result_def =  [['parval',Type.String, None, 'Threshold']]
+
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(["scan0script"])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0script" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = outLine.split()[1]
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_setScan0Script(Macro):
+    """Set mythen Scan0."""
+
+    param_def =  [['parval',Type.String, None, 'Parameter to set']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
+
+    def prepare(self, *args, **kwargs):
+        parval = args[0]
+        if parval not in ['none','threshold','energy','trimbits','positions'] :
+           raise Exception("!!! ERROR, value should be one of the following  none/threshold/energy/trimbits/positions") 
+        self.slsDetectorProgram = SlsDetectorPut(["scan0script",parval])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0script" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = outLine.split()[1]
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+
+class mythen_getAngcallog(Macro):
+    """Gets mythen Angcal."""
+
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
+
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(["angcallog"])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "angcallog" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_setAngcallog(Macro):
+    """Set mythen Angcal."""
+
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+
+    def prepare(self, *args, **kwargs):
+        parval = str(args[0]) 
+        self.slsDetectorProgram = SlsDetectorPut(["angcallog",parval])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "angcallog" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_getEncallog(Macro):
+    """Gets mythen Encallog."""
+
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
+
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(["encallog"])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "encallog" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+class mythen_setEncallog(Macro):
+
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+
+    def prepare(self, *args, **kwargs):
+        parval = str(args[0]) 
+        self.slsDetectorProgram = SlsDetectorPut(["encallog",parval])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "encallog" in outLine:
+                    #example of output: "threshold 10015"
+                    try:
+                        parval = int(outLine.split()[1])
+                    except Exception, e:
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                        raise e
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return parval
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+
+class mythen_getScan0Range(Macro):
+    """Gets mythen Scan0Range."""
+
+    result_def =  [['parval',Type.String, None, 'par value']]
+
+    def prepare(self, *args, **kwargs):
+        self.slsDetectorProgram = SlsDetectorGet(["scan0range"])
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0range" in outLine:
+                   _parval = outLine.split()
+                   nrparval = _parval[1]
+                   if nrparval > 0 :
+                       parval = _parval[2:]
+                       try:
+                         parval = map(float,parval)
+                       except Exception, e:
+                         self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                         raise e
+                   else : parval = [] 
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return repr(parval)
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
+
+
+class mythen_setScan0Range(Macro):
+
+    param_def = [['positions', ParamRepeat(['position', Type.Float, None, 'Position to be moved'],min=0), None, 'Positions']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
+
+    def prepare(self, *args, **kwargs):
+
+        self.positions = args                                                                                                                                              
+        self.nrOfPositions = len(self.positions)                                                                                                                           
+        positions = map(str,self.positions)                                                                                                                                
+        nrOfPositions = str(self.nrOfPositions)                                                                                                                            
+        args = ["scan0range"]                                                                                                                                
+        args += positions                                                                                                                                                  
+        self.slsDetectorProgram = SlsDetectorPut(args)
+
+
+    def run(self, *args, **kwargs):
+        self.slsDetectorProgram.execute()
+        output = self.slsDetectorProgram.getStdOut()
+        error = self.slsDetectorProgram.getStdErr()
+        parval = None
+
+        while True:
+            outLine = output.readline();self.debug( "outLine: " + outLine)
+            errLine = error.readline();self.debug("errLine: " + errLine)
+            lenOutLine = len(outLine)
+            lenErrLine = len(errLine)
+            if lenOutLine != 0:
+                if "scan0range" in outLine:
+                   _parval = outLine.split()
+                   nrparval = _parval[1]
+                   if nrparval > 0 :
+                       parval = _parval[2:]
+                       try:
+                         parval = map(float,parval)
+                       except Exception, e:
+                         self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
+                         raise e
+                   else : parval = []
+                else:
+                    self.output(outLine)
+            if lenErrLine != 0:
+                self.error(errLine)
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
+                break
+        if parval is None:
+            raise Exception("It was not able to retrieve the desired parameter")
+        return repr(parval)
+
+
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
