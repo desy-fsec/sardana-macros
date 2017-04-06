@@ -1,5 +1,4 @@
 import PyTango
-import taurus
 import time
 from sardana.macroserver.macro import Macro, Type
 from macro_utils.macroutils import SoftShutterController
@@ -39,7 +38,7 @@ class hpascan(Macro, SoftShutterController):
             if self._fsShutter == 1:
                 SoftShutterController.openShutter(self)
             #self.execMacro('fsopen') 
-            wait =1.
+            wait = 0.5 # FF chnaged from 1. 27Oct2016
             self.info("sleep time %.2f " %wait)
             time.sleep(wait)# added to avoid lower count at 1st point because of fs opening 
             self.execMacro('ascan', *args)
@@ -65,11 +64,15 @@ class hpdscan(Macro):
             EndPos   =  args[2]
             Npts      = args[3]
             intTim    = args[4]
-            
+
             currentPos = mot.read_attribute("position").value
             StartPos = currentPos + StartPos
             EndPos = currentPos + EndPos
             args = (mot.name,StartPos,EndPos,Npts,intTim)
     	    self.execMacro('hpascan', *args)
-	finally:    
+	finally:
+            #To prevent Exceptions if the motor is finishing the movement
+            while mot.state() != PyTango.DevState.ON:
+                time.sleep(0.1)
+                self.checkPoint()
             mot.move(currentPos)
