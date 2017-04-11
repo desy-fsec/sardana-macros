@@ -189,7 +189,7 @@ class reconfig(Macro):
         fluo_x.velocity = 0.8
         fluo_x.acceleration = 1
 
-        self.execMacro('qExafsCleanup')
+        #self.execMacro('qExafsCleanup')
         
         self.execMacro('usebraggonly off')
 
