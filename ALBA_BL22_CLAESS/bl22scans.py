@@ -21,15 +21,13 @@ class BL22ContScan(object):
     Class to implement the continuous scan methods. 
     """
     
-    adlinks = ['bl22/ct/adc-ibl2202-01', 'bl22/ct/adc-ibl2202-02']
-    masterTriggerName = "bl22/io/ibl2202-dev1-ctr0"    
     mem_overload = 1000000
     min_itime = 0.005
     motName = "energy"
     braggName = "oh_dcm_bragg"
     pmac = taurus.Device('pmac')
     pmacName = 'pmac'
-    
+    nitriggerName = 'triggergate/ni_tg_ctrl/1'
 
 
     def _check_parameters(self, itime, nr_triggers, speed_check=True):
@@ -58,12 +56,10 @@ class BL22ContScan(object):
                 bragg_motor = self.getMoveable(self.braggName)
                 bragg_spu = bragg_motor.read_attribute('step_per_unit').value
                 bragg_offset = (bragg_motor.read_attribute('offset').value) * bragg_spu
-                bragg_pos =  float(self.pmac.SendCtrlChar("P").split()[0])
+                bragg_pos = float(self.pmac.SendCtrlChar("P").split()[0])
                 bragg_enc = float(self.pmac.GetMVariable(101))
                 th1 = energy_motor.CalcAllPhysical([self.startPos])[0]
-                th2 = energy_motor.CalcAllPhysical([self.finalPos])[0]
-                delta_th = abs((abs(th1) - abs(th2)) / self.nrOfTriggers) * bragg_spu
-                offset = bragg_pos - bragg_enc + bragg_offset 
+                offset = bragg_pos - bragg_enc + bragg_offset
 
                 start_enc = (th1*bragg_spu) - offset
                 if start_enc > overflow_pmac:
@@ -73,13 +69,16 @@ class BL22ContScan(object):
                 
                 if (self.startPos < self.finalPos):
                     self.direction = long(0)
-                    end_enc = start_enc -5
                 else:
                     self.direction = long(1)
-                    end_enc = start_enc +5
                 self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], self.direction])
                 self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], long(start_enc)])
-       
+
+                # Configure the Ni660XTrigger
+                ni_tg = self.getDevice(self.nitriggerName)
+                ni_tg['slave'] = True
+                ni_tg['retriggeable'] = False
+
         if self.wait_fe:
             try:
                 self.execMacro('waitFE')
@@ -120,6 +119,12 @@ class BL22ContScan(object):
         if self.flg_pmac:
             self.info('load PID default config')
             self.execMacro('configpmac')
+
+            # Configure the Ni660XTrigger to default
+            ni_tg = self.getDevice(self.nitriggerName)
+            ni_tg['slave'] = False
+            ni_tg['retriggeable'] = False
+
             self.flg_post_move = True
     
     def run_scan(self, motor, start_pos, end_pos, nr_trigger, int_time, 
