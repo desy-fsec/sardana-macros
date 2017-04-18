@@ -37,7 +37,7 @@ class BL22ContScan(object):
                 raise Exception(('You must use a higher integration time.'
                                  'The minimum value is %r' % self.min_itime))
         else:
-            self.warning('The speed verification is desactive')
+            self.warning('The speed verification is not active')
 
         mem = nr_triggers * stime
         if mem > self.mem_overload:
@@ -259,29 +259,6 @@ class qMythen(Macro, BL22ContScan):
                         wait_fe, config_PID, mythen=True)
 
 
-class tMythen(Macro, BL22ContScan):
-    """
-    Macro to execute the continuous scan.
-    """
-
-    env = ('ContMythenMG',)
-
-    hints = {}
-
-    param_def = [["nrOfFrames", Type.Integer, None, "Nr of frames"],
-                 ["inttime", Type.Float, None, "Integration time per point"],
-
-                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
-                                                 "opening of Front End")]]
-
-
-    def run(self, nrOfTriggers, intTime, wait_fe):
-        motor = self.getMotor('dmot1')
-        self.run_cascan(motor, 0, 1000, nrOfTriggers, intTime, False, wait_fe,
-                        mythen=True)
-
-
-
 
 class aEscan(Macro):
     """
@@ -405,6 +382,33 @@ class constKscan(Macro, Hookable):
 #*******************************************************************************
 # OLD
 #*******************************************************************************
+
+
+
+
+
+# class tMythen(Macro, BL22ContScan):
+#     """
+#     Macro to execute the continuous scan.
+#     """
+
+#     env = ('ContMythenMG',)
+
+#     hints = {}
+
+#     param_def = [["nrOfFrames", Type.Integer, None, "Nr of frames"],
+#                  ["inttime", Type.Float, None, "Integration time per point"],
+
+#                  ["waitFE", Type.Boolean, True, ("Active the waiting for "
+#                                                  "opening of Front End")]]
+
+
+#     def run(self, nrOfTriggers, intTime, wait_fe):
+#         motor = self.getMotor('dmot1')
+#         self.run_cascan(motor, 0, 1000, nrOfTriggers, intTime, False, wait_fe,
+#                         mythen=True)
+
+
 
 
 
