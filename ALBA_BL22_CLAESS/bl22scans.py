@@ -77,7 +77,7 @@ class BL22ContScan(object):
                 # Configure the Ni660XTrigger
                 ni_tg = self.getDevice(self.nitriggerName)
                 ni_tg['slave'] = True
-                ni_tg['retriggeable'] = False
+                ni_tg['retriggerable'] = False
 
         if self.wait_fe:
             try:
@@ -123,8 +123,8 @@ class BL22ContScan(object):
             # Configure the Ni660XTrigger to default
             ni_tg = self.getDevice(self.nitriggerName)
             ni_tg['slave'] = False
-            ni_tg['retriggeable'] = False
-
+            ni_tg['retriggerable'] = False
+            
             self.flg_post_move = True
     
     def run_scan(self, motor, start_pos, end_pos, nr_trigger, int_time, 
