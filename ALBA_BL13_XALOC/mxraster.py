@@ -174,15 +174,22 @@ class mxraster(Macro):
                 phiy_steps, phiz_name,  phiz_start_position,
                 phiz_end_position, phiz_steps, int_time, bidir, prefix,
                 save_dir, att):
-
+        
+        self.info( '%r'% [phiy_name, phiy_start_position, phiy_end_position,
+                phiy_steps, phiz_name,  phiz_start_position,
+                phiz_end_position, phiz_steps, int_time, bidir, prefix,
+                save_dir, att])
+        
         config = self.getEnv('MXRasterConfig')
         self.debug("Config: " + str(config))
         self.merit_method = config['MeritMethod']
-
-        self.phiy = self.getMoveable(phiy_name)
-        self.phiz = self.getMoveable(phiz_name)
+        
+        phiy_alias = taurus.Device(phiy_name).getDisplayName().split()[0]
+        phiz_alias = taurus.Device(phiz_name).getDisplayName().split()[0]
+        self.phiy = self.getMoveable(phiy_alias)
+        self.phiz = self.getMoveable(phiz_alias)
         self.att = self.getMoveable(config['Att'])
-
+        
         self.lima_prefix = prefix 
         self.lima_runno = int(datetime.datetime.now().strftime('%Y%m%d%H%M'))
         self.lima_save_dir = save_dir
