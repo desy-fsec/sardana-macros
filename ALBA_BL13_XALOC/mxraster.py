@@ -21,7 +21,7 @@ class oav_raster_config(Macro):
     raster configuration.
     """
     # TODO: param repeat will change on the future.
-    PARAMS_ALLOWED = ['Att', 'MeritMethod']
+    PARAMS_ALLOWED = ['Att', 'MeritMethod', 'Simulation']
 
     param_def = [['param_list', ParamRepeat(['Param', Type.String, None, 'Name of the parameter'],
                                             ['Value', Type.String, None, 'Value of the parameter'], min=0, max=4),
@@ -46,52 +46,6 @@ class oav_raster_config(Macro):
         for key in config:
             self.info("[%s] = %s" %(key, config[key]))
             pass
-
-
-class oav_merit_method(Macro):
-    # TODO: complete merit method descriptions.
-    """
-    Category: Configuration
-
-    This macro is used to set/get the merit method for the mxraster macro.
-    The merit method selected depends on the available methods defined in
-    find_spots.py module:
-
-    * xds: Diffraction data indexing program from Wolfgang Kabsch (http://xds.mpimf-heidelberg.mpg.de/)
-    * labelit: Diffraction data indexing program of choice for automating production line from
-    Lawrence Berkeley Laboratory (http://ipo.lbl.gov/lbnl1960/)
-    * random: Only for test purposes. This method 'random' simulates finding
-    spots on an image using a random method from the image filename. Returns
-    a random value between 810 and 1120.
-
-    If the macro is executed without parameters, it shows the current method.
-    """
-
-    PARAMS_ALLOWED = ['xds', 'labelit', 'random']
-
-    param_def = [['param_list', ParamRepeat(['MeritMethod', Type.String, None, 'Name of the merit method selected'], min=0, max=1),
-                  None, '']]
-
-    def run(self, *param_list):
-
-        key = 'MeritMethod'
-
-        if param_list is not None:
-
-            config = self.getEnv('MXRasterConfig')
-
-            for value in param_list[0]:
-                if value not in self.PARAMS_ALLOWED:
-                    raise ValueError('The allowed merit methods are %s' % repr(self.PARAMS_ALLOWED))
-                else:
-                    config[key] = value
-
-            self.setEnv('MXRasterConfig', config)
-
-        config = self.getEnv('MXRasterConfig')
-        self.info('Current merit method:')
-        self.info('=====================')
-        self.info("[%s] = %s" %(key, config[key]))
 
 
 class mxraster_config(Macro):
@@ -189,6 +143,22 @@ class mxraster(Macro):
         self.phiy = self.getMoveable(phiy_alias)
         self.phiz = self.getMoveable(phiz_alias)
         self.att = self.getMoveable(config['Att'])
+
+        config_env = self.getEnv('collect_env')
+
+        # Define simulation mode
+        if config['Simulation']:
+            config_env.update({'force':'NO','pshu':'NO', 'slowshu':'NO', 'fe':'NO'})
+
+        # Set beamstop according to sample motors
+        if phiy_alias == "omegax":
+            config_env['beamstop'] = "FIXED"
+        elif phiy_alias == "catsx":
+            config_env['beamstop'] = "MOVEABLE"
+        else:
+            raise Exception("Invalid motor for raster")
+        self.setEnv('collect_env', config_env)
+
         
         self.lima_prefix = prefix 
         self.lima_runno = int(datetime.datetime.now().strftime('%Y%m%d%H%M'))
@@ -443,11 +413,11 @@ class mxraster(Macro):
         lima_dev.reset()
 
         # move motor to origin
-        config = self.getEnv('MXRasterConfig')
-        phiy = taurus.Device(config['PhiY'])
-        phiz = taurus.Device(config['PhiZ'])
-        phiy.write_attribute('position', self.phiy_org)
-        phiz.write_attribute('position', self.phiz_org)
+
+
+        # TODO: Check path already running if raster for plates.
+        #self.phiy.write_attribute('position', self.phiy_org)
+        #self.phiz.write_attribute('position', self.phiz_org)
 
         # close slowshu
         eps = taurus.Device('bl13/ct/eps-plc-01')
