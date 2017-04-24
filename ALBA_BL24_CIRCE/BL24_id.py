@@ -1,5 +1,5 @@
 from sardana.macroserver.macro import Type, Macro
-
+import PyTango
 
 
 class IDOffsetCorrection(object):
@@ -31,7 +31,7 @@ class IDOffsetCorrection(object):
 
 
     def calc_offset(self, energy, pol, grx, harmonic):
-        pol = pol.uppler();
+        pol = pol.upper();
         if pol not in self.POLARIZATION_VALUES:
             raise ValueError('The polarization must be %r' %
                              self.POLARIZATION_VALUES)
@@ -46,17 +46,23 @@ class IDOffsetCorrection(object):
         return offset
 
     def set_offset(self, energy, pol):
+        pol = pol.upper()
         grx_value = self.getDevice(self.GRX_IOR_NAME)['value'].value
         grx = self.GRX_LABELS[grx_value]
+        self.info(grx)
         motors = self.MOTORS[pol[0]]
-        harmonic = self.getMotion(motors[0])['edHarmonic']
-
+        motor = PyTango.DeviceProxy('alba03:10000/'+motors[0])
+        harmonic=motor.read_attribute('edHarmonic').value
+        
+        self.info('Calculating offset for: %r' %[grx, pol, harmonic])
         offset = self.calc_offset(energy,pol, grx, harmonic)
+        self.info('Offset = %r' % offset)
 
         for motor_name in motors:
-            motor = self.getMotor(motor_name)
-            motor['edOffset'] = offset
+            motor = PyTango.DeviceProxy('alba03:10000/'+motor_name)
+            motor.write_attribute('edOffset', offset)
 
+        self.info('Moving id to %r' % energy)
         self.execMacro('mv %s %f' % (motors[0], energy))
 
 
