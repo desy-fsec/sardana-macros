@@ -372,7 +372,7 @@ class HVset(Macro):
 
 
 
-class GasFillBase(Macro):
+class GasFillBase(object):
     """
     Macro to execute the quick Exafs experiment.
     """
@@ -421,14 +421,14 @@ class GasFillBase(Macro):
         eps[self.attrs[io]['set']] = 1
 
         self.info('Cleaning....')
-        
+        t1 = time.time()
         while True:
             self.checkPoint()
             time.sleep(0.10)
             if time.time() - t1 > 30:
                break
 
-        self.output('IOChamber %d cleaned.' % io)
+        self.output('IOChamber %r cleaned.' % io)
 
 
 class gasClean(Macro, GasFillBase):
