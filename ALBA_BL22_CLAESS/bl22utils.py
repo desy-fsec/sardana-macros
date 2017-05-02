@@ -174,9 +174,14 @@ class reconfig(Macro):
         mg = self.getEnv('DefaultMG')
         self.info('Set Measurement Group: %s' % mg)
         self.setEnv('ActiveMntGrp', mg)
+        self.info('Configure Ni')
+        ni_tg = self.getDevice('triggergate/ni_tg_ctrl/1')
+        ni_tg['slave'] = False
+        ni_tg['retriggerable'] = False
+      
         self.info('Reconfig pcmac')
         self.execMacro('configpmac')
-
+        
         self.info('Reconfig dmot1')
         dev = PyTango.DeviceProxy('dmot1')
         dev.write_attribute('velocity', 1000000)
