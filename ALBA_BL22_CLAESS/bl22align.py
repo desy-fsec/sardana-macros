@@ -17,6 +17,10 @@ class ConfigAling(object):
     Class Helper to read the configuration file.
     """
 
+    def printConfig(self):
+        equation = BL_ENERGY_CONFIG[self.config]
+        self.output('Use the %r configuration: (%r)' % (self.config, equation))
+        
     def initConfig(self, energy, config_range, config_path):
         self.config_file = ConfigParser.RawConfigParser()
         self.config_file.read(config_path)
@@ -144,7 +148,7 @@ class MoveBeamline(ConfigAling):
         try:
             config_path = self.getEnv(config_env)
             self.initConfig(energy, config_range, config_path)
-            
+            self.printConfig()
             self.execMacro('feclose')
             
             self.info('Configuring filters...')
@@ -174,8 +178,7 @@ class MoveBeamline(ConfigAling):
             eng = self.energy*1000.0 
             self.info('Moving energy to: %f' % eng)
             self.execMacro('mv energy %f' % eng)
-
-
+            self.setEnv('LastBlConfig', self.config)
             try:
                 self.execMacro('feopen')
             except:
@@ -193,7 +196,7 @@ class MoveBeamline(ConfigAling):
                         self.execMacro(cmd)
                     except Exception as e:
                         self.error('Error with the eh_slit motor %s' % e)
-                    
+            
         except Exception as e:
             self.error('Exception with alignment: %s' % e)
 
@@ -201,6 +204,7 @@ class MoveBeamline(ConfigAling):
         config_path = self.getEnv(config_env)
         mot_energy = self.getDevice(self.energy_name)
         energy = mot_energy.read_attribute('position').value
+        self.info('Saving at %r eV' % energy)
         self.initConfig(energy, config_range, config_path)
         self.update_config()
 
@@ -208,7 +212,9 @@ class MoveBeamline(ConfigAling):
         try:
             config_path = self.getEnv(config_env)
             self.initConfig(energy, config_range, config_path)
-
+            last_config = self.getEnv('LastBlConfig')
+            self.config = last_config
+            self.printConfig()
             motors = self.get_motors('mono')
             self.info('Moving motors except oh_dcm_z and energy')
             for motor in motors:
@@ -224,7 +230,7 @@ class MoveBeamline(ConfigAling):
                     continue
 
                 self.execMacro('mv %s %s' % (motor, pos))
-
+            self.info('Moving oh_dcm_z and energy')
             dev = self.getDevice('oh_dcm_z')
             current_dcm_z = dev.read_attribute('position').value
             energy = self.energy*1000
