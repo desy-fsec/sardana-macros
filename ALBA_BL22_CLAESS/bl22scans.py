@@ -76,6 +76,8 @@ class BL22ContScan(object):
 
                 # Configure the Ni660XTrigger
                 ni_tg = self.getDevice(self.nitriggerName)
+                self.info(ni_tg.state())
+                ni_tg.stop()
                 ni_tg['slave'] = True
                 ni_tg['retriggerable'] = False
 
@@ -97,6 +99,12 @@ class BL22ContScan(object):
             self.info(bragg.velocity)
             #TODO verify calculation of the start position on gscan
             # We need to move relative the bragg to solve the problem.
+            if self.direction:
+                self.execMacro('mvr oh_dcm_bragg -0.005')
+            else:
+                self.execMacro('mvr oh_dcm_bragg 0.005')                
+
+            
             self.info('Configuring bragg PID....')
 
             # TODO Load from file the configuration
@@ -122,6 +130,8 @@ class BL22ContScan(object):
 
             # Configure the Ni660XTrigger to default
             ni_tg = self.getDevice(self.nitriggerName)
+            self.info(ni_tg.state())
+            ni_tg.stop()
             ni_tg['slave'] = False
             ni_tg['retriggerable'] = False
             
