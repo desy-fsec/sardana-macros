@@ -5,38 +5,54 @@ import taurus
 from find_spots import find_spots
 
 
-class oav_raster_config(Macro):
+class mxraster_config(Macro):
     """
     Category: Configuration
 
     This macro is used to set/get the raster macro configuration.
-    There are 4 possible parameters to configure:
+    There are 3 parameters to configure:
 
-    * PhiY: Motor for the Y direction.
-    * PhyZ: for the Z direction.
     * Att: Motor for the beam attenuation.
     * MeritMethod: function name used to rank the different rastered regions.
+    * Simulation: boolena used to test the macro in a safe environment.
 
     If the macro is executed without parameters, it shows the current
     raster configuration.
+    
+    The merit method selected depends on the available methods defined in
+    find_spots.py module:
+
+    * xds: Diffraction data indexing program from Wolfgang Kabsch (http://xds.mpimf-heidelberg.mpg.de/)
+    * labelit: Diffraction data indexing program of choice for automating production line from
+    Lawrence Berkeley Laboratory (http://ipo.lbl.gov/lbnl1960/)
+    * random: Only for test purposes. This method 'random' simulates finding
+    spots on an image using a random method from the image filename. Returns
+    a random value between 810 and 1120.
     """
     # TODO: param repeat will change on the future.
-    PARAMS_ALLOWED = ['Att', 'MeritMethod', 'Simulation']
+    PARAMS_ALLOWED = {'Att': str, 'MeritMethod': str, 'Simulation': bool}
 
     param_def = [['param_list', ParamRepeat(['Param', Type.String, None, 'Name of the parameter'],
                                             ['Value', Type.String, None, 'Value of the parameter'], min=0, max=4),
                   None, '']]
 
     def run(self, *param_list):
-
+        self.info(param_list)
         if param_list is not None:
 
             config = self.getEnv('MXRasterConfig')
 
             for key, value in param_list[0]:
-                if key not in self.PARAMS_ALLOWED:
+                if key not in self.PARAMS_ALLOWED.keys():
                     raise ValueError('The allowed parameters are %s' % repr(self.PARAMS_ALLOWED))
-                config[key] = value
+                t_conv = self.PARAMS_ALLOWED[key]
+                if t_conv == bool:
+                    if value.upper() in ['TRUE','YES','1']:
+                        config[key] = True
+                    elif value.upper() in ['FALSE','NO','0']:
+                        config[key]= False
+                    else:
+                        raise ValueError('No valid value')
             
             self.setEnv('MXRasterConfig', config)
 
@@ -46,31 +62,6 @@ class oav_raster_config(Macro):
         for key in config:
             self.info("[%s] = %s" %(key, config[key]))
             pass
-
-
-class mxraster_config(Macro):
-    """
-    Category: Deprecated
-
-    Deprecated since 17/06/2015!
-    You MUST use oav_raster_config macro instead.
-    """
-    param_def = [['PhiY', Type.String, None, 'Motor for Y direction'],
-                 ['PhiZ', Type.String, None, 'Motor for Z direction'],
-                 ['Att', Type.String, None, 'Motor for Beam Attenuation'],
-                 ['MeritMethod', Type.String, None, 'Method for figure of merit'],
-                 ]
- 
-    def run(self, phiy, phiz, att, method):
-        msg = 'Deprecated since 17/06/2015!\n'
-        msg += 'You MUST use oav_raster_config macro instead.'
-        self.warning(msg)
-        # config_dir = {'PhiY':  phiy,
-        #                'PhiZ':  phiz,
-        #                'Att':  att,
-        #                'MeritMethod':  method,
-        #               }
-        # self.setEnv('MXRasterConfig', config_dir)
 
 
 class spots_finder(Macro):
