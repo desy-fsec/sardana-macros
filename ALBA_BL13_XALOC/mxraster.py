@@ -182,7 +182,7 @@ class mxraster(Macro):
         self.execMacro("collect_prepare")
         self.execMacro("collect_saving", self.lima_save_dir, 
                        self.lima_prefix, 
-                       self.lima_runno, 'raster')
+                       self.lima_runno, 1, 'raster')
                
     def calc_points(self, beg, end, nbivals):
         vals = numpy.array([])
@@ -313,7 +313,8 @@ class mxraster(Macro):
         self.debug("      - preparing.." )
         str_idx = '%s_%s' % (self.zidx, self.yidx)
         self._add_custom_suffix(str_idx)
-        self.execMacro('pilatus_set_first_image','pilatus_custom',self.curpt+1)
+        # Deprecated in Lima Core 1.7
+        # self.execMacro('pilatus_set_first_image','pilatus_custom',self.curpt+1)
         self.execMacro('lima_prepare', 'pilatus', self.int_time, 
                        self.PILATUS_LATENCY, 1, self.LIMA_TRIGGER)
         
@@ -379,8 +380,11 @@ class mxraster(Macro):
                              ).getResult() 
         prefix = self.execMacro('lima_getconfig','pilatus','FilePrefix'
                              ).getResult() 
-        inumber = self.execMacro('pilatus_get_first_image','pilatus_custom',
-                                ).getResult()
+#        inumber = self.execMacro('pilatus_get_first_image','pilatus_custom',
+#                                ).getResult()
+        inumber = int(self.execMacro('lima_getconfig','pilatus','NextNumber'
+                             ).getResult())
+        
         id = str("%04d" % inumber)
         format = self.execMacro('lima_getconfig','pilatus','FileFormat'
                              ).getResult() 
