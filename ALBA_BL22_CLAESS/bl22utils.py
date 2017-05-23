@@ -135,6 +135,7 @@ class configpmac(Macro):
     bragg_name = 'motor/dcm_pmac_ctrl/1'
     perp_name = 'motor/dcm_pmac_ctrl/3'
     pmac_name = "pmac"
+    flag_attr = 'controller/dcmturbopmaccontroller/dcm_pmac_ctrl/UseqExafs'
 
     def run(self):
         self.info('Set bragg configuration...')
@@ -162,6 +163,10 @@ class configpmac(Macro):
         perp.velocity = 0.5
         perp.acceleration = 0.1
         perp.deceleration = 0.1
+
+        self.info('Reset qExafs flag')
+        use_qExafs = taurus.Attribute(self.flag_attr)
+        use_qExafs.write(False)
 
 
 class reconfig(Macro):

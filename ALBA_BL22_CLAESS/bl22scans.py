@@ -28,6 +28,7 @@ class BL22ContScan(object):
     pmac = taurus.Device('pmac')
     pmacName = 'pmac'
     nitriggerName = 'triggergate/ni_tg_ctrl/1'
+    pmac_ctr = taurus.Device('controller/dcmturbopmaccontroller/dcm_pmac_ctrl')
 
 
     def _check_parameters(self, itime, nr_triggers, speed_check=True):
@@ -121,6 +122,17 @@ class BL22ContScan(object):
             #Kaff I135
             self.pmac.SetIVariable([135, 3500])
 
+            self.info('Configure ctrl')
+
+            # Modified the CTScan to save the final position as object variable
+            try:
+                self.debug('Final position %r' % self._ctscan_final_pos)
+            except:
+                raise RuntimeError('The version of sardana is not compatible.'
+                                   'You should modify CTscan class.')
+
+            self.pmac_ctr['NextPosition'] = self._ctscan_final_pos
+            self.pmac_ctr['UseqExafs'] = True
 
     def _post_move_hook(self):
         self.debug('postMove entering....')
