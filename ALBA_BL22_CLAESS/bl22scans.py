@@ -29,7 +29,7 @@ class BL22ContScan(object):
     pmacName = 'pmac'
     nitriggerName = 'triggergate/ni_tg_ctrl/1'
     pmac_ctr = taurus.Device('controller/dcmturbopmaccontroller/dcm_pmac_ctrl')
-
+    perp = taurus.Device('oh_dcm_perp')
 
     def _check_parameters(self, itime, nr_triggers, speed_check=True):
         stime = itime * nr_triggers
@@ -90,9 +90,24 @@ class BL22ContScan(object):
                            '%s' % e)
                 raise RuntimeError()
 
-    def _pre_strat_hook(self):
+    def _pre_strat_hook(self, final_pos):
         self.debug('preStart entering....')
         if self.flg_pmac:
+            self.info('Configure ctrl')
+
+            # Modified the CTScan to save the final position as object variable
+            bragg_offset = bragg['offset'].value
+            bragg_sign = bragg['sign'].value
+            perp_offset = self.perp['offset'].value
+            perp_sign = self.perp['sign'].value
+
+            bragg_final, perp_final = final_pos
+            bragg_dial = bragg_sign* bragg_final - bragg_offset
+            perp_dial = perp_sign * perp_final - perp_offset
+
+            self.pmac_ctr['NextPosition'] = [bragg_dial, perp_dial]
+            self.pmac_ctr['UseqExafs'] = True
+
             if not self.config_PID:
                 self.info('Did not config bragg PID')
                 return
@@ -122,17 +137,7 @@ class BL22ContScan(object):
             #Kaff I135
             self.pmac.SetIVariable([135, 3500])
 
-            self.info('Configure ctrl')
 
-            # Modified the CTScan to save the final position as object variable
-            try:
-                self.debug('Final position %r' % self._ctscan_final_pos)
-            except:
-                raise RuntimeError('The version of sardana is not compatible.'
-                                   'You should modify CTscan class.')
-
-            self.pmac_ctr['NextPosition'] = self._ctscan_final_pos
-            self.pmac_ctr['UseqExafs'] = True
 
     def _post_move_hook(self):
         self.debug('postMove entering....')
