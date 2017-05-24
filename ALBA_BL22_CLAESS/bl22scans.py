@@ -94,6 +94,7 @@ class BL22ContScan(object):
         self.debug('preStart entering....')
         if self.flg_pmac:
             self.info('Configure ctrl')
+            bragg = taurus.Device(self.braggName)
 
             # Modified the CTScan to save the final position as object variable
             bragg_offset = bragg['offset'].value
@@ -111,7 +112,7 @@ class BL22ContScan(object):
             if not self.config_PID:
                 self.info('Did not config bragg PID')
                 return
-            bragg = taurus.Device(self.braggName)
+            
             self.info(bragg.velocity)
             #TODO verify calculation of the start position on gscan
             # We need to move relative the bragg to solve the problem.
