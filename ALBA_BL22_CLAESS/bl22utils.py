@@ -145,7 +145,7 @@ class reconfig(Macro):
         ni_tg['retriggerable'] = False
       
         self.info('Reconfig pcmac')
-        self.execMacro('configpmac')
+        self.execMacro('restorePmac')
         
         self.info('Reconfig dmot1')
         dev = PyTango.DeviceProxy('dmot1')
@@ -160,8 +160,6 @@ class reconfig(Macro):
         fluo_x.acceleration = 1
 
         #self.execMacro('qExafsCleanup')
-        
-        self.execMacro('usebraggonly off')
 
         self.info('Set the electrometer polarity')
         host_e0 = self.getEnv('ElemI0Host')
