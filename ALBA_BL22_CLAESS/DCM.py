@@ -7,16 +7,22 @@ from macro_utils.icepap import *
 
 class dcm_homing_vert(Macro):
     """ 
-    This macro does the homing of vertical jacks of BL22-CLAESS DCM(Double Crystal Monochromator).
+    This macro does the homing of vertical jacks of BL22-CLAESS DCM (Double
+    Crystal Monochromator).
     Homing procedure is done in 3 steps:
 
-    1. Simultaneously move all the jacks to their negative limits(software or hardware)
-       Whenever any of the jacks reaches its limit, simultaneous motion is continue with the rest of them. 
-    2. When all of them reached extreams Icepap homing routine is started (GROUP STRICT) for all of the jacks
-       simultaneously - in positive direction. Whenever any of the jacks is stopped by a STOP command, 
-       a limit switch or an alarm condition, all the other axes in the group are forced to stop immediately.
+    1. Simultaneously move all the jacks to their negative limits(software
+    or hardware).Whenever any of the jacks reaches its limit, simultaneous
+    motion is continue with the rest of them.
 
-    In case of successfully homing of all jacks macro returns True, in all other cases it return False
+    2. When all of them reached extreams Icepap homing routine is  started
+    (GROUP STRICT) for all of the jacks simultaneously - in positive
+    direction. Whenever any of the jacks is stopped by a STOP command,
+    a limit switch or an alarm condition, all the other axes in the group
+    are forced to stop immediately.
+
+    In case of successfully homing of all jacks macro returns True, in all
+    other cases it return False
     """
     
     result_def = [
@@ -69,36 +75,49 @@ class dcm_homing_vert(Macro):
 
     def run(self, *args, **opts):        
         try:
-            motors_pos_dict = {self.jack1:float(self.jack1_min), self.jack2:float(self.jack2_min), self.jack3:float(self.jack3_min)}
+            motors_pos_dict = {self.jack1:float(self.jack1_min),
+                               self.jack2:float(self.jack2_min),
+                               self.jack3:float(self.jack3_min)}
             while len(motors_pos_dict):
                 motorsOnNegLim = moveToNegHardLim(self, motors_pos_dict)
                 for m in motorsOnNegLim:
                     motors_pos_dict.pop(m)
-            jack1_info = create_motor_info_dict(self.jack1, self.JACK1_HOMING_DIR)
-            jack2_info = create_motor_info_dict(self.jack2, self.JACK2_HOMING_DIR)
-            jack3_info = create_motor_info_dict(self.jack3, self.JACK3_HOMING_DIR)
+            jack1_info = create_motor_info_dict(self.jack1,
+                                                self.JACK1_HOMING_DIR)
+            jack2_info = create_motor_info_dict(self.jack2,
+                                                self.JACK2_HOMING_DIR)
+            jack3_info = create_motor_info_dict(self.jack3,
+                                                self.JACK3_HOMING_DIR)
             
             res = home_group_strict(self, [jack1_info, jack2_info, jack3_info])
             if res and jack1_info['homed']:
-                self.debug('Motor %s successfully homed.' % jack1_info['motor'].alias())
-                res = home_group_strict(self, [jack1_info, jack2_info, jack3_info])
+                self.debug('Motor %s successfully homed.' %
+                           jack1_info['motor'].alias())
+                res = home_group_strict(self, [jack1_info, jack2_info,
+                                               jack3_info])
                 if res and jack2_info['homed']:
-                    self.debug('Motor %s successfully homed.' % jack2_info['motor'].alias())
-                    res = home_group_strict(self, [jack1_info, jack2_info, jack3_info])
+                    self.debug('Motor %s successfully homed.' %
+                               jack2_info['motor'].alias())
+                    res = home_group_strict(self, [jack1_info, jack2_info,
+                                                   jack3_info])
                     if jack3_info['homed']:
-                        self.debug('Motor %s successfully homed.' % jack3_info['motor'].alias())
+                        self.debug('Motor %s successfully homed.' %
+                                   jack3_info['motor'].alias())
                         self.info('DCM vertical jacks successfully homed.')
                         return True
                     else:
-                        self.debug('Motor %s did not find home as the third one.' % jack3_info['motor'].alias())
+                        self.debug('Motor %s did not find home as the third'
+                                   ' one.' % jack3_info['motor'].alias())
                         self.error('DCM vertical jacks homing failed.')  
                         return False
                 else:
-                        self.debug('Motor %s did not find home as the second one.' % jack2_info['motor'].alias())
+                        self.debug('Motor %s did not find home as the second '
+                                   'one.' % jack2_info['motor'].alias())
                         self.error('DCM vertical jacks homing failed.')  
                         return False
             else: 
-                self.debug('Motor %s did not find home as the first one.' % jack1_info['motor'].alias())
+                self.debug('Motor %s did not find home as the first one.' %
+                           jack1_info['motor'].alias())
                 self.error('DCM vertical jacks homing failed.')  
                 return False
         finally:
@@ -118,16 +137,17 @@ class dcm_homing_vert(Macro):
 
 class dcm_homing_hori(Macro):
     """ 
-    This macro does the homing of horizontal translation of BL22-CLAESS DCM (Double Crystal Monochromator).
-    Homing procedure is done in 2 steps:
+    This macro does the homing of horizontal translation of BL22-CLAESS DCM
+    (Double Crystal Monochromator). Homing procedure is done in 2 steps:
 
     1. Move lateral translation motor to its negative limit.
        
-    2. When it reaches extream, Icepap homing routine is started in positive direction. 
-       Whenever motor is stopped by a STOP command, a limit switch or an alarm condition, 
-       homing routine is stop immediately.
+    2. When it reaches extream, Icepap homing routine is started in positive
+    direction. Whenever motor is stopped by a STOP command, a limit switch or
+    an alarm condition, homing routine is stop immediately.
 
-    In case of successful homing macro returns True, in all other cases it return False
+    In case of successful homing macro returns True, in all other cases it
+    return False
     """
     
     result_def = [
@@ -180,13 +200,15 @@ class dcm_homing_hori(Macro):
         
 
 class dcm_startup(Macro):
-    """ After each power-up (or PMAC reset) the system must execute a start-up procedure during which
-    the Bragg motor is phased (Forced or Soft Phased), motors are homed to their home positions and
-    motors assigned into appropriate PMAC coordinate system. 
+    """ After each power-up (or PMAC reset) the system must execute a
+    start-up procedure during which the Bragg motor is phased (Forced or
+    Soft Phased), motors are homed to their home positions and  motors
+    assigned into appropriate PMAC coordinate system.
     
-    This macro will call Pmac's PLC - AN AUTOMATED SYSTEM STARTUP PLC (PLC 6) which has
-    been created to automate the execution of all these tasks in correct sequence. This will reduce
-    downtime and also reduce possibility of error from the operators. 
+    This macro will call Pmac's PLC - AN AUTOMATED SYSTEM STARTUP PLC (PLC 6)
+    which has been created to automate the execution of all these tasks in
+    correct sequence. This will reduce downtime and also reduce possibility
+    of error from the operators.
  
     """
     param_def = [
@@ -201,13 +223,15 @@ class dcm_startup(Macro):
     def prepare(self, phasing_mode):
         phasing_mode = phasing_mode.lower()
         if not phasing_mode in ["soft", "forced"]:
-            self.error("""phasing_mode parameter is expected to be 'soft' or 'forced'""")
+            self.error("phasing_mode parameter is expected to be 'soft' "
+                       "or 'forced'")
             return False
         PMAC_DEVICE_NAME = self.getEnv("PmacEth")
         try:
             self.pmacEth = PyTango.DeviceProxy(PMAC_DEVICE_NAME)
         except DevFailed,e:
-            self.error("PmacEth DeviceProxy cannot be created. PmacEth environment variable is wrong")
+            self.error("PmacEth DeviceProxy cannot be created. PmacEth "
+                       "environment variable is wrong")
             
         
     def run(self, phasing_mode):
@@ -235,7 +259,8 @@ class dcm_startup(Macro):
             self.pmacEth.command_inout("SetPVariable", [58,1])
             self.debug("""Command 'P58=1 (ForcedPhasing=1)' was send to Pmac""")
 
-        #M3306 monitors PLC6 Enabled/Disabled status 0.0 - Enabled, 1.0 - Disabled
+        # M3306 monitors PLC6 Enabled/Disabled status 0.0 - Enabled,
+        # 1.0 - Disabled
         m3306 = 0.0
         while (m3306 == 0.0):
             time.sleep(1)
@@ -244,7 +269,8 @@ class dcm_startup(Macro):
         #SystemHomed - P73
         p73 = self.pmacEth.command_inout("GetPVariable", 73)
         if p73:
-            self.info("System homed successfully. DCM is ready for working. Exiting...")
+            self.info("System homed successfully. DCM is ready for working. "
+                      "Exiting...")
             return True
         else:
             #p117 Bragg Phased Flag
@@ -259,7 +285,8 @@ class dcm_startup(Macro):
                 self.warning("Process timeout.")
             if m68:
                 self.warning("Process skipped.")    
-            self.info("System could not be homed. DCM is not ready for working. Please rerun macro. Exiting...")
+            self.info("System could not be homed. DCM is not ready for "
+                      "working. Please rerun macro. Exiting...")
             return False
                 
     def on_abort(self):
@@ -278,7 +305,8 @@ class dcm_pre_energy_move(Macro):
         try:
             self.pmacEth = PyTango.DeviceProxy(PMAC_DEVICE_NAME)
         except DevFailed,e:
-            self.error("PmacEth DeviceProxy cannot be created. PmacEth environment variable is wrong.")
+            self.error("PmacEth DeviceProxy cannot be created. PmacEth "
+                       "environment variable is wrong.")
             
     def run(self):
         self.pmacEth.command_inout("SendCtrlChar", "A")
@@ -286,19 +314,25 @@ class dcm_pre_energy_move(Macro):
         bragg_ans = self.pmacEth.command_inout("OnlineCmd", "&1#1->")
         bragg_ok = bragg_ans.endswith("X") 
         if bragg_ok:
-            self.debug("Bragg motor (first axis) is correctly assigned to the coordinate system.")
+            self.debug("Bragg motor (first axis) is correctly assigned to the"
+                       " coordinate system.")
         else:
-            self.warning("Bragg motor (first axis) is not correctly assigned to the coordinate system.")
+            self.warning("Bragg motor (first axis) is not correctly assigned "
+                         "to the coordinate system.")
         perp_ans = self.pmacEth.command_inout("OnlineCmd", "&1#3->")
         perp_ok = perp_ans.endswith("Y") 
         if perp_ok:
-            self.debug("Perpendicular motor (third axis) is correctly assigned to the coordinate system.")
+            self.debug("Perpendicular motor (third axis) is correctly "
+                       "assigned to the coordinate system.")
         else:
-            self.warning("Perpendicular motor (third axis) is not correctly assigned to the coordinate system.")
+            self.warning("Perpendicular motor (third axis) is not correctly "
+                         "assigned to the coordinate system.")
         if bragg_ok and perp_ok:
-            self.info("All motors are correctly assigned to coordinate system. DCM ready for energy move.")
+            self.info("All motors are correctly assigned to coordinate "
+                      "system. DCM ready for energy move.")
         else:
-            self.error("Coordination system needs to be reassigned. Doing it now...")
+            self.error("Coordination system needs to be reassigned. Doing it "
+                       "now...")
             self.pmacEth.command_inout("OnlineCmd","undefine all")
             self.pmacEth.command_inout("OnlineCmd", "&1#1->X#3->Y")
             self.info("Coordination system reassigned.")
