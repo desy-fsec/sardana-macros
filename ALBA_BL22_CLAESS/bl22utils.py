@@ -128,46 +128,6 @@ class tripod_z_homming(Macro):
             ipap.setPosition(axis,0)
 
 
-class configpmac(Macro):
-    """
-    Macro to configure the Pmac to nominal conditions.
-    """
-    bragg_name = 'motor/dcm_pmac_ctrl/1'
-    perp_name = 'motor/dcm_pmac_ctrl/3'
-    pmac_name = "pmac"
-    flag_attr = 'controller/dcmturbopmaccontroller/dcm_pmac_ctrl/UseqExafs'
-
-    def run(self):
-        self.info('Set bragg configuration...')
-        pmac = taurus.Device(self.pmac_name)
-        #Kp I130
-        pmac.SetIVariable([130, 19000])
-        #Kd I131
-        pmac.SetIVariable([131, 400])
-        #Kvff I132
-        pmac.SetIVariable([132, 700])
-        #K1 I133
-        pmac.SetIVariable([133, 12000])
-        #IM I134
-        pmac.SetIVariable([134, 1])
-        #Kaff I135
-        pmac.SetIVariable([135, 500])
-
-        bragg = PyTango.DeviceProxy(self.bragg_name)
-        bragg.velocity = 4
-        bragg.acceleration = 0.1
-        bragg.deceleration = 0.1
-
-        self.info('Set perp configuration...')
-        perp = PyTango.DeviceProxy(self.perp_name)
-        perp.velocity = 0.5
-        perp.acceleration = 0.1
-        perp.deceleration = 0.1
-
-        self.info('Reset qExafs flag')
-        use_qExafs = taurus.Attribute(self.flag_attr)
-        use_qExafs.write(False)
-
 
 class reconfig(Macro):
     """Macro to configure some elements at nominal conditions: pcmac, fluo_x,
@@ -218,40 +178,6 @@ class reconfig(Macro):
         e1 = AlbaEm(host_e1)
         e1_channels = [['1', 'YES'], ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
         e1.setInvs(e1_channels)
-
-
-
-class usebraggonly (Macro):
-    """
-    Macro to set the progam 12 of the Pmac to move only the bragg without
-    perpendicular. It's meas that all the movement of the energy will do
-    with the bragg only.
-    
-    If you don't pass the paramter the macro shows you the current state.
-    
-    """
-    param_def = [['Enabled', Type.String, '', 'Active the bragg only movement']]
-
-    PMAC_ATTR = 'controller/dcmturbopmaccontroller/dcm_pmac_ctrl/movebraggonly'
-    ALLOW_VALUES = ['on', 'off']
-
-    def run(self, value):
-        dev = taurus.Attribute(self.PMAC_ATTR)
-        if value != '':
-            value = value.lower()
-            if value not in self.ALLOW_VALUES:
-                msg = ('You must pass: %s' % repr(self.ALLOW_VALUES))
-                raise ValueError(msg)
-            else:
-                active = (value == 'on')
-                dev.write(active)
-
-        current_value = dev.read().value
-        msg_act = 'Desabled'
-        if current_value:
-            msg_act = 'Enabled'
-        msg = 'The movement of the bragg only is: %s' % msg_act
-        self.info(msg)
 
 
 class getScanFile(Macro):
