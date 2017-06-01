@@ -368,7 +368,7 @@ class saveblEc(Macro, MoveBeamline):
     def run(self, crystal):
 
         config_env, config_range = selectCrystal(self, crystal)
-        self.runSaveConfig(config_env, config_rangels)
+        self.runSaveConfig(config_env, config_range)
         
 
 
