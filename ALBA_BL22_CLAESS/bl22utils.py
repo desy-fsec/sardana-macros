@@ -7,8 +7,10 @@ import os
 import pyIcePAP
 from albaemlib import AlbaEm
 
+
 def _getMotorAlias(dev_name):
     return PyTango.Database().get_alias(dev_name)
+
 
 class wa_print(Macro):
     env = ('Printer',)
@@ -25,8 +27,7 @@ class wa_print(Macro):
             return
        
         self.printer = os.popen('lpr -P %s' %printer_name,'w')
-      
-    
+
     def run(self):
         nr_motors = len(self.all_motors)
         if nr_motors == 0:
@@ -88,8 +89,6 @@ def shc(self):
     time.sleep(2)
     self.execMacro('shclose')
 
-
-
 class tripod_z_homming(Macro):
     jack_steps = 5128 #steps_per_unit 1mm
     icepap_name = 'icebl2202'
@@ -128,7 +127,6 @@ class tripod_z_homming(Macro):
             ipap.setPosition(axis,0)
 
 
-
 class reconfig(Macro):
     """Macro to configure some elements at nominal conditions: pcmac, fluo_x,
     Adlink, electrometers."""
@@ -136,30 +134,18 @@ class reconfig(Macro):
     param_def = [["moco_pos", Type.Boolean, True, "Work in moco position mode"]]
 
     def run(self, moco_pos):
-        mg = self.getEnv('DefaultMG')
-        self.info('Set Measurement Group: %s' % mg)
-        self.setEnv('ActiveMntGrp', mg)
-        self.info('Configure Ni')
-        ni_tg = self.getDevice('triggergate/ni_tg_ctrl/1')
-        ni_tg['slave'] = False
-        ni_tg['retriggerable'] = False
-      
-        self.info('Reconfig pcmac')
-        self.execMacro('restorePmac')
-        
-        self.info('Reconfig dmot1')
-        dev = PyTango.DeviceProxy('dmot1')
-        dev.write_attribute('velocity', 1000000)
-        dev.write_attribute('base_rate', 0)
-        dev.write_attribute('acceleration', 0.1)
-        
- 
-        self.info('Reconfig fluo_x')
-        fluo_x = PyTango.DeviceProxy('motor/eh_ipap_ctrl/53')
-        fluo_x.velocity = 0.8
-        fluo_x.acceleration = 1
+        self.execMaro('qExafsCleanup')
 
-        #self.execMacro('qExafsCleanup')
+        # self.info('Reconfig dmot1')
+        # dev = PyTango.DeviceProxy('dmot1')
+        # dev.write_attribute('velocity', 1000000)
+        # dev.write_attribute('base_rate', 0)
+        # dev.write_attribute('acceleration', 0.1)
+        #
+        # self.info('Reconfig fluo_x')
+        # fluo_x = PyTango.DeviceProxy('motor/eh_ipap_ctrl/53')
+        # fluo_x.velocity = 0.8
+        # fluo_x.acceleration = 1
 
         self.info('Set the electrometer polarity')
         host_e0 = self.getEnv('ElemI0Host')
@@ -195,6 +181,7 @@ class getScanFile(Macro):
             
         return scan_filenames
 
+
 class getScanID(Macro):
     """
     The macro returns the scanid.
@@ -205,9 +192,6 @@ class getScanID(Macro):
     def run(self):
         scanid = self.getEnv('ScanID')
         return scanid
-
-
-
 
 
 class HVread(Macro):
@@ -303,7 +287,6 @@ class HVset(Macro):
             time.sleep(0.1)
 
         self.info(msg)
-
 
 
 class GasFillBase(object):
