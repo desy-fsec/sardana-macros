@@ -142,8 +142,10 @@ class BL22qExafs(object):
         else:
             output_signals = ['/DEV1/C0O', '/DEV1/C0A',
                               '/DEV1/C1O', '/DEV1/C1A',
-                              '/DEV1/C2O', '/DEV1/RTSI0']
-            self.macro.ni_connect_channels(output_signals)
+                              '/DEV1/RTSI0']
+            self.macro.ni_connect_channels(output_signals, 'DoNotInvertPolarity')
+            #Configuration for the Xspress3
+            self.macro.ni_connect_channels(['/DEV1/C0O', '/DEV1/C2O'],'InvertPolarity')
             # Channel 0 source
             self.ni_trigger['StartTriggerSource'] = '/Dev1/PFI39'
             self.ni_trigger['StartTriggerType'] = 'DigEdge'
@@ -216,11 +218,6 @@ class BL22qExafs(object):
                 adlink.getAttribute("TriggerSources").write("SOFT")
                 adlink.getAttribute("TriggerMode").write(0)
                 adlink.getAttribute("TriggerInfinite").write(0)
-
-            output_signals = ['/DEV1/C0O', '/DEV1/C0A',
-                              '/DEV1/C1O', '/DEV1/C1A', 
-                              '/DEV1/C2O', '/DEV1/RTSI0']
-            self.macro.ni_connect_channels(output_signals)
             self.macro.ni_config_counter('step')
 
         self.macro.restorePmac()
