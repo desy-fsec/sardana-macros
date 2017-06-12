@@ -77,7 +77,7 @@ class BL22qExafs(object):
                 raise Exception(('You must use a higher integration time.'
                                  'The minimum value is %r' % self.min_itime))
         else:
-            self.warning('The speed verification is not active')
+            self.macro.warning('The speed verification is not active')
 
         mem = self.nr_of_triggers * scan_time
         if mem > self.mem_overload:
@@ -142,7 +142,7 @@ class BL22qExafs(object):
         else:
             output_signals = ['/DEV1/C0O', '/DEV1/C0A',
                               '/DEV1/C1O', '/DEV1/C1A', '/DEV1/RTSI0']
-            self.ni_connect_channels(output_signals)
+            self.macro.ni_connect_channels(output_signals)
             # Channel 0 source
             self.ni_trigger['StartTriggerSource'] = '/Dev1/PFI39'
             self.ni_trigger['StartTriggerType'] = 'DigEdge'
@@ -185,6 +185,8 @@ class BL22qExafs(object):
             except Exception as e:
                 raise RuntimeError( 'There was an exception with the waitFE '
                                     'macro: %s' % e)
+    def post_configure_hook(self):
+        self.macro.warning('post configure hook is not implemented')
 
     def pre_start_hook(self, final_pos=None):
         self.prepare_pmac_motors(final_pos)

@@ -302,10 +302,10 @@ class PmacDCM(object):
         self.use_bragg_only(True)
 
         for param, value in self.bragg_config.items():
-            self.bragg.write_attirbute(param, value)
+            self.bragg.write_attribute(param, value)
 
         for param, value in self.perp_config.items():
-            self.perp.write_attirbute(param, value)
+            self.perp.write_attribute(param, value)
 
     def dcm_startup(self, mode):
         mode = mode.lower()

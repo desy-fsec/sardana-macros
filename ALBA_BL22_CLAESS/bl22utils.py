@@ -134,7 +134,7 @@ class reconfig(Macro):
     param_def = [["moco_pos", Type.Boolean, True, "Work in moco position mode"]]
 
     def run(self, moco_pos):
-        self.execMaro('qExafsCleanup')
+        self.execMacro('qExafsCleanup')
 
         # self.info('Reconfig dmot1')
         # dev = PyTango.DeviceProxy('dmot1')
