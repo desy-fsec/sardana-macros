@@ -141,7 +141,8 @@ class BL22qExafs(object):
             self.sard_trigger['retriggerable'] = False
         else:
             output_signals = ['/DEV1/C0O', '/DEV1/C0A',
-                              '/DEV1/C1O', '/DEV1/C1A', '/DEV1/RTSI0']
+                              '/DEV1/C1O', '/DEV1/C1A',
+                              '/DEV1/C2O', '/DEV1/RTSI0']
             self.macro.ni_connect_channels(output_signals)
             # Channel 0 source
             self.ni_trigger['StartTriggerSource'] = '/Dev1/PFI39'
@@ -217,7 +218,8 @@ class BL22qExafs(object):
                 adlink.getAttribute("TriggerInfinite").write(0)
 
             output_signals = ['/DEV1/C0O', '/DEV1/C0A',
-                              '/DEV1/C1O', '/DEV1/C1A', '/DEV1/RTSI0']
+                              '/DEV1/C1O', '/DEV1/C1A', 
+                              '/DEV1/C2O', '/DEV1/RTSI0']
             self.macro.ni_connect_channels(output_signals)
             self.macro.ni_config_counter('step')
 
