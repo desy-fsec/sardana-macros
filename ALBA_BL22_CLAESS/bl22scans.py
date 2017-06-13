@@ -184,7 +184,7 @@ class BL22qExafs(object):
 
         if self.wait_fe:
             try:
-                self.waitFE()
+                self.macro.waitFE()
             except Exception as e:
                 raise RuntimeError( 'There was an exception with the waitFE '
                                     'macro: %s' % e)
