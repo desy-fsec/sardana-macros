@@ -9,7 +9,7 @@ DET_DELAY = 'detector_delay'
 DET_HIGH = 'det_high'
 DET_LOW = 'det_low'
 TRIGGERS_COUNT = 'triggers_count'
-
+ENCODER_RESOLUTION = 80000
 
 class ni660x_configure_collect(Macro):
     """
@@ -47,7 +47,7 @@ class ni660x_configure_collect(Macro):
         vel = omega.read_attribute('velocity').value
         t_acc = omega.read_attribute('acceleration').value
         t_shutter = shutter_delay_time
-        enc_resolution_X4 = 80175
+        enc_resolution_X4 = ENCODER_RESOLUTION
         x_abs_0 = omega.read_attribute('position').value
         x_abs_trigger = det_trigger_pos
         x_rel_high = pulse_high_width
