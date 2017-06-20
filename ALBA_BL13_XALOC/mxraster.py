@@ -304,6 +304,8 @@ class mxraster(Macro):
         self.debug(" scanning y done " )
 
     def do_one_collect(self):
+        # Execute collect config only to write pilatus header
+        self.execMacro('collect_config', 0, 0, 1, self.int_time, 1, 'C60', 'raster') 
         self.prepare_one()
         self.collect_one()
         self.process_one()
