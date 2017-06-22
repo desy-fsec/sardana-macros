@@ -4,13 +4,16 @@ import time
 
 BL_ENERGY_CONFIG = {'2.4keV': 'en < 5.6 and en >= 2.4',
                     '5.6keV': 'en < 7.6 and en >= 5.6',
-                    '7.6keV' : 'en < 14 and en >= 7.6' ,
+                    '7.6keV' : 'en < 11.5 and en >= 7.6' ,
+                    '11.5keV': 'en < 14 and en >= 11.5',
                     '14keV': 'en < 35 and en >= 14',
                     '35keV': 'en < 62.5 and en >=35'}
 
-CLEAR_111_ENERGY_CONFIG = {'6keV': 'en <= 13 and en >= 6'}
+CLEAR_111_ENERGY_CONFIG = {'6keV': 'en < 8.3 and en >= 6',
+                           '8.3keV': 'en <= 13 and en >= 8.3'}
 
-CLEAR_311_ENERGY_CONFIG = {'6keV': 'en <= 14 and en >= 6.4'}
+CLEAR_311_ENERGY_CONFIG = {'6.4keV': 'en < 8.3 and en >= 6.4',
+                           '8.3keV': 'en <= 14 and en >= 8.3'}
 
 class ConfigAling(object):
     """
