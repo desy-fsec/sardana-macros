@@ -216,10 +216,10 @@ class escanct(Macro):
             'number of points'],
         ['integ_time',   Type.Float,   None,
             'integration time'],
-      # ['mode',         Type.String,  'auto',
-      #    'ID mode to use (only makes sense if move_id is true): auto (auto '
-      #    'detect mode: this is the default) parallel (force parallel mode) '
-      #    'or antiparallel (force antiparallel mode)'],
+        # ['mode',         Type.String,  'auto',
+        #  'ID mode to use (only makes sense if move_id is true): auto (auto '
+        #  'detect mode: this is the default) parallel (force parallel mode) '
+        #  'or antiparallel (force antiparallel mode)'],
         ['move_id',      Type.Boolean, True,
             'move ID energy motor: if set to false only the mono will be moved'
             ' and lock_phase parameter will be ignored (optional True/False, '
