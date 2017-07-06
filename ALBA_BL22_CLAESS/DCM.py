@@ -291,7 +291,7 @@ class PmacDCM(object):
             if value != pid[param]:
                 raise RuntimeError('There is not possible to set PID')
 
-    def use_bragg_only(self, enabled=True):
+    def use_bragg_only(self, enabled=False):
         self.ctrl.write_attribute('movebraggonly', enabled)
         value = self.ctrl.read_attribute('movebraggonly').value
         if value != enabled:
@@ -299,7 +299,7 @@ class PmacDCM(object):
 
     def restore_defaults(self):
         self.set_pid('old')
-        self.use_bragg_only(True)
+        self.use_bragg_only(False)
 
         for param, value in self.bragg_config.items():
             self.bragg.write_attribute(param, value)
