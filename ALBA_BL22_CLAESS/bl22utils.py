@@ -1,3 +1,4 @@
+import time
 from sardana.macroserver.macro import macro, Type, Macro, ViewOption, ParamRepeat
 import PyTango, taurus
 import time
@@ -158,10 +159,16 @@ class reconfig(Macro):
 
         e0_channels = [chn, ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
         e0.setInvs(e0_channels)
-        
+        time.sleep(0.5)
+        e0_inv = e0.getInvs([1,2,3,4])
+        self.info('EMET-02 signal invertions: %s' % e0_inv)
+
         e1 = AlbaEm(host_e1)
         e1_channels = [['1', 'YES'], ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
         e1.setInvs(e1_channels)
+        time.sleep(0.5)
+        e1_inv = e1.getInvs([1,2,3,4])
+        self.info('EMET-03 signal invertions: %s' % e1_inv)
 
 
 class getScanFile(Macro):
