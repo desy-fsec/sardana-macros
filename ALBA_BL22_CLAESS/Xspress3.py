@@ -1,3 +1,4 @@
+import time
 from sardana.macroserver.macro import Type, Macro, Hookable
 import taurus
 
@@ -56,4 +57,37 @@ class getXRoIs(Macro):
                 line += '%d\t%d\t' % (low_value, high_value)
             self.output(line)
 
+       
+class dtX(Macro):
+    param_def = [["inttime", Type.Float, 1, "integration time"],]
+    
+    limaccd_device_name = 'bl22/eh/lima' 
+    xspress3_device_name = 'bl22/eh/xspress3'
+
+    def run(self, itime):
+        self.limaccd = taurus.Device(self.limaccd_device_name)
+        self.xspress3 = taurus.Device(self.xspress3_device_name)
         
+        # Prepare acq
+        self.limaccd['acq_nb_frames'] = 1
+        self.limaccd['acq_expo_time'] = itime
+        self.limaccd['acq_trigger_mode'] = 'INTERNAL_TRIGGER'
+        self.limaccd['saving_mode'] = 'MANUAL'
+        self.limaccd.prepareAcq()
+        
+        # Start & wait acq
+        self.limaccd.startAcq()
+        try:
+            while True:
+                self.checkPoint()
+                time.sleep(0.01)
+                state = self.limaccd['acq_status'].value      
+                if state != 'Running':
+                    break
+        finally:
+            self.limaccd.stopAcq()
+               
+        for idx in range(5):
+            #"dt%", data[9] "dtf", data[10]
+            data = self.xspress3.ReadScalers([0,idx])
+            self.output('dt(ch%d) = %0.4f%%' % (idx+1, data[9]))
