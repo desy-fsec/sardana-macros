@@ -21,15 +21,15 @@ class ConfigAling(object):
     """
 
     def printConfig(self):
-        equation = BL_ENERGY_CONFIG[self.config]
+        equation = self.config_range[self.config]
         self.output('Use the %r configuration: (%r)' % (self.config, equation))
         
     def initConfig(self, energy, config_range, config_path):
+        self.config_range = config_range
         self.config_file = ConfigParser.RawConfigParser()
         self.config_file.read(config_path)
         self.config_path = config_path
         
-
         try:
             self.energy =  energy / 1000.0 # to use keV
         except Exception as e:
@@ -48,7 +48,6 @@ class ConfigAling(object):
 
         self.motors_cal = self._tolist(self.config_file.get('general',
                                                             'equation'))
-        
     def _tolist(self, data):
         data = data.replace('\n', ' ')
         data = data.replace(',', ' ')
