@@ -152,8 +152,23 @@ class BL22qExafs(object):
 
     def prepare_pmac_motors(self, final_pos=None):
         self.macro.info('Preparing Bragg and Perp')
+        # TODO verify calculation of the start position on gscan
+        # We need to move relative the bragg to solve the problem.
+
+        if self.direction:
+            self.macro.execMacro('mvr oh_dcm_bragg -0.005')
+        else:
+            self.macro.execMacro('mvr oh_dcm_bragg 0.005')
+
+        if self.config_PID:
+            self.macro.setPID('new')
+
         if self.sardana_new:
-            # Configure motor protection Sardana Bug
+            #Configure motor protection Sardana Bug
+            if final_pos == None:
+                self.macro.warning('ascanct is not prepared to protect '
+                                   ' the DCM movement!!!')
+                return
             bragg_offset = self.bragg['offset'].value
             bragg_sign = self.bragg['sign'].value
             perp_offset = self.perp['offset'].value
@@ -165,17 +180,7 @@ class BL22qExafs(object):
 
             self.pmac_ctrl['NextPosition'] = [bragg_dial, perp_dial]
             self.pmac_ctrl['UseqExafs'] = True
-
-        # TODO verify calculation of the start position on gscan
-        # We need to move relative the bragg to solve the problem.
-        if self.direction:
-            self.macro.execMacro('mvr oh_dcm_bragg -0.005')
-        else:
-            self.macro.execMacro('mvr oh_dcm_bragg 0.005')
-
-        if self.config_PID:
-            self.macro.setPID('new')
-
+      
 
     def pre_configure_hook(self):
         self.prepare_pmac_plc0()
@@ -273,6 +278,7 @@ class BL22qExafs(object):
 
         except Exception as e:
             self.macro.error('Exception: %s' % e)
+            raise e
             
         finally:
             if not self.flg_cleanup:
