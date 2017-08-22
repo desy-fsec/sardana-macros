@@ -110,6 +110,7 @@ class BaseExp:
         self.debug("BaseExp.monitorDetector() entering...")
         while True:
             self.pausePoint()
+            self.checkPoint()
             acq = self.rayonixCCD.read_attribute('acq_status').value
             self.debug('RayonixCCD state is %s' % acq)
             if acq != 'Running':
@@ -186,13 +187,15 @@ class BaseExp:
             self.mntGrp.waitFinish()
         self.debug('Cleaned the event object of the Measurmente Group')
         self.rayonixCCD.stopAcq()
-        self.debug('Stop the rayonix')
         while True:     
             acq = self.rayonixCCD.read_attribute('acq_status').value
             self.debug('RayonixCCD state is %s' % acq)
             if acq != 'Running':
                 break
             time.sleep(0.2)
+
+
+
     
 class SoftShutterController:
 
@@ -639,6 +642,7 @@ class mar_ct(Macro, BaseExp, SoftShutterController):
             self.closeShutter()
 
     def on_abort(self):
+        self.warning("Please, wait while restore the Detector ")
         self.abortAcq()
         self.warning("Please, wait 5 seconds before sending new command")
 

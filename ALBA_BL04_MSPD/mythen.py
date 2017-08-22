@@ -6,7 +6,7 @@ import taurus
 import math
 #import ff_mythen
 from trigger import Trigger, TimeBase
-from taurus.core.util import SafeEvaluator
+#from taurus.core.util import SafeEvaluator
 
 
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
@@ -2307,6 +2307,24 @@ class mythen_take(Macro, MntGrpController):
         if 'dyna' in snap: 
             Temps = ["dynTa","dynSP1"]
             Temp0 = " T0 %.2f"%(taurus.Device(Temps[0]).value)
+        if 'elchem' in snap: 
+            acq_time = 0.05
+            mnt_grp = 'adlink_simple'
+            try:
+                Temp0 = ''
+                a = self.execMacro('ct_custom %r %s' % (acq_time, mnt_grp))                
+                #a = a.getData()
+                a = a.data
+               # a0 = a.data
+                Temp0 = " ".join("%s %s" % tup for tup in a['data'])
+               # Temp0 = " ".join("%s_end %s" % tup for tup in a['data'])
+            except Exception as e:
+                self.error('Error on take data in measurement Group, %r' %e)
+                pass
+            
+
+            #Temps = ["adlink_ch00","adlink_ch01","adlink_ch02","adlink_ch03"]
+            #Temp0 = " T00 %.2f,T01 %.2f,T02 %.2f,T03 %.2f"%(taurus.Device(Temps[0]).value,taurus.Device(Temps[1]).value,taurus.Device(Temps[2]).value,taurus.Device(Temps[3]).value)
 
 
         softscan = args[0]
@@ -2365,7 +2383,28 @@ class mythen_take(Macro, MntGrpController):
             for _t in Temps : 
                 tempsOut = tempsOut +" %s %.2f"%(_t,taurus.Device(_t).value)
             tempsOut = tempsOut + Temp0
-            self.debug("%s"%(tempsOut))
+ 
+            #if 'elchem' in snap: 
+            if 'DONT EXECUTE elchem' in snap: 
+
+                acq_time = 0.05
+                mnt_grp = 'adlink_simple'
+                try:
+                    Temp0 = ''
+                    a = self.execMacro('ct_custom %r %s' % (acq_time, mnt_grp))                
+                    #a = a.getData()
+                    a = a.data
+                    Temp0 = " ".join("%s %s" % tup for tup in a['data'])
+                  #  Temp0 = " ".join("%s_1 %s" % tup for tup in a['data'])
+                  #  Temp0 = " ".join("%s_1 %s" % tup for tup in a['data'])
+                    tempsOut = tempsOut + Temp0
+
+                except:
+                    self.error('Error on take data in measurement Group')
+                    pass
+                  
+              
+            self.debug("%s" %(tempsOut))
         except:
             msg = 'It was not able to read the attributes'
             self.error(msg)
