@@ -3209,7 +3209,6 @@ class mythen_timeResolvedAUTO(Macro, MntGrpController):
                 "Time resolved experiment is not possible with multiple positions.")
 
         # calculating nr of frames which mythen will be able to gather
-
         # during the experiment time
 
         dr = self.execMacro("mythen_getDr").getResult()
