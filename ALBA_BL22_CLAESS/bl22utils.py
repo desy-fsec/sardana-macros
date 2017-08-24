@@ -383,16 +383,18 @@ class gasFill(Macro, GasFillBase):
 
 
 class EMrange(Macro):
-    param_def = [
-       ['channels',
-        ParamRepeat(['ch1', Type.CTExpChannel, None, 'Motor to move'],
-                    ['range',  Type.String, None, 'Position to move to'], min=1, max=16),
-        None, 'List of motor/position pairs'],
-        ]
+    param_def = [['chns',
+                  [['ch', Type.CTExpChannel, None, 'electrometer chn'],
+                   ['range',  Type.String, None, 'Amplifier range'], 
+                   {'min':1, 'max':12}],
+                  None, 'List of [channels,range]'],]
 
-    def run(self, *args, **kwargs):
-        for ch, rg in args:
-            PyTango.DeviceProxy(ch.name).range = rg
+    def run(self, chns):
+        for ch, rg in chns:
+            old_range = ch.range
+            ch.range = rg            
+            self.output('%s changed range from %s to %s' %(ch, old_range,
+                                                           ch.range))
 
 
 
