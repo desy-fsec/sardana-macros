@@ -2218,51 +2218,34 @@ class mythen_take(Macro, MntGrpController):
     MONITOR_CHANNEL_GATE = '/Dev2/PFI38'    #i14 Gate
     MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'  #i14 Source  
         
-    def _backupChannel(self, channel):
-        DicProperties = channel.get_property('applicationType')
-        valueProperties = DicProperties["applicationType"]
-        value = list(valueProperties)[0]
 
-        if value == "CIPulseWidthChan":
-            self.info("Entering in value == CIPulseWidthChan")      
-            self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
-
-        self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
-        self._pauseTriggerWhen = channel.read_attribute('PauseTriggerWhen').value
-        self._pauseTriggerSource = channel.read_attribute('PauseTriggerSource').value      
-        positions = self.execMacro("mythen_getPositions").getResult()
-        self.spc = long(len(eval(positions)))
-    
-        if self.spc>1:
-            self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
-        
-    def _restoreChannel(self, channel):
-     
-        if self.spc>1:  
-            # does not work with abort procedure, apply manualy
-            #self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
-
-            property = {'applicationType':['CICountEdgesChan']}
-            channel.put_property(property)
-            channel.Init()   
-
-        channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
-        channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
-        channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
-        
     def _configureChannel(self, channel):
         channel.Init()
         positions = self.execMacro("mythen_getPositions").getResult()
-        self.spc = long(len(eval(positions)))
-        if self.spc > 1:
-            channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
-            channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
-            channel.write_attribute("SampPerChan", self.spc)
-            channel.write_attribute("SampleclockRate", 100.0)
-        else:
-            channel.write_attribute("PauseTriggerType", "DigLvl")
-            channel.write_attribute("PauseTriggerWhen", "Low")
-            channel.write_attribute("PauseTriggerSource", self.MONITOR_CHANNEL_GATE)
+        self.spc = len(eval(positions))
+
+        #SEP6 implementation
+        channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
+        channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
+
+        # With PulseWith the minimun expected values needs to be more than 1
+        if self.spc < 2:
+            self.spc = 2
+        channel.write_attribute("SampPerChan", long(self.spc))
+        channel.write_attribute("SampleclockRate", 100.0)
+
+
+        # OLD implementation
+        #self.spc = long(len(eval(positions)))
+        #if self.spc > 1:
+        #    channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
+        #    channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
+        #    channel.write_attribute("SampPerChan", self.spc)
+        #    channel.write_attribute("SampleclockRate", 100.0)
+        #else:
+        #    channel.write_attribute("PauseTriggerType", "DigLvl")
+        #    channel.write_attribute("PauseTriggerWhen", "Low")
+        #    channel.write_attribute("PauseTriggerSource", self.MONITOR_CHANNEL_GATE)
 
     def _count(self, count_time):
         '''Executes a count of the measurement group. It returns results
@@ -2287,7 +2270,7 @@ class mythen_take(Macro, MntGrpController):
         self.monitorChannel.Stop()
 
         #preparing Mythen to generate gate while acquiring
-        self.execMacro('mythen_setExtSignal 0 gate_out_active_high')
+        self.execMacro("mythen_setExtSignal 0 gate_out_active_high")
         
     def run(self, *args, **kwargs):
 
@@ -2333,39 +2316,43 @@ class mythen_take(Macro, MntGrpController):
 
 
         try:    
-            # Add backup and configuration in try to force finally in exception case
-            self._backupChannel(self.monitorChannel)
-            self._configureChannel(self.monitorChannel)
 
+            self._configureChannel(self.monitorChannel)
 
             self.monitorChannel.Start()
             outFileName, positions = self.execMacro("mythen_acquire").getResult()
             nrOfPositions = len(eval(positions))
             self.debug(nrOfPositions)
 
-            
-            if nrOfPositions == 0:
-                nrOfPositions = 1        
-           
-            if nrOfPositions > 1:
-                monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
-                self.debug(monitorValueList)
-                monitorValueList = list(monitorValueList)
 
-            else:
-                monitorValue = self.monitorChannel.read_attribute('Count').value
-                monitorValuePerPosition = int(monitorValue / nrOfPositions)
-                monitorValueList = [monitorValuePerPosition for i in range(nrOfPositions)]
+            # SEP6 Implementation
+            monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
+            self.debug(monitorValueList)
+            monitorValueList = list(monitorValueList)
+          
+            #OLD implentation
+            #if nrOfPositions == 0:
+            #    nrOfPositions = 1        
+           
+            #if nrOfPositions > 1:
+            #    monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
+            #    self.debug(monitorValueList)
+            #    monitorValueList = list(monitorValueList)
+
+            #else:
+            #    monitorValue = self.monitorChannel.read_attribute('Count').value
+            #    monitorValuePerPosition = int(monitorValue / nrOfPositions)
+            #    monitorValueList = [monitorValuePerPosition for i in range(nrOfPositions)]
             
 
             self.info('MonitorValuePerPosition: %s' % monitorValueList)
-        except Exception, e:
+        except Exception as e:
             self.error('Exception during acquisition')
             self.warning(e)
             raise e
         finally:
             self.monitorChannel.Stop()
-            self._restoreChannel(self.monitorChannel)
+            #self._restoreChannel(self.monitorChannel)
 
         self.info("Data stored: %s" % outFileName)
         self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )
@@ -2374,8 +2361,13 @@ class mythen_take(Macro, MntGrpController):
     #FF 12Dec2016 Modif to get rid of the ct in mythen_take
         try:
             countsOut = ''
-            countsOut = "Iring %.2f mocoIn %.4e mocoOut %.4f"%(taurus.Device('icurr').value,taurus.Device('mocoIn').value,taurus.Device('mocoOut').value)
-            self.debug("%s"%(countsOut))
+            try:
+                countsOut = "Iring %.2f mocoIn %.4e mocoOut %.4f"%(taurus.Device('icurr').value,taurus.Device('mocoIn').value,taurus.Device('mocoOut').value)
+                self.debug("%s"%(countsOut))
+            except:
+                msg = 'It was not able to read Iring  mocoIn  mocoOut Attributes'
+                self.error(msg)
+    
 #            Temps  = []
 #            tempsOut = ''
 #            if 'blower' in self.getEnv("_snap") : Temps = ["blowerT","blowerSP"]
@@ -2405,7 +2397,8 @@ class mythen_take(Macro, MntGrpController):
                   
               
             self.debug("%s" %(tempsOut))
-        except:
+        except Exception as e:
+            self.debug(e)
             msg = 'It was not able to read the attributes'
             self.error(msg)
             msg = 'Attributes data will be skipped in the par file'
