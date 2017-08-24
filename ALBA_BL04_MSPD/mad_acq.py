@@ -74,7 +74,7 @@ class mad_ascan(Macro, SoftShutterController):
 
 class _madscan(Macro, SoftShutterController):
 
-    mntGrp = "mad_cs"
+    mntGrp = "mad_cs_test"
 
     motName = "pd_oc"
     #motName = 'dmot1'
@@ -161,16 +161,16 @@ class _madscan(Macro, SoftShutterController):
         try:
             moveable = self.getMoveable(self.motName)
             # To use in sep6-bliss
-            ascanct_macro, _ = self.createMacro("ascanct", moveable,
-                                                          startPos, finalPos, 
-                                                          nrOfTriggers, 
-                                                          integTime, 100)
-
-            #to use in SEP 6
             #ascanct_macro, _ = self.createMacro("ascanct", moveable,
             #                                              startPos, finalPos, 
             #                                              nrOfTriggers, 
-            #                                              integTime, 0)
+            #                                              integTime, 100)
+
+            #to use in SEP 6
+            ascanct_macro, _ = self.createMacro("ascanct", moveable,
+                                                          startPos, finalPos, 
+                                                          nrOfTriggers, 
+                                                          integTime, 0)
 
             ascanct_macro.hooks = [
                                    (self.preConfigure, ["pre-configuration"]),
