@@ -25,22 +25,10 @@ def splitStringIntoLines(string, delimeter):
             splitted_lines.append(line)
     return splitted_lines
 
-
-class mythen_setgetGeneric(Macro):
-    # Common methods for set/get macros
-    
-    def on_abort(self):
-        if not self.slsDetectorProgram.isTerminated():
-            self.slsDetectorProgram.terminate()
-            time.sleep(1)
-        if not self.slsDetectorProgram.isTerminated():
-            self.slsDetectorProgram.kill()
-
-
-class mythen_getThreshold(mythen_setgetGeneric):
+class mythen_getThreshold(Macro):
     """Gets mythen threshold."""
     
-    result_def = [['threshold',Type.Integer, None, 'Threshold']]
+    result_def =  [['threshold',Type.Integer, None, 'Threshold']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["threshold"])
@@ -74,12 +62,19 @@ class mythen_getThreshold(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve threshold.")
         return threshold
     
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
             
-class mythen_setThreshold(mythen_setgetGeneric):
+            
+class mythen_setThreshold(Macro):
     """Sets mythen threshold."""
     
-    param_def = [['threshold',Type.Integer, None, 'Threshold']]
-    result_def = [['threshold',Type.Integer, None, 'Threshold']]
+    param_def =  [['threshold',Type.Integer, None, 'Threshold']]
+    result_def =  [['threshold',Type.Integer, None, 'Threshold']]
     
     def prepare(self, *args, **kwargs):
         threshold = str(args[0])
@@ -103,8 +98,7 @@ class mythen_setThreshold(mythen_setgetGeneric):
                     try:
                         threshold = int(outLine.split()[1])
                     except Exception, e:
-                        self.error("Could not parse '%s' output: %s" % (
-                            self.slsDetectorProgram.args,outLine))
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
                         raise e
                 else:
                     self.output(outLine)
@@ -115,12 +109,18 @@ class mythen_setThreshold(mythen_setgetGeneric):
         if threshold is None:
             raise Exception("It was not able to retrieve threshold.")        
         return threshold
-
+    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
        
-class mythen_getIndex(mythen_setgetGeneric):
+class mythen_getIndex(Macro):
     """Gets index of the next output file."""
     
-    result_def = [['index', Type.Integer, None, 'Index of the next output file']]
+    result_def =  [['index', Type.Integer, None, 'Index of the next output file']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["index"])
@@ -142,26 +142,30 @@ class mythen_getIndex(mythen_setgetGeneric):
                     try:
                         index = int(outLine.split()[1])
                     except Exception, e:
-                        self.error("Could not parse '%s' output: %s" % (
-                            self.slsDetectorProgram.args, outLine))
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
                         raise e
                 else:
                     self.output(outLine)
             if lenErrLine != 0:
                 self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if index is None:
             raise Exception("It was not able to retrieve index.")
         return index
-   
+    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setIndex(mythen_setgetGeneric):
+class mythen_setIndex(Macro):
     """Sets new index for the output file."""
     
-    param_def = [['index', Type.Integer, None, 'New index of the next output file']]
-    result_def = [['index', Type.Integer, None, 'Index of the next output file']]
+    param_def =  [['index', Type.Integer, None, 'New index of the next output file']]
+    result_def =  [['index', Type.Integer, None, 'Index of the next output file']]
     
     def prepare(self, *args, **kwargs):
         index = str(args[0])
@@ -184,25 +188,29 @@ class mythen_setIndex(mythen_setgetGeneric):
                     try:
                         index = int(outLine.split()[1])
                     except Exception, e:
-                        self.error("Could not parse '%s' output: %s" % (
-                            self.slsDetectorProgram.args, outLine))
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
                         raise e
                 else:
                     self.output(outLine)
             if lenErrLine != 0:
                 self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if index is None:
             raise Exception("It was not able to retrieve index.")
         return index
     
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
             
-class mythen_getOutFileName(mythen_setgetGeneric):
+class mythen_getOutFileName(Macro):
     """Gets name of the next output file."""
     
-    result_def = [['outFileName', Type.String, None, 'Name next output file']]
+    result_def =  [['outFileName', Type.String, None, 'Name of the next output file']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["fname"])
@@ -226,19 +234,24 @@ class mythen_getOutFileName(mythen_setgetGeneric):
                     self.output(outLine)
             if lenErrLine != 0:
                 self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if fileName is None:
             raise Exception("It was not able to retrieve outFileName.")
         return fileName
-
+    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
             
-class mythen_setOutFileName(mythen_setgetGeneric):
+class mythen_setOutFileName(Macro):
     """Sets name of the next output file."""
     
-    param_def = [['outFileName', Type.String, None, 'New name for next output file']]
-    result_def = [['outFileName', Type.String, None, 'Name of the next output file']]
+    param_def =  [['outFileName', Type.String, None, 'New name of the next output file']]
+    result_def =  [['outFileName', Type.String, None, 'Name of the next output file']]
     
     def prepare(self, *args, **kwargs):
         fileName = args[0]
@@ -269,12 +282,17 @@ class mythen_setOutFileName(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve outFileName.")
         return fileName
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_getOutDir(mythen_setgetGeneric):
+class mythen_getOutDir(Macro):
     """Gets name of the output directory."""
     
-    result_def = [['outDir', Type.String, None, 'Name of the output directory']]
+    result_def =  [['outDir', Type.String, None, 'Name of the output directory']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["outdir"])
@@ -304,13 +322,18 @@ class mythen_getOutDir(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve outDir.")
         return outDir
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
             
-class mythen_setOutDir(mythen_setgetGeneric):
+class mythen_setOutDir(Macro):
     """Sets name of the output directory."""
     
-    param_def  = [['outDir', Type.String, None, 'New name of the output directory']]
-    result_def = [['outDir', Type.String, None, 'Name of the output directory']]
+    param_def  =  [['outDir', Type.String, None, 'New name of the output directory']]
+    result_def =  [['outDir', Type.String, None, 'Name of the output directory']]
     
     def prepare(self, *args, **kwargs):
         outDir = args[0]
@@ -335,19 +358,23 @@ class mythen_setOutDir(mythen_setgetGeneric):
                     self.output(outLine)
             if lenErrLine != 0:
                 self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if outDir is None:
             raise Exception("It was not able to retrieve outDir.")
         return outDir
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
             
-class mythen_getExpTime(mythen_setgetGeneric):
+class mythen_getExpTime(Macro):
     """Gets exposure time."""
     
-    result_def = [['expTime', Type.String, None, 'Exposure time [s]']]
+    result_def =  [['expTime', Type.String, None, 'Exposure time [s]']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["exptime"])
@@ -369,28 +396,30 @@ class mythen_getExpTime(mythen_setgetGeneric):
                     try:
                         expTime = float(outLine.split()[1])
                     except Exception, e:
-                        a = " ".self.slsDetectorProgram.args
-                        b = outLine
-                        self.error("Could not parse '%s' output: %s" %(a,b))
+                        self.error("Could not parse '%s' output: %s" % (" ".self.slsDetectorProgram.args, outLine))
                         raise e
                 else:
                     self.output(outLine)                
             if lenErrLine != 0:
                 self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if expTime is None:
             raise Exception("It was not able to retrieve expTime.")
         return expTime
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
             
-class mythen_setExpTime(mythen_setgetGeneric):
+class mythen_setExpTime(Macro):
     """Sets exposure time."""
     
-    param_def  = [['expTime', Type.String, None, 'New exposure time [s]']]
-    result_def = [['expTime', Type.String, None, 'Exposure time [s]']]
+    param_def  =  [['expTime', Type.String, None, 'New exposure time [s]']]
+    result_def =  [['expTime', Type.String, None, 'Exposure time [s]']]
     
     def prepare(self, *args, **kwargs):
         expTime = str(args[0])
@@ -413,27 +442,29 @@ class mythen_setExpTime(mythen_setgetGeneric):
                     try:
                         expTime = float(outLine.split()[1])
                     except Exception, e:
-                        a = " ".self.slsDetectorProgram.args
-                        b = outLine
-                        self.error("Could not parse '%s' output: %s" % (a, b))
+                        self.error("Could not parse '%s' output: %s" % (" ".self.slsDetectorProgram.args, outLine))
                         raise e
                 else:
                     self.output(outLine)
             if lenErrLine != 0:
                 self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if expTime is None:
             raise Exception("It was not able to retrieve expTime.")
         return expTime
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_getFlatFieldDir(mythen_setgetGeneric):
+class mythen_getFlatFieldDir(Macro):
     """Gets name of the flat field directory."""
     
-    result_def = [['flatFieldDir', Type.String, None, 'Name of the flat field directory']]
+    result_def =  [['flatFieldDir', Type.String, None, 'Name of the flat field directory']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["ffdir"])
@@ -457,20 +488,24 @@ class mythen_getFlatFieldDir(mythen_setgetGeneric):
                     self.output(outLine)
             if lenErrLine != 0:
                 self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if flatFieldDir is None:
             raise Exception("It was not able to retrieve outDir.")
         return flatFieldDir
     
-       
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()   
             
-class mythen_setFlatFieldDir(mythen_setgetGeneric):
+class mythen_setFlatFieldDir(Macro):
     """Sets name of the flat filed directory."""
     
-    param_def = [['flatFieldDir', Type.String, None, 'New name of the flat field directory']]
-    result_def = [['flatFieldDir', Type.String, None, 'Name of the flat field directory']]
+    param_def =  [['flatFieldDir', Type.String, None, 'New name of the flat field directory']]
+    result_def =  [['flatFieldDir', Type.String, None, 'Name of the flat field directory']]
     
     def prepare(self, *args, **kwargs):
         flatFieldDir = args[0]
@@ -495,20 +530,24 @@ class mythen_setFlatFieldDir(mythen_setgetGeneric):
                     self.output(outLine)
             if lenErrLine != 0:
                 self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if flatFieldDir is None:
             raise Exception("It was not able to retrieve outDir.")
         return flatFieldDir
     
-       
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()   
             
-class mythen_getFlatFieldFile(mythen_setgetGeneric):
+class mythen_getFlatFieldFile(Macro):
     """Gets name of the flat field correction file.
        'none' - flat field correction is disabled"""
           
-    result_def = [['flatFieldFile', Type.String, None, 'Name of the flat field file']]
+    result_def =  [['flatFieldFile', Type.String, None, 'Name of the flat field file']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["flatfield"])
@@ -532,21 +571,25 @@ class mythen_getFlatFieldFile(mythen_setgetGeneric):
                     self.output(outLine)
             if lenErrLine != 0:
                 self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if flatFieldFile is None:
             raise Exception("It was not able to retrieve outDir.")
         return flatFieldFile
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setFlatFieldFile(mythen_setgetGeneric):
+class mythen_setFlatFieldFile(Macro):
     """Sets name of the flat field correction file.
        'none' - disables flat field correction"""
     
-    param_def = [['flatFieldFile', Type.String, None, 'New name of the flat field file']]
-    result_def = [['flatFieldFile', Type.String, None, 'Name of the flat field file']]
+    param_def =  [['flatFieldFile', Type.String, None, 'New name of the flat field file']]
+    result_def =  [['flatFieldFile', Type.String, None, 'Name of the flat field file']]
     
     def prepare(self, *args, **kwargs):
         flatFieldFile = args[0]
@@ -575,16 +618,20 @@ class mythen_setFlatFieldFile(mythen_setgetGeneric):
                     flatFieldFile = errLine.split()[1]
 #                else:
 #                    self.error(errLine)
-            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and\
-                            lenErrLine == 0:
+            if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
         if flatFieldFile is None:
             raise Exception("It was not able to retrieve outDir.")
         return flatFieldFile
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
             
-class mythen_setPositions(mythen_setgetGeneric):
+class mythen_setPositions(Macro):
     """Sets positions."""
     
     param_def = [['positions', ParamRepeat(['position', Type.Float, None, 'Position to be moved'],min=0), None, 'Positions']]
@@ -626,9 +673,7 @@ class mythen_setPositions(mythen_setgetGeneric):
                         else:
                             positions = []
                     except Exception, e:
-                        a = " ".self.slsDetectorProgram.args
-                        b = outLine
-                        self.error("Could not parse '%s' output: %s" % (a,b))
+                        self.error("Could not parse '%s' output: %s" % (" ".self.slsDetectorProgram.args, outLine))
                         raise e
                 else:
                     self.output(outLine)
@@ -641,9 +686,14 @@ class mythen_setPositions(mythen_setgetGeneric):
         #self.output(positions)
         return repr(positions)
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_getPositions(mythen_setgetGeneric):
+class mythen_getPositions(Macro):
     """Gets positions."""
     
     result_def = [['positions', Type.String, None, 'Positions to move']]
@@ -672,10 +722,7 @@ class mythen_getPositions(mythen_setgetGeneric):
                         try:
                             positions = map(float,positions)
                         except Exception, e:
-                            a = " ".self.slsDetectorProgram.args
-                            b = outLine
-                            self.error(
-                                "Could not parse '%s' output: %s" % (a, b))
+                            self.error("Could not parse '%s' output: %s" % (" ".self.slsDetectorProgram.args, outLine))
                             raise e
                     else:
                         positions = []
@@ -689,7 +736,12 @@ class mythen_getPositions(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve positions.")
         return repr(positions)
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
                         
 class mythen_acquire(Macro):
     """Acquires images with mythen detector. If positions are set it will go to positions and acquire one frame per position."""
@@ -844,8 +896,7 @@ class mythen_acquire(Macro):
                     self.output(outLine)
                 if lenErrLine != 0:
                     self.error(errLine)
-                if self.slsDetectorProgram.isTerminated() and lenOutLine == 0\
-                        and lenErrLine == 0:
+                if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                     break
 
 #class mythen_acquire(Macro):
@@ -906,7 +957,7 @@ class mythen_acquire(Macro):
                     #break
                     
                     
-class mythen_getStatus(mythen_setgetGeneric):
+class mythen_getStatus(Macro):
     """Gets mythen status. Return values:
        running - detector is acquiring
        error - detector is in error state
@@ -915,7 +966,7 @@ class mythen_getStatus(mythen_setgetGeneric):
        finished - unknown @todo
        waiting - unknown @todo"""
        
-    result_def = [['status', Type.String, None, 'Detector status']]
+    result_def =  [['status', Type.String, None, 'Detector status']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["status"])
@@ -937,9 +988,7 @@ class mythen_getStatus(mythen_setgetGeneric):
                     try:
                         status = outLine.split()[1]
                     except Exception, e:
-                        a = " ".self.slsDetectorProgram.args
-                        b = outLine
-                        self.error("Could not parse '%s' output: %s" % (a,b))
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
                         raise e
                 else:
                     self.output(outLine)                
@@ -951,17 +1000,22 @@ class mythen_getStatus(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve Status.")
         return status
     
-     
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill() 
         
         
-class mythen_getTiming(mythen_setgetGeneric):
+class mythen_getTiming(Macro):
     """Gets timing mode. Return values:
        auto - software timing
        gating - hardware gating
        trigger - hardware trigger
        complementary - unknown @todo"""
        
-    result_def = [['mode', Type.String, None, 'Configured timing mode']]
+    result_def =  [['mode', Type.String, None, 'Configured timing mode']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["timing"])
@@ -983,9 +1037,7 @@ class mythen_getTiming(mythen_setgetGeneric):
                     try:
                         mode = outLine.split()[1]
                     except Exception, e:
-                        a = " ".self.slsDetectorProgram.args
-                        b = outLine
-                        self.error("Could not parse '%s' output: %s" % (a,b))
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
                         raise e
                 else:
                     self.output(outLine)                
@@ -997,17 +1049,22 @@ class mythen_getTiming(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve Timing.")
         return mode
     
-      
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()  
     
     
-class mythen_setTiming(mythen_setgetGeneric):
+class mythen_setTiming(Macro):
     """Sets timing mode. Return values:
        auto - software timing
        gating - hardware gating
        trigger - hardware trigger
        complementary - unknown @todo"""
        
-    param_def = [['mode', Type.String, None, 'New timing mode']]
+    param_def =  [['mode', Type.String, None, 'New timing mode']]
 
     def prepare(self, *args, **kwargs):
         mode = args[0]
@@ -1030,9 +1087,7 @@ class mythen_setTiming(mythen_setgetGeneric):
                     try:
                         mode = outLine.split()[1]
                     except Exception, e:
-                        a = " ".self.slsDetectorProgram.args
-                        b = outLine
-                        self.error("Could not parse '%s' output: %s" % (a,b))
+                        self.error("Could not parse '%s' output: %s" % (self.slsDetectorProgram.args, outLine))
                         raise e
                 else:
                     self.output(outLine)                
@@ -1043,9 +1098,14 @@ class mythen_setTiming(mythen_setgetGeneric):
         if mode is None:
             raise Exception("It was not able to retrieve Timing.")
     
-      
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()  
 
-class mythen_getExtSignal(mythen_setgetGeneric):
+class mythen_getExtSignal(Macro):
     """Gets external signal configuration. Return values:
        off - acquisition of software trigger
        gate_in_active_high - acquisition while signal is high
@@ -1062,7 +1122,7 @@ class mythen_getExtSignal(mythen_setgetGeneric):
        ro_trigger_out_falling_edge - unknown"""
        
     param_def = [['channelNr', Type.Integer, None, 'Channel nr']]
-    result_def = [['mode', Type.String, None, 'Configured mode ']]
+    result_def =  [['mode', Type.String, None, 'Configured mode ']]
 
     def prepare(self, *args, **kwargs):
         channelNr = args[0]
@@ -1097,9 +1157,14 @@ class mythen_getExtSignal(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve ExtSig.")
         return mode
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
 
-class mythen_setExtSignal(mythen_setgetGeneric):
+class mythen_setExtSignal(Macro):
     """Sets external signal configuration. Return values:
        off - acquisition of software trigger
        gate_in_active_high - acquisition while signal is high
@@ -1150,13 +1215,18 @@ class mythen_setExtSignal(mythen_setgetGeneric):
         if mode is None:
             raise Exception("It was not able to configure ExtSignal.")
     
-       
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()   
             
             
-class mythen_getNrOfTriggers(mythen_setgetGeneric):
+class mythen_getNrOfTriggers(Macro):
     """Gets nr of triggers. """
        
-    result_def = [['NrOfTriggers', Type.Integer, None, 'Nr of triggers']]
+    result_def =  [['NrOfTriggers', Type.Integer, None, 'Nr of triggers']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["cycles"])
@@ -1190,12 +1260,17 @@ class mythen_getNrOfTriggers(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve NrOfTriggers.")
         return nrOfTriggers
     
-        
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()    
             
-class mythen_setNrOfTriggers(mythen_setgetGeneric):
+class mythen_setNrOfTriggers(Macro):
     """Gets nr of triggers. """
     
-    param_def = [['NrOfTriggers', Type.Integer, None, 'Nr of triggers']]
+    param_def =  [['NrOfTriggers', Type.Integer, None, 'Nr of triggers']]
 
     def prepare(self, *args, **kwargs):
         nrOfTriggers = args[0]
@@ -1229,13 +1304,18 @@ class mythen_setNrOfTriggers(mythen_setgetGeneric):
         if nrOfTriggers is None:
             raise Exception("It was not able to retrieve NrOfTriggers.")
     
-      
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()  
             
             
-class mythen_getNrOfFramesPerTrigger(mythen_setgetGeneric):
+class mythen_getNrOfFramesPerTrigger(Macro):
     """Gets nr of frames per trigger. """
        
-    result_def = [['NrOfFramesPerTrigger', Type.Integer, None, 'Nr of frames per trigger']]
+    result_def =  [['NrOfFramesPerTrigger', Type.Integer, None, 'Nr of frames per trigger']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["frames"])
@@ -1269,13 +1349,18 @@ class mythen_getNrOfFramesPerTrigger(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve NrOfFramsePerTrigger.")
         return nrOfFramesPerTrigger
     
-     
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill() 
             
             
-class mythen_setNrOfFramesPerTrigger(mythen_setgetGeneric):
+class mythen_setNrOfFramesPerTrigger(Macro):
     """Gets nr of frames per trigger. """
        
-    param_def = [['NrOfFramesPerTrigger', Type.Integer, None, 'Nr of frames per trigger']]
+    param_def =  [['NrOfFramesPerTrigger', Type.Integer, None, 'Nr of frames per trigger']]
 
     def prepare(self, *args, **kwargs):
         nrOfFramesPerTrigger = args[0]
@@ -1310,12 +1395,17 @@ class mythen_setNrOfFramesPerTrigger(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve NrOfFramsePerTrigger.")
         return nrOfFramesPerTrigger
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
             
-class mythen_getNrOfGates(mythen_setgetGeneric):
+class mythen_getNrOfGates(Macro):
     """Gets nr of frames per trigger. """
        
-    result_def = [['NrOfGates', Type.Integer, None, 'Nr of gates']]
+    result_def =  [['NrOfGates', Type.Integer, None, 'Nr of gates']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["gates"])
@@ -1349,13 +1439,18 @@ class mythen_getNrOfGates(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve NrOfGates.")
         return nrOfGates
     
-     
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill() 
             
             
-class mythen_setNrOfGates(mythen_setgetGeneric):
+class mythen_setNrOfGates(Macro):
     """Gets nr of frames per trigger. """
        
-    param_def = [['NrOfGates', Type.Integer, None, 'Nr of gates']]
+    param_def =  [['NrOfGates', Type.Integer, None, 'Nr of gates']]
 
     def prepare(self, *args, **kwargs):
         nrOfGates = args[0]
@@ -1389,13 +1484,18 @@ class mythen_setNrOfGates(mythen_setgetGeneric):
         if nrOfGates is None:
             raise Exception("It was not able to retrieve NrOfGates.")
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
                    
 
-class mythen_getBinSize(mythen_setgetGeneric):
+class mythen_getBinSize(Macro):
     """Gets binning size."""
     
-    result_def = [['binsize', Type.Float, None, 'Binning size']]
+    result_def =  [['binsize', Type.Float, None, 'Binning size']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["binsize"])
@@ -1429,12 +1529,17 @@ class mythen_getBinSize(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve binSize.")
         return binSize
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
             
-class mythen_setBinSize(mythen_setgetGeneric):
+class mythen_setBinSize(Macro):
     """Sets binning size."""
     
-    param_def  = [['binSize', Type.String, None, 'Binning size']]
+    param_def  =  [['binSize', Type.String, None, 'Binning size']]
     
     def prepare(self, *args, **kwargs):
         binSize = args[0]
@@ -1468,13 +1573,18 @@ class mythen_setBinSize(mythen_setgetGeneric):
         if binSize is None:
             raise Exception("It was not able to retrieve expTime.")
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
             
 
-class mythen_getDr(mythen_setgetGeneric):
+class mythen_getDr(Macro):
     """Gets dynamic range."""
     
-    result_def = [['dr', Type.Integer, None, 'Dynamic range']]
+    result_def =  [['dr', Type.Integer, None, 'Dynamic range']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["dr"])
@@ -1512,12 +1622,17 @@ class mythen_getDr(mythen_setgetGeneric):
         self.info('ReadOutTime = %f sec' %(self.readOutTime))
         return dr
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
             
-class mythen_setDr(mythen_setgetGeneric):
+class mythen_setDr(Macro):
     """Sets dynamic range."""
     
-    param_def  = [['dr', Type.String, None, 'Dynamic range']]
+    param_def  =  [['dr', Type.String, None, 'Dynamic range']]
     
     def prepare(self, *args, **kwargs):
         dr = args[0]
@@ -1551,13 +1666,18 @@ class mythen_setDr(mythen_setgetGeneric):
         if dr is None:
             raise Exception("It was not able to retrieve Dr.")
     
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
             
-class mythen_getSettings(mythen_setgetGeneric):
+class mythen_getSettings(Macro):
     """Gets settings."""
     
-    result_def = [['settings', Type.String, None, 'Settings']]
+    result_def =  [['settings', Type.String, None, 'Settings']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["settings"])
@@ -1591,12 +1711,17 @@ class mythen_getSettings(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve binSize.")
         return settings
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
             
-class mythen_setSettings(mythen_setgetGeneric):
+class mythen_setSettings(Macro):
     """Sets settings."""
     
-    param_def  = [['settings', Type.String, None, 'Settings type']]
+    param_def  =  [['settings', Type.String, None, 'Settings type']]
     
     def prepare(self, *args, **kwargs):
         dr = args[0]
@@ -1630,13 +1755,18 @@ class mythen_setSettings(mythen_setgetGeneric):
         if settings is None:
             raise Exception("It was not able to retrieve settings.")
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
 
 
-class mythen_getScan0Prec(mythen_setgetGeneric):
+class mythen_getScan0Prec(Macro):
     """Gets mythen threshold."""
 
-    result_def = [['parval',Type.Integer, None, 'Threshold']]
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["scan0prec"])
@@ -1670,13 +1800,18 @@ class mythen_getScan0Prec(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setScan0Prec(mythen_setgetGeneric):
+class mythen_setScan0Prec(Macro):
     """Gets mythen threshold."""
 
-    param_def = [['parval',Type.Integer, None, 'Parameter to set']]
-    result_def = [['parval',Type.Integer, None, 'Parameter to set']]
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
 
     def prepare(self, *args, **kwargs):
         parval = str(args[0]) 
@@ -1711,12 +1846,17 @@ class mythen_setScan0Prec(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_getScan0Script(mythen_setgetGeneric):
+class mythen_getScan0Script(Macro):
     """Gets mythen Scan0Script."""
 
-    result_def = [['parval',Type.String, None, 'Threshold']]
+    result_def =  [['parval',Type.String, None, 'Threshold']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["scan0script"])
@@ -1750,13 +1890,18 @@ class mythen_getScan0Script(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setScan0Script(mythen_setgetGeneric):
+class mythen_setScan0Script(Macro):
     """Gets mythen Scan0Script."""
 
-    param_def = [['parval',Type.String, None, 'Parameter to set']]
-    result_def = [['parval',Type.String, None, 'Parameter to set']]
+    param_def =  [['parval',Type.String, None, 'Parameter to set']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
 
     SCRIPTS_ALLOW = ['position','threshold', 'energy', 'trimbits']
 
@@ -1800,13 +1945,18 @@ class mythen_setScan0Script(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setScan1Script(mythen_setgetGeneric):
+class mythen_setScan1Script(Macro):
     """Gets mythen Scan1Script."""
 
-    param_def = [['parval',Type.String, None, 'Parameter to set']]
-    result_def = [['parval',Type.String, None, 'Parameter to set']]
+    param_def =  [['parval',Type.String, None, 'Parameter to set']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
 
     SCRIPTS_ALLOW = ['position','threshold', 'energy', 'trimbits','none']
 
@@ -1850,13 +2000,18 @@ class mythen_setScan1Script(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
 
-class mythen_getAngcallog(mythen_setgetGeneric):
+class mythen_getAngcallog(Macro):
     """Gets mythen AngCalLog."""
 
-    result_def = [['parval',Type.Integer, None, 'Threshold']]
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["angcallog"])
@@ -1890,13 +2045,18 @@ class mythen_getAngcallog(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setAngcallog(mythen_setgetGeneric):
+class mythen_setAngcallog(Macro):
     """Sets mythen AngCalLog."""
 
-    param_def = [['parval',Type.Integer, None, 'Parameter to set']]
-    result_def = [['parval',Type.Integer, None, 'Parameter to set']]
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
 
     def prepare(self, *args, **kwargs):
         parval = str(args[0]) 
@@ -1931,13 +2091,18 @@ class mythen_setAngcallog(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
 
-class mythen_getScan0Range(mythen_setgetGeneric):
+class mythen_getScan0Range(Macro):
     """Gets mythen Scan0Range."""
 
-    result_def = [['parval',Type.String, None, 'par value']]
+    result_def =  [['parval',Type.String, None, 'par value']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["scan0range"])
@@ -1975,14 +2140,19 @@ class mythen_getScan0Range(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return repr(parval)
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
 
-class mythen_setScan0Range(mythen_setgetGeneric):
+class mythen_setScan0Range(Macro):
     """Sets mythen Scan0Range."""
 
     param_def = [['positions', ParamRepeat(['position', Type.Float, None, 'Position to be moved'],min=0), None, 'Positions']]
-    result_def = [['parval',Type.String, None, 'Parameter to set']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
 
     def prepare(self, *args, **kwargs):
 
@@ -2029,12 +2199,21 @@ class mythen_setScan0Range(mythen_setgetGeneric):
         return repr(parval)
 
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
             
 class mythen_take(Macro, MntGrpController):
     
-    result_def = [['OutFile', Type.String, None, 'Full path to the output file']]
+    result_def = [['OutFile', Type.String, None, 'Full path to the output file'],
+                  ['nrOfPositions', Type.String, None, 'Number of positions'],
+                  ['positions', Type.String, None, 'List of positions'],
+                  ['monitors', Type.String, None, 'Monitors']
+                 ]
     param_def = [['softscan', Type.Boolean, False,'It use in mythen_softscan'],
                  ['startpos', Type.String, '', 'start position'],
                  ['endpos' , Type.String, '', 'end position']]
@@ -2058,6 +2237,19 @@ class mythen_take(Macro, MntGrpController):
             self.spc = 2
         channel.write_attribute("SampPerChan", long(self.spc))
         channel.write_attribute("SampleclockRate", 100.0)
+
+
+        # OLD implementation
+        #self.spc = long(len(eval(positions)))
+        #if self.spc > 1:
+        #    channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
+        #    channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
+        #    channel.write_attribute("SampPerChan", self.spc)
+        #    channel.write_attribute("SampleclockRate", 100.0)
+        #else:
+        #    channel.write_attribute("PauseTriggerType", "DigLvl")
+        #    channel.write_attribute("PauseTriggerWhen", "Low")
+        #    channel.write_attribute("PauseTriggerSource", self.MONITOR_CHANNEL_GATE)
 
     def _count(self, count_time):
         '''Executes a count of the measurement group. It returns results
@@ -2088,7 +2280,7 @@ class mythen_take(Macro, MntGrpController):
 
         t0 = time.time()
 
-    	#170202
+        #170202
         Temps  = []
         tempsOut = ''
         Temp0 = ''
@@ -2142,6 +2334,21 @@ class mythen_take(Macro, MntGrpController):
             self.debug(monitorValueList)
             monitorValueList = list(monitorValueList)
           
+            #OLD implentation
+            #if nrOfPositions == 0:
+            #    nrOfPositions = 1        
+           
+            #if nrOfPositions > 1:
+            #    monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
+            #    self.debug(monitorValueList)
+            #    monitorValueList = list(monitorValueList)
+
+            #else:
+            #    monitorValue = self.monitorChannel.read_attribute('Count').value
+            #    monitorValuePerPosition = int(monitorValue / nrOfPositions)
+            #    monitorValueList = [monitorValuePerPosition for i in range(nrOfPositions)]
+            
+
             self.info('MonitorValuePerPosition: %s' % monitorValueList)
         except Exception as e:
             self.error('Exception during acquisition')
@@ -2149,6 +2356,7 @@ class mythen_take(Macro, MntGrpController):
             raise e
         finally:
             self.monitorChannel.Stop()
+            #self._restoreChannel(self.monitorChannel)
 
         self.info("Data stored: %s" % outFileName)
         self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )
@@ -2251,13 +2459,13 @@ class mythen_take(Macro, MntGrpController):
         monitors = monitorValueList
         self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )   
                             
-        return outFileName,nrOfPositions,positions,monitors
+        return outFileName,str(nrOfPositions),str(positions),str(monitors)
 
 
-class mythen_getAngConv(mythen_setgetGeneric):
+class mythen_getAngConv(Macro):
     """Gets the constants used for angular convertion."""
    
-    result_def = [['fnOut', Type.String, "", '[Filename to print the result]']]
+    result_def =  [['fnOut', Type.String, "", '[Filename to print the result]']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(['angconv'])
@@ -2282,13 +2490,18 @@ class mythen_getAngConv(mythen_setgetGeneric):
                 break
         return fnOut
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
 
 
-class mythen_getBadChannels(mythen_setgetGeneric):
+class mythen_getBadChannels(Macro):
     """Gets the bad channels."""
    
-    result_def = [['filename', Type.String, "", 'Filename to print the result']]
+    result_def =  [['filename', Type.String, "", 'Filename to print the result']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(['badchannels'])
@@ -2300,7 +2513,6 @@ class mythen_getBadChannels(mythen_setgetGeneric):
                 
         while True:
             outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
             errLine = error.readline();self.debug("errLine: " + errLine)
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
@@ -2316,13 +2528,18 @@ class mythen_getBadChannels(mythen_setgetGeneric):
                 break
         return filename
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
 
-class mythen_setBadChannels(mythen_setgetGeneric):
+class mythen_setBadChannels(Macro):
     """Gets the bad channels."""
    
-    param_def  = [['newFileName', Type.String, None, 'Bad channel file name']]
-    result_def = [['ackFileName', Type.String, None, 'Acknowledged bad channel file name']]
+    param_def  =  [['newFileName', Type.String, None, 'Bad channel file name']]
+    result_def =  [['ackFileName', Type.String, None, 'Acknowledged bad channel file name']]
     
     def prepare(self, *args, **kwargs):
         self.badChannelFilename = args[0]
@@ -2353,12 +2570,17 @@ class mythen_setBadChannels(mythen_setgetGeneric):
                 break
         return filename
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
 
-class mythen_getGlobalOff(mythen_setgetGeneric):
+class mythen_getGlobalOff(Macro):
     """Gets the global offset used for angular conversion."""
     
-    result_def = [['globaloff', Type.Float, None, 'Global Offset']]
+    result_def =  [['globaloff', Type.Float, None, 'Global Offset']]
     
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(['globaloff'])
@@ -2393,14 +2615,19 @@ class mythen_getGlobalOff(mythen_setgetGeneric):
         
         return globaloff 
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
 
-class mythen_setGlobalOff(mythen_setgetGeneric):
+class mythen_setGlobalOff(Macro):
     """Gets the global offset used for angular conversion."""
     
    
-    param_def = [['globaloff', Type.Float, 0, 'Global Offset']]
-    result_def = [['globaloff', Type.Float, None, 'Global Offset']]
+    param_def =  [['globaloff', Type.Float, 0, 'Global Offset']]
+    result_def =  [['globaloff', Type.Float, None, 'Global Offset']]
     
     def prepare(self, *args, **kwargs):
         self.globaloff = args[0]
@@ -2435,12 +2662,17 @@ class mythen_setGlobalOff(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the global offset.")
         return globaloff 
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
 
-class mythen_setConfig(mythen_setgetGeneric):
+class mythen_setConfig(Macro):
     """Sets configuration from file."""
     
-    param_def  = [['confFileName', Type.String, '/homelocal/opbl04/bl04mythen.conf', 'Configuration file name']]
+    param_def  =  [['confFileName', Type.String, '/homelocal/opbl04/bl04mythen.conf', 'Configuration file name']]
     
     def prepare(self, *args, **kwargs):
         confFileName = args[0]
@@ -2466,7 +2698,12 @@ class mythen_setConfig(mythen_setgetGeneric):
             if self.slsDetectorProgram.isTerminated() and lenOutLine == 0 and lenErrLine == 0:
                 break
     
-                
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()            
 
 class mythen_softscan(Macro, MoveableController, SoftShutterController): #, MntGrpController):
 
@@ -2585,11 +2822,484 @@ def selectPulseResolution(expTime, readTime):
         if lt < mlt:
             return ht, lt
     raise Exception("Too high exposure time. Max is 42949 seconds.")
+    
+    
+class mythen_timeResolved(Macro, MntGrpController):
+    
+
+    param_def = [['time', Type.Float, None, 'Total experiment time'],
+                 ['expTime', Type.Float, None, 'Exposure time per frame']]
+                 
+    MYTHEN_TRIG_DEVICE = ['bl04/io/ibl0403-dev2-ctr1', 'CICountEdgesChan',
+                          'MythenTrigger']
+    EXT_TRIG_DEVICE = ['bl04/io/ibl0403-dev2-ctr2', 'COPulseChanTime',
+                       'ExternalTrigger']
+    MASTER_TRIG_DEVICE = ['bl04/io/ibl0403-dev2-ctr4', 'COPulseChanTime',
+                       'MasterTrigger']
+    
+    
+    def _configNi(self, *args, **kwargs):
+        #prepare ni application type
+        self.execMacro('ni_app_change %s ' % ' '.join(self.MYTHEN_TRIG_DEVICE))
+        self.execMacro('ni_app_change %s ' % ' '.join(self.EXT_TRIG_DEVICE))
+        self.execMacro('ni_app_change %s ' % ' '.join(self.MASTER_TRIG_DEVICE))
+ 
+
+        MntGrpController.init(self, self)
+        experimentTime = args[0]
+        self.exposureTime = args[1]
+        
+        
+        #checking if multiple positions are configured
+        #if yes, exiting 
+        positionsStr = self.execMacro("mythen_getPositions").getResult()
+        positions = SafeEvaluator().eval(positionsStr)
+        self.debug("Positions: %s" % repr(positions))
+        if len(positions) > 0:
+            raise Exception("Time resolved experiment is not possible with multiple positions.")
+        
+        #calculating nr of frames which mythen will be able to gather 
+        #during the experiment time
+        dr = self.execMacro("mythen_getDr").getResult()        
+        self.debug("dr: %d" % dr)
+        mrt = MythenReadoutTime()
+        self.readoutTime = mrt[dr]
+        self.debug("readoutTime: %f" % self.readoutTime)
+        timePerFrame = self.exposureTime + self.readoutTime
+        self.nrOfFrames = int(math.floor(experimentTime / timePerFrame))
+        self.debug("nrOfFrames: %d" % self.nrOfFrames)
+        
+        #calculating trigger pulse characteristics
+        ht, lt = selectPulseResolution(self.exposureTime, self.readoutTime)
+                
+        #configuring mythen detector
+        self.execMacro("mythen_setTiming", 'trigger')
+        self.execMacro("mythen_setExtSignal", 2, "trigger_in_rising_edge")
+        self.execMacro("mythen_setNrOfTriggers", 1)
+        self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)
+        self.execMacro("mythen_setExpTime", self.exposureTime)
+        self.execMacro('mythen_setPositions')
+        self.firstIndex = self.execMacro("mythen_getIndex").getResult()        
+        self.debug('FirstIndex = %d' %self.firstIndex)
+               
+        #configuring mythen trigger
+        self.mythenTrigger = taurus.Device(self.MYTHEN_TRIG_DEVICE[0])
+        self.mythenTrigger.write_attribute("IdleState","Low")
+        self.mythenTrigger.write_attribute("SampleTimingType", "Implicit")
+        #("SampPerChan", long(self.nrOfFrames)) is not necessary only need 1 trigger
+        self.mythenTrigger.write_attribute("SampPerChan", long(self.nrOfFrames))
+        #self.mythenTrigger.write_attribute("SampPerChan", long(1))
+        self.mythenTrigger.write_attribute("InitialDelayTime",0) #sec (obligatory delay is 2 ticks)
+        self.mythenTrigger.write_attribute("HighTime", ht) #sec
+        self.mythenTrigger.write_attribute("LowTime", lt) #sec
+        self.mythenTrigger.write_attribute("StartTriggerSource", "/Dev1/PFI12")
+        self.mythenTrigger.write_attribute("StartTriggerType", "DigEdge")
+        
+        #configuring external trigger
+        self.externalTrigger = taurus.Device(self.EXT_TRIG_DEVICE[0])
+        self.externalTrigger.write_attribute("IdleState","Low")
+        self.externalTrigger.write_attribute("SampleTimingType", "Implicit")
+        #self.externalTrigger.write_attribute("SampPerChan", long(1))
+        #("SampPerChan", long(self.nrOfFrames)) is not necessary only need 1 trigger
+        self.externalTrigger.write_attribute("SampPerChan", long(self.nrOfFrames))
+        self.externalTrigger.write_attribute("InitialDelayTime",0) #sec (obligatory delay is 2 ticks)
+        self.externalTrigger.write_attribute("HighTime", 1) #sec
+        self.externalTrigger.write_attribute("LowTime", 1) #sec
+        self.externalTrigger.write_attribute("StartTriggerSource", "/Dev1/PFI12")
+        self.externalTrigger.write_attribute("StartTriggerType", "DigEdge")
+                              
+        #configuring master trigger
+        self.masterTrigger = PyTango.DeviceProxy(self.MASTER_TRIG_DEVICE[0])
+        self.masterTrigger.write_attribute("IdleState", "Low")
+        self.masterTrigger.write_attribute("SampleTimingType", "Implicit")
+        self.masterTrigger.write_attribute("SampPerChan", long(1))
+        self.masterTrigger.write_attribute("InitialDelayTime", 0) #sec (obligatory delay is 2 ticks)
+        self.masterTrigger.write_attribute("HighTime", 0.001) #sec
+        self.masterTrigger.write_attribute("LowTime", 0.001) #sec      
+                
+    def _restoreNi(self):
+        self.execMacro('ni_default %s' % self.MYTHEN_TRIG_DEVICE[0])
+        self.execMacro('ni_default %s' % self.EXT_TRIG_DEVICE[0])
+        self.execMacro('ni_default %s' % self.MASTER_TRIG_DEVICE[0])
+
+    def run(self, *args, **kwargs):
+        import threading
+        try:
+            self._configNi(*args, **kwargs)
+            
+            self._event = threading.Event()        
+            #callback function to set Event
+            def done(job_ret):
+                self._event.set()
+        
+            self.mntGrpAcqTime = 0.1
+            MntGrpController.prepareMntGrp(self)
+            MntGrpController.acquireMntGrp(self)
+            MntGrpController.waitMntGrp(self)
+            firstMntGrpResults = MntGrpController.getMntGrpResults(self)
+        
+            self.getManager().add_job(mythenAcquire, done, self)
+       
+            #self.execMacro("mythen_acquire")
+            #waiting for detector till it arms
+            while True:
+                self.checkPoint()
+                time.sleep(0.1)
+                status = self.execMacro("mythen_getStatus").getResult()
+                if status == "running":
+                    break    
+            self.debug("mythen waiting for trigger")
+        
+            self.externalTrigger.start()
+            self.mythenTrigger.start()
+            self.masterTrigger.start() 
+            self._event.wait()
+            self.debug("Mythen end acq")
+        finally:
+            
+            #Aborting
+            status = self.execMacro("mythen_getStatus").getResult()
+            if status == "running":
+                abortProgram = SlsDetectorPut(["status", "stop"])            
+                abortProgram.execute()
+            self.externalTrigger.stop()
+            self.mythenTrigger.stop()    
+            self.masterTrigger.stop()
+            self.execMacro("mythen_setTiming", 'auto')
+            self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
+            self._restoreNi()
+
+        MntGrpController.acquireMntGrp(self)
+        MntGrpController.waitMntGrp(self)
+        lastMntGrpResults = MntGrpController.getMntGrpResults(self)
+        
+        #generating timestamps
+        outDir = self.execMacro("mythen_getOutDir").getResult()
+        outFileName = self.execMacro("mythen_getOutFileName").getResult()
+        lastIndex = self.execMacro("mythen_getIndex").getResult()
+        self.debug('lastIndex = %d'% lastIndex)
+        
+        acquiredFrames = lastIndex - self.firstIndex
+        if acquiredFrames != 1:
+            raise Exception("Nr of acquired images does not correspond to requested value.")
+        
+        parFile = outDir + "/" + outFileName + "_" + str(self.firstIndex) + "-" + str(lastIndex-1) + ".par"        
+        try:
+            pFile = open(parFile, "w")
+            pFile.write(firstMntGrpResults + "\n")
+            for i in range(self.nrOfFrames):
+                fileNames = outDir + "/" + outFileName + "_" + str(self.firstIndex + i) + ".{raw,dat}"
+                timestamp = i * (self.exposureTime + self.readoutTime)
+                line = "%s : %f" % (fileNames, timestamp)
+                pFile.write(line + '\n')
+                self.output(line)
+            extraHeader = self.execMacro("_mythpar").getResult()
+            pFile.write(extraHeader+'\n')
+            pFile.write('LastMngGrpResult:'+ '\n')
+            pFile.write(lastMntGrpResults)
+        except Exception, e:
+            self.error(e)
+            pFile.close()
+            self.output(parFile)
+
+class mythen_timeResolvedAUTO(Macro, MntGrpController):
+                                                   
+
+    param_def = [['time', Type.Float, None, 'Total experiment time'],
+                 ['expTime', Type.Float, None, 'Exposure time per frame']]
+
+    def prepare(self, *args, **kwargs):                                   
+        MntGrpController.init(self, self)                                 
+        self.experimentTime = args[0]                                          
+        self.exposureTime = args[1]  
 
 
-class mythen_getScan0Prec(mythen_setgetGeneric):
+        #checking if multiple positions are configured                    
+        #if yes, exiting                                                  
+        positionsStr = self.execMacro("mythen_getPositions").getResult()  
+        positions = SafeEvaluator().eval(positionsStr)                    
+        self.debug("Positions: %s" % repr(positions))                     
+        if len(positions) > 0:                                            
+            raise Exception("Time resolved experiment is not possible with multiple positions.")
+        
+                                                                                        
+        #calculating nr of frames which mythen will be able to gather                           
+        #during the experiment time                                                             
+        dr = self.execMacro("mythen_getDr").getResult()                                         
+        self.debug("dr: %d" % dr)                                                               
+        mrt = MythenReadoutTime()                                                               
+        self.readoutTime = mrt[dr]                                                              
+        self.debug("readoutTime: %f" % self.readoutTime)                                        
+        timePerFrame = self.exposureTime + self.readoutTime                                     
+        self.nrOfFrames = int(math.floor(self.experimentTime / timePerFrame))                        
+        self.debug("nrOfFrames: %d" % self.nrOfFrames)            
 
-    result_def = [['parval',Type.Integer, None, 'Threshold']]
+
+        #configuring mythen detector                                                            
+        self.execMacro("mythen_setTiming", 'auto')                                           
+        #self.execMacro("mythen_setExtSignal", 2, "trigger_in_rising_edge")                      
+        #self.execMacro("mythen_setNrOfTriggers", 1)                                             
+        self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)                       
+        self.execMacro("mythen_setExpTime", self.exposureTime)                                  
+        self.execMacro('mythen_setPositions')                                                   
+        self.firstIndex = self.execMacro("mythen_getIndex").getResult()                         
+        self.debug('FirstIndex = %d' %self.firstIndex)   
+
+
+
+
+    def run(self, *args, **kwargs):                                                                  
+        import threading                                                                             
+        self._event = threading.Event()                                                              
+        #callback function to set Event                                                              
+        def done(job_ret):                                                                           
+            self._event.set()                                                                        
+                                                                                                     
+        self.mntGrpAcqTime = 0.1                                                                     
+        MntGrpController.prepareMntGrp(self)                                                         
+        MntGrpController.acquireMntGrp(self)                                                         
+        MntGrpController.waitMntGrp(self)                                                            
+        firstMntGrpResults = MntGrpController.getMntGrpResults(self)                                 
+                                                                                                     
+        self.getManager().add_job(mythenAcquire, done, self)                                         
+                                                                                                     
+        #self.execMacro("mythen_acquire")                                                            
+        #waiting for detector till it arms                                                           
+        while True:                                                                                  
+            self.checkPoint()                                                                        
+            time.sleep(0.1)                                                                          
+            status = self.execMacro("mythen_getStatus").getResult()                                  
+            if status == "running":                                                                  
+                break                                                                                
+        self.debug("mythen waiting for trigger")                                                     
+                                                                                                     
+        try:                                                                                         
+            #self.externalTrigger.start()                                                             
+            #self.mythenTrigger.start()                                                               
+            #self.masterTrigger.start()                                                               
+            self._event.wait()                                                                       
+            self.debug("Mythen end acq")                                                             
+        finally:                                                                                     
+                                                                                                     
+            #Aborting                                                                                
+            status = self.execMacro("mythen_getStatus").getResult()                                  
+            if status == "running":                                                                  
+                abortProgram = SlsDetectorPut(["status", "stop"])                                    
+                abortProgram.execute()                                                               
+            #self.externalTrigger.stop()                                                              
+            #self.mythenTrigger.stop()                                                                
+            #self.masterTrigger.stop()
+            #self.execMacro("mythen_setTiming", 'auto')
+            self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
+
+        MntGrpController.acquireMntGrp(self)
+        MntGrpController.waitMntGrp(self)
+        lastMntGrpResults = MntGrpController.getMntGrpResults(self)
+
+        #generating timestamps
+        outDir = self.execMacro("mythen_getOutDir").getResult()
+        outFileName = self.execMacro("mythen_getOutFileName").getResult()
+        lastIndex = self.execMacro("mythen_getIndex").getResult()
+        self.debug('lastIndex = %d'% lastIndex)
+
+        acquiredFrames = lastIndex - self.firstIndex
+        if acquiredFrames != 1:
+            raise Exception("Nr of acquired images does not correspond to requested value.")
+
+        parFile = outDir + "/" + outFileName + "_" + str(self.firstIndex) + "-" + str(lastIndex-1) + ".par"
+        try:
+            pFile = open(parFile, "w")
+            pFile.write(firstMntGrpResults + "\n")
+            for i in range(self.nrOfFrames):
+                fileNames = outDir + "/" + outFileName + "_" + str(self.firstIndex + i) + ".{raw,dat}"
+                timestamp = i * (self.exposureTime + self.readoutTime)
+                line = "%s : %f" % (fileNames, timestamp)
+                pFile.write(line + '\n')
+                self.output(line)
+            extraHeader = self.execMacro("_mythpar").getResult()
+            pFile.write(extraHeader+'\n')
+            pFile.write('LastMngGrpResult:'+ '\n')
+            pFile.write(lastMntGrpResults)
+        except Exception, e:
+            self.error(e)
+            pFile.close()
+            self.output(parFile)
+
+
+
+class mythen_fastTake(Macro, MntGrpController):
+                                                   
+
+    param_def = [
+                 ['expTime', Type.Float, None, 'Exposure time per frame'],
+                 ['frames', Type.Integer, None, 'Total number of Frames']
+                ]
+    
+    
+    #NI channels to read values while the Mythen is acquiring
+    MONITOR_CHANNEL = 'bl04/io/ibl0403-dev2-ctr0' #i14
+    MONITOR_CHANNEL_GATE = '/Dev2/PFI38'    #i14 Gate
+    MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'  #i14 Source  
+    MOTOR_NAME = 'pd_mc'
+    
+    
+    ##Make Bakup for the channels used to count
+    def _backupChannel(self, channel):
+        DicProperties = channel.get_property('applicationType')
+        valueProperties = DicProperties["applicationType"]
+        value = list(valueProperties)[0]
+
+        if value == "CIPulseWidthChan":
+            self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+
+        self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
+        self._pauseTriggerWhen = channel.read_attribute('PauseTriggerWhen').value
+        self._pauseTriggerSource = channel.read_attribute('PauseTriggerSource').value
+        self.debug('PauseTriggerType: %s' % self._pauseTriggerType)
+        self.debug('PauseTriggerWhen: %s' % self._pauseTriggerWhen)
+        self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)        
+        
+    def _restoreChannel(self, channel):
+        self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
+        channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
+        channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
+        channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
+       ##Dchannel.Init()
+        
+    def _configureChannel(self, channel):
+        self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
+        
+        channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
+        channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
+        channel.write_attribute("SampPerChan", long(self.nrOfFrames))
+        channel.write_attribute("SampleclockRate", 100.0)
+
+    def prepare(self, *args, **kwargs):                                   
+        MntGrpController.init(self, self)                                 
+        self.nrOfFrames = args[1]                                          
+        self.exposureTime = args[0]  
+                 
+        self.monitorChannel = taurus.Device(self.MONITOR_CHANNEL)
+#        self.monitorChannel.set_timeout_millis(10000)
+        self.monitorChannel.Stop()
+
+    
+        self.debug("nrOfFrames: %d" % self.nrOfFrames)            
+
+        #configuring mythen detector                                                            
+        self.execMacro("mythen_setTiming", 'auto')                                                                                       
+        self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)                       
+        self.execMacro("mythen_setExpTime", self.exposureTime)                                  
+        self.execMacro('mythen_setPositions')   
+        self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
+
+        self.firstIndex = self.execMacro("mythen_getIndex").getResult()                         
+        self.debug('FirstIndex = %d' %self.firstIndex)  
+        
+        #To calculate the readOutTime
+        dr = self.execMacro('mythen_getDr').getResult()
+        mrt = MythenReadoutTime()
+        self.readOutTime = mrt[dr]
+        
+    def run(self, *args, **kwargs):  
+    
+
+
+        total_time = self.nrOfFrames * (self.exposureTime+self.readOutTime)
+        self.output('Collecting %s Frames of %f sec (+ %f readoutTime)' %(self.nrOfFrames, self.exposureTime,self.readOutTime))
+        self.output('Overall time : %f sec' %(total_time))
+
+        #Backup the Actual NI configuration
+        self._backupChannel(self.monitorChannel)
+        self._configureChannel(self.monitorChannel)
+
+        #why?
+        import threading                                                                             
+        self._event = threading.Event()                                                              
+        #callback function to set Event    
+        
+        def done(job_ret):                                                                           
+            self._event.set()                                                                        
+                                                                                                                                     
+        #Start the Monitor channel
+        self.monitorChannel.Start()
+        self.debug("Monitor channel State %s", self.monitorChannel.State())
+
+        #Start to take frames in Mythen
+        self.getManager().add_job(mythenAcquire, done, self)                                                                                                                                     
+                                                                                                                                                    
+        try:                                                                                                                                                     
+            self._event.wait()                                                                       
+            self.debug("Mythen end acq")
+            
+            #Read the Values of the NI
+            monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
+            monitorValueList = list(monitorValueList)
+            self.info('MonitorValuePerFrame: %s' % monitorValueList)
+            
+        finally:                                                                                     
+                                                                                                        
+            #Aborting                                                                                
+            status = self.execMacro("mythen_getStatus").getResult()                                  
+            if status == "running":                                                                  
+                abortProgram = SlsDetectorPut(["status", "stop"])                                    
+                abortProgram.execute()                                                               
+            self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
+            self.monitorChannel.Stop()
+            self._restoreChannel(self.monitorChannel)
+            position = self.execMacro("mythen_getPositions").getResult()
+
+
+        self.mntGrpAcqTime = 0.1                                                                     
+        MntGrpController.prepareMntGrp(self) 
+        MntGrpController.acquireMntGrp(self)
+        MntGrpController.waitMntGrp(self)
+        lastMntGrpResults = MntGrpController.getMntGrpResults(self)
+
+        #generating timestamps
+        outDir = self.execMacro("mythen_getOutDir").getResult()
+        outFileName = self.execMacro("mythen_getOutFileName").getResult()
+        lastIndex = self.execMacro("mythen_getIndex").getResult()
+        self.debug('lastIndex = %d'% lastIndex)
+
+
+
+        acquiredFrames = lastIndex - self.firstIndex
+        if acquiredFrames != 1:
+            raise Exception("Nr of acquired images does not correspond to requested value.")
+
+        parFileName = outDir + "/" + outFileName + "_" + str(lastIndex-1) + ".par"
+        self.info(parFileName)
+        try:
+            motor = taurus.Device(self.MOTOR_NAME)
+            position = motor.read_attribute('position').value
+            parFile = open(parFileName,"w")
+            parFile.write("# imon %d " % monitorValueList[0])
+            if lastMntGrpResults != None:
+                parFile.write(lastMntGrpResults)
+            
+            parFile.write('\nMonitor = %d' % monitorValueList[0])
+            parFile.write('\nIsMon = %s' % monitorValueList)
+            line=('\nIsPos = %s' %([round(position,6)]* self.nrOfFrames))
+            parFile.write(line)
+            parFile.write('\nMythen_fastTake Pos: %s' %(position))
+
+            extraHeader = self.execMacro("_mythpar").getResult()
+            parFile.write(extraHeader)
+            self.info("Metadata stored: %s" % parFileName)
+        except Exception,e:
+            self.error("Error while writing par file.")
+            raise e
+        finally:
+            parFile.close()
+
+        return outFileName,position,monitorValueList
+
+
+
+class mythen_getScan0Prec(Macro):
+
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["scan0prec"])
@@ -2623,12 +3333,17 @@ class mythen_getScan0Prec(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setScan0Prec(mythen_setgetGeneric):
+class mythen_setScan0Prec(Macro):
 
-    param_def = [['parval',Type.Integer, None, 'Parameter to set']]
-    result_def = [['parval',Type.Integer, None, 'Parameter to set']]
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
 
     def prepare(self, *args, **kwargs):
         parval = str(args[0]) 
@@ -2663,12 +3378,17 @@ class mythen_setScan0Prec(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_getScan0Script(mythen_setgetGeneric):
+class mythen_getScan0Script(Macro):
     """Gets mythen Scan0."""
 
-    result_def = [['parval',Type.String, None, 'Threshold']]
+    result_def =  [['parval',Type.String, None, 'Threshold']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["scan0script"])
@@ -2702,13 +3422,18 @@ class mythen_getScan0Script(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setScan0Script(mythen_setgetGeneric):
+class mythen_setScan0Script(Macro):
     """Set mythen Scan0."""
 
-    param_def = [['parval',Type.String, None, 'Parameter to set']]
-    result_def = [['parval',Type.String, None, 'Parameter to set']]
+    param_def =  [['parval',Type.String, None, 'Parameter to set']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
 
     def prepare(self, *args, **kwargs):
         parval = args[0]
@@ -2745,13 +3470,18 @@ class mythen_setScan0Script(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
 
-class mythen_getAngcallog(mythen_setgetGeneric):
+class mythen_getAngcallog(Macro):
     """Gets mythen Angcal."""
 
-    result_def = [['parval',Type.Integer, None, 'Threshold']]
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["angcallog"])
@@ -2785,13 +3515,18 @@ class mythen_getAngcallog(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setAngcallog(mythen_setgetGeneric):
+class mythen_setAngcallog(Macro):
     """Set mythen Angcal."""
 
-    param_def = [['parval',Type.Integer, None, 'Parameter to set']]
-    result_def = [['parval',Type.Integer, None, 'Parameter to set']]
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
 
     def prepare(self, *args, **kwargs):
         parval = str(args[0]) 
@@ -2826,12 +3561,17 @@ class mythen_setAngcallog(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_getEncallog(mythen_setgetGeneric):
+class mythen_getEncallog(Macro):
     """Gets mythen Encallog."""
 
-    result_def = [['parval',Type.Integer, None, 'Threshold']]
+    result_def =  [['parval',Type.Integer, None, 'Threshold']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["encallog"])
@@ -2865,12 +3605,17 @@ class mythen_getEncallog(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
-class mythen_setEncallog(mythen_setgetGeneric):
+class mythen_setEncallog(Macro):
 
-    param_def = [['parval',Type.Integer, None, 'Parameter to set']]
-    result_def = [['parval',Type.Integer, None, 'Parameter to set']]
+    param_def =  [['parval',Type.Integer, None, 'Parameter to set']]
+    result_def =  [['parval',Type.Integer, None, 'Parameter to set']]
 
     def prepare(self, *args, **kwargs):
         parval = str(args[0]) 
@@ -2905,13 +3650,18 @@ class mythen_setEncallog(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return parval
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
 
-class mythen_getScan0Range(mythen_setgetGeneric):
+class mythen_getScan0Range(Macro):
     """Gets mythen Scan0Range."""
 
-    result_def = [['parval',Type.String, None, 'par value']]
+    result_def =  [['parval',Type.String, None, 'par value']]
 
     def prepare(self, *args, **kwargs):
         self.slsDetectorProgram = SlsDetectorGet(["scan0range"])
@@ -2949,13 +3699,18 @@ class mythen_getScan0Range(mythen_setgetGeneric):
             raise Exception("It was not able to retrieve the desired parameter")
         return repr(parval)
 
-    
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
 
 
-class mythen_setScan0Range(mythen_setgetGeneric):
+class mythen_setScan0Range(Macro):
 
     param_def = [['positions', ParamRepeat(['position', Type.Float, None, 'Position to be moved'],min=0), None, 'Positions']]
-    result_def = [['parval',Type.String, None, 'Parameter to set']]
+    result_def =  [['parval',Type.String, None, 'Parameter to set']]
 
     def prepare(self, *args, **kwargs):
 
@@ -3002,455 +3757,9 @@ class mythen_setScan0Range(mythen_setgetGeneric):
         return repr(parval)
 
 
-    
-
-
-class mythen_timeResolved(Macro, MntGrpController):
-    param_def = [['time', Type.Float, None, 'Total experiment time'],
-                 ['expTime', Type.Float, None, 'Exposure time per frame']]
-
-    MYTHEN_TRIG_DEVICE = ['bl04/io/ibl0403-dev2-ctr1', 'CICountEdgesChan',
-                          'MythenTrigger']
-    EXT_TRIG_DEVICE = ['bl04/io/ibl0403-dev2-ctr2', 'COPulseChanTime',
-                       'ExternalTrigger']
-    MASTER_TRIG_DEVICE = ['bl04/io/ibl0403-dev2-ctr4', 'COPulseChanTime',
-                          'MasterTrigger']
-
-    def _configNi(self, *args, **kwargs):
-        # prepare ni application type
-        self.execMacro('ni_app_change %s ' % ' '.join(self.MYTHEN_TRIG_DEVICE))
-        self.execMacro('ni_app_change %s ' % ' '.join(self.EXT_TRIG_DEVICE))
-        self.execMacro('ni_app_change %s ' % ' '.join(self.MASTER_TRIG_DEVICE))
-
-        MntGrpController.init(self, self)
-        experimentTime = args[0]
-        self.exposureTime = args[1]
-
-        # checking if multiple positions are configured
-        # if yes, exiting
-        positionsStr = self.execMacro("mythen_getPositions").getResult()
-        positions = SafeEvaluator().eval(positionsStr)
-        self.debug("Positions: %s" % repr(positions))
-        if len(positions) > 0:
-            raise Exception(
-                "Time resolved experiment is not possible with multiple positions.")
-
-
-        # calculating nr of frames which mythen will be able to gather
-        # during the experiment time
-        dr = self.execMacro("mythen_getDr").getResult()
-        self.debug("dr: %d" % dr)
-        mrt = MythenReadoutTime()
-        self.readoutTime = mrt[dr]
-        self.debug("readoutTime: %f" % self.readoutTime)
-        timePerFrame = self.exposureTime + self.readoutTime
-        self.nrOfFrames = int(math.floor(experimentTime / timePerFrame))
-        self.debug("nrOfFrames: %d" % self.nrOfFrames)
-
-        # calculating trigger pulse characteristics
-        ht, lt = selectPulseResolution(self.exposureTime, self.readoutTime)
-
-        # configuring mythen detector
-        self.execMacro("mythen_setTiming", 'trigger')
-        self.execMacro("mythen_setExtSignal", 2, "trigger_in_rising_edge")
-        self.execMacro("mythen_setNrOfTriggers", 1)
-        self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)
-        self.execMacro("mythen_setExpTime", self.exposureTime)
-        self.execMacro('mythen_setPositions')
-        self.firstIndex = self.execMacro("mythen_getIndex").getResult()
-        self.debug('FirstIndex = %d' % self.firstIndex)
-
-        # configuring mythen trigger
-        self.mythenTrigger = taurus.Device(self.MYTHEN_TRIG_DEVICE[0])
-        self.mythenTrigger.write_attribute("IdleState", "Low")
-        self.mythenTrigger.write_attribute("SampleTimingType", "Implicit")
-        # ("SampPerChan", long(self.nrOfFrames)) is not necessary only need 1 trigger
-        self.mythenTrigger.write_attribute("SampPerChan", long(self.nrOfFrames))
-        # self.mythenTrigger.write_attribute("SampPerChan", long(1))
-        self.mythenTrigger.write_attribute("InitialDelayTime",
-                                           0)  # sec (obligatory delay is 2 ticks)
-        self.mythenTrigger.write_attribute("HighTime", ht)  # sec
-        self.mythenTrigger.write_attribute("LowTime", lt)  # sec
-        self.mythenTrigger.write_attribute("StartTriggerSource", "/Dev1/PFI12")
-        self.mythenTrigger.write_attribute("StartTriggerType", "DigEdge")
-
-        # configuring external trigger
-        self.externalTrigger = taurus.Device(self.EXT_TRIG_DEVICE[0])
-        self.externalTrigger.write_attribute("IdleState", "Low")
-        self.externalTrigger.write_attribute("SampleTimingType", "Implicit")
-        # self.externalTrigger.write_attribute("SampPerChan", long(1))
-        # ("SampPerChan", long(self.nrOfFrames)) is not necessary only need 1 trigger
-        self.externalTrigger.write_attribute("SampPerChan",
-                                             long(self.nrOfFrames))
-        self.externalTrigger.write_attribute("InitialDelayTime",
-                                             0)  # sec (obligatory delay is 2 ticks)
-        self.externalTrigger.write_attribute("HighTime", 1)  # sec
-        self.externalTrigger.write_attribute("LowTime", 1)  # sec
-        self.externalTrigger.write_attribute("StartTriggerSource",
-                                             "/Dev1/PFI12")
-        self.externalTrigger.write_attribute("StartTriggerType", "DigEdge")
-
-        # configuring master trigger
-        self.masterTrigger = PyTango.DeviceProxy(self.MASTER_TRIG_DEVICE[0])
-        self.masterTrigger.write_attribute("IdleState", "Low")
-        self.masterTrigger.write_attribute("SampleTimingType", "Implicit")
-        self.masterTrigger.write_attribute("SampPerChan", long(1))
-        self.masterTrigger.write_attribute("InitialDelayTime",
-                                           0)  # sec (obligatory delay is 2 ticks)
-        self.masterTrigger.write_attribute("HighTime", 0.001)  # sec
-        self.masterTrigger.write_attribute("LowTime", 0.001)  # sec
-
-    def _restoreNi(self):
-        self.execMacro('ni_default %s' % self.MYTHEN_TRIG_DEVICE[0])
-        self.execMacro('ni_default %s' % self.EXT_TRIG_DEVICE[0])
-        self.execMacro('ni_default %s' % self.MASTER_TRIG_DEVICE[0])
-
-    def run(self, *args, **kwargs):
-        import threading
-        try:
-            self._configNi(*args, **kwargs)
-
-            self._event = threading.Event()
-
-            # callback function to set Event
-            def done(job_ret):
-                self._event.set()
-
-            self.mntGrpAcqTime = 0.1
-            MntGrpController.prepareMntGrp(self)
-            MntGrpController.acquireMntGrp(self)
-            MntGrpController.waitMntGrp(self)
-            firstMntGrpResults = MntGrpController.getMntGrpResults(self)
-
-            self.getManager().add_job(mythenAcquire, done, self)
-
-            # self.execMacro("mythen_acquire")
-            # waiting for detector till it arms
-            while True:
-                self.checkPoint()
-                time.sleep(0.1)
-                status = self.execMacro("mythen_getStatus").getResult()
-                if status == "running":
-                    break
-            self.debug("mythen waiting for trigger")
-
-            self.externalTrigger.start()
-            self.mythenTrigger.start()
-            self.masterTrigger.start()
-            self._event.wait()
-            self.debug("Mythen end acq")
-        finally:
-
-            # Aborting
-            status = self.execMacro("mythen_getStatus").getResult()
-            if status == "running":
-                abortProgram = SlsDetectorPut(["status", "stop"])
-                abortProgram.execute()
-            self.externalTrigger.stop()
-            self.mythenTrigger.stop()
-            self.masterTrigger.stop()
-            self.execMacro("mythen_setTiming", 'auto')
-            self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
-            self._restoreNi()
-
-        MntGrpController.acquireMntGrp(self)
-        MntGrpController.waitMntGrp(self)
-        lastMntGrpResults = MntGrpController.getMntGrpResults(self)
-
-        # generating timestamps
-        outDir = self.execMacro("mythen_getOutDir").getResult()
-        outFileName = self.execMacro("mythen_getOutFileName").getResult()
-        lastIndex = self.execMacro("mythen_getIndex").getResult()
-        self.debug('lastIndex = %d' % lastIndex)
-
-        acquiredFrames = lastIndex - self.firstIndex
-        if acquiredFrames != 1:
-            raise Exception(
-                "Nr of acquired images does not correspond to requested value.")
-
-        parFile = outDir + "/" + outFileName + "_" + str(
-            self.firstIndex) + "-" + str(lastIndex - 1) + ".par"
-        try:
-            pFile = open(parFile, "w")
-            pFile.write(firstMntGrpResults + "\n")
-            for i in range(self.nrOfFrames):
-                fileNames = outDir + "/" + outFileName + "_" + str(
-                    self.firstIndex + i) + ".{raw,dat}"
-                timestamp = i * (self.exposureTime + self.readoutTime)
-                line = "%s : %f" % (fileNames, timestamp)
-                pFile.write(line + '\n')
-                self.output(line)
-            extraHeader = self.execMacro("_mythpar").getResult()
-            pFile.write(extraHeader + '\n')
-            pFile.write('LastMngGrpResult:' + '\n')
-            pFile.write(lastMntGrpResults)
-        except Exception, e:
-            self.error(e)
-            pFile.close()
-            self.output(parFile)
-
-
-class mythen_timeResolvedAUTO(Macro, MntGrpController):
-    param_def = [['time', Type.Float, None, 'Total experiment time'],
-                 ['expTime', Type.Float, None, 'Exposure time per frame']]
-
-    def prepare(self, *args, **kwargs):
-        MntGrpController.init(self, self)
-        self.experimentTime = args[0]
-        self.exposureTime = args[1]
-
-        # checking if multiple positions are configured
-        # if yes, exiting
-        positionsStr = self.execMacro("mythen_getPositions").getResult()
-        positions = SafeEvaluator().eval(positionsStr)
-        self.debug("Positions: %s" % repr(positions))
-        if len(positions) > 0:
-            raise Exception(
-                "Time resolved experiment is not possible with multiple positions.")
-
-        # calculating nr of frames which mythen will be able to gather
-        # during the experiment time
-
-        dr = self.execMacro("mythen_getDr").getResult()
-        self.debug("dr: %d" % dr)
-        mrt = MythenReadoutTime()
-        self.readoutTime = mrt[dr]
-        self.debug("readoutTime: %f" % self.readoutTime)
-        timePerFrame = self.exposureTime + self.readoutTime
-        self.nrOfFrames = int(math.floor(self.experimentTime / timePerFrame))
-        self.debug("nrOfFrames: %d" % self.nrOfFrames)
-
-        # configuring mythen detector
-
-        self.execMacro("mythen_setTiming", 'auto')
-        # self.execMacro("mythen_setExtSignal", 2, "trigger_in_rising_edge")
-
-        # self.execMacro("mythen_setNrOfTriggers", 1)
-
-        self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)
-        self.execMacro("mythen_setExpTime", self.exposureTime)
-        self.execMacro('mythen_setPositions')
-        self.firstIndex = self.execMacro("mythen_getIndex").getResult()
-        self.debug('FirstIndex = %d' % self.firstIndex)
-
-    def run(self, *args, **kwargs):
-        import threading
-        self._event = threading.Event()
-
-        # callback function to set Event
-
-        def done(job_ret):
-            self._event.set()
-
-        self.mntGrpAcqTime = 0.1
-        MntGrpController.prepareMntGrp(self)
-        MntGrpController.acquireMntGrp(self)
-        MntGrpController.waitMntGrp(self)
-        firstMntGrpResults = MntGrpController.getMntGrpResults(self)
-
-        self.getManager().add_job(mythenAcquire, done, self)
-
-        # self.execMacro("mythen_acquire")
-
-        # waiting for detector till it arms
-
-        while True:
-            self.checkPoint()
-            time.sleep(0.1)
-            status = self.execMacro("mythen_getStatus").getResult()
-            if status == "running":
-                break
-        self.debug("mythen waiting for trigger")
-
-        try:
-            # self.externalTrigger.start()
-            # self.mythenTrigger.start()
-
-            # self.masterTrigger.start()
-
-            self._event.wait()
-            self.debug("Mythen end acq")
-        finally:
-
-            # Aborting
-            status = self.execMacro("mythen_getStatus").getResult()
-            if status == "running":
-                abortProgram = SlsDetectorPut(["status", "stop"])
-                abortProgram.execute()
-                # self.externalTrigger.stop()
-            # self.mythenTrigger.stop()
-
-            # self.masterTrigger.stop()
-            # self.execMacro("mythen_setTiming", 'auto')
-            self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
-
-        MntGrpController.acquireMntGrp(self)
-        MntGrpController.waitMntGrp(self)
-        lastMntGrpResults = MntGrpController.getMntGrpResults(self)
-
-        # generating timestamps
-        outDir = self.execMacro("mythen_getOutDir").getResult()
-        outFileName = self.execMacro("mythen_getOutFileName").getResult()
-        lastIndex = self.execMacro("mythen_getIndex").getResult()
-        self.debug('lastIndex = %d' % lastIndex)
-
-        acquiredFrames = lastIndex - self.firstIndex
-        if acquiredFrames != 1:
-            raise Exception(
-                "Nr of acquired images does not correspond to requested value.")
-
-        parFile = outDir + "/" + outFileName + "_" + str(
-            self.firstIndex) + "-" + str(lastIndex - 1) + ".par"
-        try:
-            pFile = open(parFile, "w")
-            pFile.write(firstMntGrpResults + "\n")
-            for i in range(self.nrOfFrames):
-                fileNames = outDir + "/" + outFileName + "_" + str(
-                    self.firstIndex + i) + ".{raw,dat}"
-                timestamp = i * (self.exposureTime + self.readoutTime)
-                line = "%s : %f" % (fileNames, timestamp)
-                pFile.write(line + '\n')
-                self.output(line)
-            extraHeader = self.execMacro("_mythpar").getResult()
-            pFile.write(extraHeader + '\n')
-            pFile.write('LastMngGrpResult:' + '\n')
-            pFile.write(lastMntGrpResults)
-        except Exception, e:
-            self.error(e)
-            pFile.close()
-            self.output(parFile)
-
-
-class mythen_fastTake(Macro, MntGrpController):
-    param_def = [
-        ['expTime', Type.Float, None, 'Exposure time per frame'],
-        ['frames', Type.Integer, None, 'Total number of Frames']
-    ]
-
-    # NI channels to read values while the Mythen is acquiring
-    MONITOR_CHANNEL = 'bl04/io/ibl0403-dev2-ctr0'  # i14
-    MONITOR_CHANNEL_GATE = '/Dev2/PFI38'  # i14 Gate
-    MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'  # i14 Source
-    MOTOR_NAME = 'pd_mc'
-
-
-    def _configureChannel(self, channel):
-        channel.write_attribute("SourceTerminal", self.MONITOR_CHANNEL_SOURCE)
-        channel.write_attribute("SampleClockSource", self.MONITOR_CHANNEL_GATE)
-        channel.write_attribute("SampPerChan", long(self.nrOfFrames))
-        channel.write_attribute("SampleclockRate", 100.0)
-
-    def prepare(self, *args, **kwargs):
-        MntGrpController.init(self, self)
-        self.nrOfFrames = args[1]
-        self.exposureTime = args[0]
-
-        self.monitorChannel = taurus.Device(self.MONITOR_CHANNEL)
-        #        self.monitorChannel.set_timeout_millis(10000)
-        self.monitorChannel.Stop()
-
-        self.debug("nrOfFrames: %d" % self.nrOfFrames)
-
-        # configuring mythen detector
-        self.execMacro("mythen_setTiming", 'auto')
-        self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)
-        self.execMacro("mythen_setExpTime", self.exposureTime)
-        self.execMacro('mythen_setPositions')
-        #self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
-        self.execMacro('mythen_setExtSignal 0 gate_out_active_high')
-        self.firstIndex = self.execMacro("mythen_getIndex").getResult()
-        self.debug('FirstIndex = %d' % self.firstIndex)
-
-        # To calculate the readOutTime
-        dr = self.execMacro('mythen_getDr').getResult()
-        mrt = MythenReadoutTime()
-        self.readOutTime = mrt[dr]
-
-    def run(self, *args, **kwargs):
-
-        total_time = self.nrOfFrames * (self.exposureTime + self.readOutTime)
-        self.output('Collecting %s Frames of %f sec (+ %f readoutTime)' % (
-        self.nrOfFrames, self.exposureTime, self.readOutTime))
-        self.output('Overall time : %f sec' % (total_time))
-
-
-        import threading
-        self._event = threading.Event()
-
-        # callback function to set Event
-        def done(job_ret):
-            self._event.set()
-
-        # Start the Monitor channel
-        self.monitorChannel.Start()
-        self.debug("Monitor channel State %s", self.monitorChannel.State())
-
-        # Start to take frames in Mythen
-        self.getManager().add_job(mythenAcquire, done, self)
-
-        try:
-            self._event.wait()
-            self.debug("Mythen end acq")
-
-            # Read the Values of the NI
-            monitorValueList = self.monitorChannel.read_attribute(
-                'PulseWidthBuffer').value
-            monitorValueList = list(monitorValueList)
-            self.info('MonitorValuePerFrame: %s' % monitorValueList)
-
-        finally:
-
-            # Aborting
-            status = self.execMacro("mythen_getStatus").getResult()
-            if status == "running":
-                abortProgram = SlsDetectorPut(["status", "stop"])
-                abortProgram.execute()
-            self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
-            self.monitorChannel.Stop()
-            position = self.execMacro("mythen_getPositions").getResult()
-
-        self.mntGrpAcqTime = 0.1
-        MntGrpController.prepareMntGrp(self)
-        MntGrpController.acquireMntGrp(self)
-        MntGrpController.waitMntGrp(self)
-        lastMntGrpResults = MntGrpController.getMntGrpResults(self)
-
-        # generating timestamps
-        outDir = self.execMacro("mythen_getOutDir").getResult()
-        outFileName = self.execMacro("mythen_getOutFileName").getResult()
-        lastIndex = self.execMacro("mythen_getIndex").getResult()
-        self.debug('lastIndex = %d' % lastIndex)
-
-        acquiredFrames = lastIndex - self.firstIndex
-        if acquiredFrames != 1:
-            raise Exception(
-                "Nr of acquired images does not correspond to requested value.")
-
-        parFileName = outDir + "/" + outFileName + "_" + str(
-            lastIndex - 1) + ".par"
-        self.info(parFileName)
-        try:
-            motor = taurus.Device(self.MOTOR_NAME)
-            position = motor.read_attribute('position').value
-            parFile = open(parFileName, "w")
-            parFile.write("# imon %d " % monitorValueList[0])
-            if lastMntGrpResults != None:
-                parFile.write(lastMntGrpResults)
-
-            parFile.write('\nMonitor = %d' % monitorValueList[0])
-            parFile.write('\nIsMon = %s' % monitorValueList)
-            line = ('\nIsPos = %s' % ([round(position, 6)] * self.nrOfFrames))
-            parFile.write(line)
-            parFile.write('\nMythen_fastTake Pos: %s' % (position))
-
-            extraHeader = self.execMacro("_mythpar").getResult()
-            parFile.write(extraHeader)
-            self.info("Metadata stored: %s" % parFileName)
-        except Exception, e:
-            self.error("Error while writing par file.")
-            raise e
-        finally:
-            parFile.close()
-
-        return outFileName, position, monitorValueList
-
+    def on_abort(self):
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.terminate()
+            time.sleep(1)
+        if not self.slsDetectorProgram.isTerminated():
+            self.slsDetectorProgram.kill()
