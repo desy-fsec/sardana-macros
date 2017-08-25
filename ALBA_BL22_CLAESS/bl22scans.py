@@ -284,19 +284,94 @@ class BL22qExafs(object):
             if not self.flg_cleanup:
                 self.cleanup()
 
-    def run_qexafs(self, start_pos, end_pos, nr_trigger, int_time, speed_check, 
-                   wait_fe, config_pid, mythen=False):
+    def run_nscan(self, start_pos, end_trigger, int_time, nr_repeat=1,
+                  wait_fe=True, config_pid=True, ):
 
-        if mythen:
+        if not self.sardana_new:
+            raise RuntimeError('this macro does not work with this version of '
+                               'sardana')
+
+        self.int_time = int_time
+        self.config_PID = config_pid
+        self.wait_fe = wait_fe
+        nr_scans = len(end_trigger)
+
+        try:
+            for rp in range(nr_repeat):
+                for idx_scan, end_pos, nr_triggers in enumerate(end_trigger):
+                    last_end_pos = end_pos
+                    if idx_scan == 0:
+                        self.scan_start_pos = start_pos
+                    else:
+                        self.scan_start_pos = last_end_pos
+
+                    self.scan_end_pos = end_pos
+                    self.nr_of_triggers = nr_triggers
+                    self.check_parameters(True)
+
+                    scan_macro, _ = self.macro.createMacro('ascanct',
+                                                           self.energy_name,
+                                                           self.scan_start_pos,
+                                                           self.scan_end_pos,
+                                                           self.nr_of_trigger,
+                                                           self.int_time)
+                    scan_macro.hooks = [(self.pre_configure_hook,
+                                         ["pre-configuration"]),
+                                        (self.post_configure_hook,
+                                         ["post-configuration"]),
+                                        (self.pre_start_hook,
+                                         ["pre-start"]),
+                                        (self.post_move_hook,
+                                         ["post-move"]),]
+                    if idx_scan == nr_scans-1:
+                        scan_macro.append((self.cleanup, ["post-cleanup"]))
+
+                    self.macro.debug("Running %d repetition" % rp)
+                    self.macro.runMacro(scan_macro)
+
+        except Exception as e:
+            self.macro.error('Exception: %s' % e)
+            raise e
+
+        finally:
+            if not self.flg_cleanup:
+                self.cleanup()
+
+    def set_mythen(self, activated):
+        if activated:
             mg = self.macro.getEnv('ContqMythenMG')
         else:
             mg = self.macro.getEnv('ContScanMG')
         self.macro.setEnv('ActiveMntGrp', mg)
         self.macro.execMacro('feauto 1')
 
+    def run_qexafs(self, start_pos, end_pos, nr_trigger, int_time, speed_check, 
+                   wait_fe, config_pid, mythen=False):
+
+        self.set_mythen(mythen)
         self.run_scan(start_pos, end_pos, nr_trigger, int_time, speed_check,
                       wait_fe, config_pid)
 
+    def run_nqexafs(self, start_pos, end_triggers, int_time, nr_repeat,
+                    wait_fe, config_pid, mythen=False):
+
+        self.set_mythen(mythen)
+        self.run_nscan(start_pos, end_triggers, int_time, nr_repeat, wait_fe,
+                       config_pid)
+
+
+# ******************************************************************************
+#                          Utils Macros
+# ******************************************************************************
+
+class qExafsCleanup(Macro):
+    """
+    Macro to cleanup the system after a qExafs scan.
+    """
+
+    def run(self):
+        qexafs = BL22qExafs(self)
+        qexafs.cleanup()
 
 # ******************************************************************************
 #                          Continuous Scan Macros
@@ -334,6 +409,38 @@ class qExafs(Macro):
                           wait_fe, config_PID)
 
 
+class nqExafs(Macro):
+    """
+    Macro to execute the quick Exafs experiment.
+    """
+
+    env = ('ContScanMG',)
+
+    hints = {}
+
+    param_def = [["startPos", Type.Float, None, "Starting position"],
+                 ["end_triggers", [
+                     ["endPos", Type.Float, None, "Ending pos value"],
+                     ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                     {'min': 1}], None, 'List of [end_pos, triggers] for the '
+                                        'region'],
+                 ["intTime", Type.Float, None, "Integration time per point"],
+
+                 ["nrOfRepetitions", Type.Integer, 1, "Nr of triggers"],
+
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")],
+
+                 ["configPID", Type.Boolean, True, ("Active the configuration"
+                                                    " of the bragg PID ")]]
+
+    def run(self, startPos, end_triggers, intTime, nrOfRepetitions, wait_fe,
+            config_PID):
+
+        qexafs = BL22qExafs(self)
+        self.info(startPos, end_triggers, intTime, nrOfRepetitions, wait_fe,
+            config_PID)
+
 class qMythen(Macro):
     """
     Macro to execute the quick Exafs experiment.
@@ -365,14 +472,10 @@ class qMythen(Macro):
                           wait_fe, config_pid, mythen=True)
 
 
-class qExafsCleanup(Macro):
-    """
-    Macro to cleanup the system after a qExafs scan.
-    """
-    def run(self):
-        qexafs = BL22qExafs(self)
-        qexafs.cleanup()
 
+# ******************************************************************************
+#                          Step Scan Macros
+# ******************************************************************************
 
 class aEscan(Macro):
     """
