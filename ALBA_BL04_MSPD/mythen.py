@@ -2223,20 +2223,20 @@ class mythen_take(Macro, MntGrpController):
     MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'  #i14 Source  
         
 
-    def _configureChannel(self, channel):
-        channel.Init()
+    def _configureChannel(self):
         positions = self.execMacro("mythen_getPositions").getResult()
         self.spc = len(eval(positions))
 
         #SEP6 implementation
-        channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
-        channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
+        self.monitorChannel.Init()
+        self.monitorChannel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
+        self.monitorChannel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
+        self.monitorChannel.write_attribute("DataTransferMechanism","Interrupts")
 
-        # With PulseWith the minimun expected values needs to be more than 1
-        if self.spc < 2:
-            self.spc = 2
-        channel.write_attribute("SampPerChan", long(self.spc))
-        channel.write_attribute("SampleclockRate", 100.0)
+        if self.spc < 1:
+            self.spc = 1
+        self.monitorChannel.write_attribute("SampPerChan", long(self.spc))
+        self.monitorChannel.write_attribute("SampleclockRate", 100.0)
 
 
         # OLD implementation
@@ -2321,34 +2321,17 @@ class mythen_take(Macro, MntGrpController):
 
         try:    
 
-            self._configureChannel(self.monitorChannel)
-
+            self._configureChannel()
             self.monitorChannel.Start()
             outFileName, positions = self.execMacro("mythen_acquire").getResult()
             nrOfPositions = len(eval(positions))
             self.debug(nrOfPositions)
-
 
             # SEP6 Implementation
             monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
             self.debug(monitorValueList)
             monitorValueList = list(monitorValueList)
           
-            #OLD implentation
-            #if nrOfPositions == 0:
-            #    nrOfPositions = 1        
-           
-            #if nrOfPositions > 1:
-            #    monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
-            #    self.debug(monitorValueList)
-            #    monitorValueList = list(monitorValueList)
-
-            #else:
-            #    monitorValue = self.monitorChannel.read_attribute('Count').value
-            #    monitorValuePerPosition = int(monitorValue / nrOfPositions)
-            #    monitorValueList = [monitorValuePerPosition for i in range(nrOfPositions)]
-            
-
             self.info('MonitorValuePerPosition: %s' % monitorValueList)
         except Exception as e:
             self.error('Exception during acquisition')
@@ -2409,26 +2392,8 @@ class mythen_take(Macro, MntGrpController):
             self.info(msg)
         self.warning('Elapsed time to get Attributes: %.4f sec' %(time.time() - t1) )                               
 
-    #FF End modif
-        
 
-
-        # NOT longer used,
-        #mnt_grp_time = 0.1
-        #mnt_grp_results = None
-        
-        #for i in range(3):
-        #    msg = 'Measurement group count of time: %s [s]' % mnt_grp_time
-        #    self.output(msg)
-           # mnt_grp_results = self._count(mnt_grp_time)
-        #    if mnt_grp_results != None:
-        #        break
-        #else:
-        #    msg = 'It was not able to count with the measurement within 3 attempts'
-        #    self.error(msg)
-        #    msg = 'Measurement group data will be skipped in the par file'
-        #    self.info(msg)
-
+     
         self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )                               
         parFileName = outFileName[:-3] + "par"
         try:
@@ -3141,38 +3106,14 @@ class mythen_fastTake(Macro, MntGrpController):
     MONITOR_CHANNEL_GATE = '/Dev2/PFI38'    #i14 Gate
     MONITOR_CHANNEL_SOURCE = '/Dev2/PFI39'  #i14 Source  
     MOTOR_NAME = 'pd_mc'
-    
-    
-    ##Make Bakup for the channels used to count
-    def _backupChannel(self, channel):
-        DicProperties = channel.get_property('applicationType')
-        valueProperties = DicProperties["applicationType"]
-        value = list(valueProperties)[0]
-
-        if value == "CIPulseWidthChan":
-            self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
-
-        self._pauseTriggerType = channel.read_attribute('PauseTriggerType').value
-        self._pauseTriggerWhen = channel.read_attribute('PauseTriggerWhen').value
-        self._pauseTriggerSource = channel.read_attribute('PauseTriggerSource').value
-        self.debug('PauseTriggerType: %s' % self._pauseTriggerType)
-        self.debug('PauseTriggerWhen: %s' % self._pauseTriggerWhen)
-        self.debug('PauseTriggerSource: %s' % self._pauseTriggerSource)        
-        
-    def _restoreChannel(self, channel):
-        self.execMacro("pulseWidth2count",self.MONITOR_CHANNEL)
-        channel.write_attribute('PauseTriggerType', self._pauseTriggerType)
-        channel.write_attribute('PauseTriggerWhen', self._pauseTriggerWhen)
-        channel.write_attribute('PauseTriggerSource', self._pauseTriggerSource)
-       ##Dchannel.Init()
-        
-    def _configureChannel(self, channel):
-        self.execMacro("count2pulseWidth",self.MONITOR_CHANNEL)
-        
-        channel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
-        channel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)
-        channel.write_attribute("SampPerChan", long(self.nrOfFrames))
-        channel.write_attribute("SampleclockRate", 100.0)
+               
+    def _configureChannel(self):
+        self.monitorChannel.Init()
+        self.monitorChannel.write_attribute("SourceTerminal",self.MONITOR_CHANNEL_SOURCE)
+        self.monitorChannel.write_attribute("SampleClockSource",self.MONITOR_CHANNEL_GATE)       
+        self.monitorChannel.write_attribute("DataTransferMechanism","Interrupts")       
+        self.monitorChannel.write_attribute("SampPerChan", long(self.nrOfFrames))
+        self.monitorChannel.write_attribute("SampleclockRate", 100.0)
 
     def prepare(self, *args, **kwargs):                                   
         MntGrpController.init(self, self)                                 
@@ -3191,7 +3132,7 @@ class mythen_fastTake(Macro, MntGrpController):
         self.execMacro("mythen_setNrOfFramesPerTrigger", self.nrOfFrames)                       
         self.execMacro("mythen_setExpTime", self.exposureTime)                                  
         self.execMacro('mythen_setPositions')   
-        self.execMacro('mythen_setExtSignal 1 gate_out_active_high')
+        self.execMacro('mythen_setExtSignal 0 gate_out_active_high')
 
         self.firstIndex = self.execMacro("mythen_getIndex").getResult()                         
         self.debug('FirstIndex = %d' %self.firstIndex)  
@@ -3204,14 +3145,10 @@ class mythen_fastTake(Macro, MntGrpController):
     def run(self, *args, **kwargs):  
     
 
-
+        self._configureChannel()
         total_time = self.nrOfFrames * (self.exposureTime+self.readOutTime)
         self.output('Collecting %s Frames of %f sec (+ %f readoutTime)' %(self.nrOfFrames, self.exposureTime,self.readOutTime))
         self.output('Overall time : %f sec' %(total_time))
-
-        #Backup the Actual NI configuration
-        self._backupChannel(self.monitorChannel)
-        self._configureChannel(self.monitorChannel)
 
         #why?
         import threading                                                                             
@@ -3234,6 +3171,7 @@ class mythen_fastTake(Macro, MntGrpController):
             
             #Read the Values of the NI
             monitorValueList = self.monitorChannel.read_attribute('PulseWidthBuffer').value
+
             monitorValueList = list(monitorValueList)
             self.info('MonitorValuePerFrame: %s' % monitorValueList)
             
@@ -3246,7 +3184,6 @@ class mythen_fastTake(Macro, MntGrpController):
                 abortProgram.execute()                                                               
             self.execMacro("mythen_setNrOfFramesPerTrigger", 0)
             self.monitorChannel.Stop()
-            self._restoreChannel(self.monitorChannel)
             position = self.execMacro("mythen_getPositions").getResult()
 
 
@@ -3292,7 +3229,6 @@ class mythen_fastTake(Macro, MntGrpController):
             raise e
         finally:
             parFile.close()
-
         return outFileName,position,monitorValueList
 
 
