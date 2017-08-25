@@ -147,7 +147,7 @@ class restoreNI(Macro):
 def restartNotifd(self):
     call(['alba_notifd', 'restart'])
 
-class mntGrpEnableChannel(Macro):
+class mntGrpEnableChannel_OLD(Macro):
     '''
     mntGrpEnableChannel range_test 'lab/di/elem-02/range_ch1' false
 
@@ -187,6 +187,41 @@ class mntGrpEnableChannel(Macro):
             self.mntGrp.setConfiguration(cfg.raw_data)
             self.info('Setting ActiveMntGrp : %s'%mntGrp)
 	    self.setEnv('ActiveMntGrp', mntGrp)
+
+class mntGrpEnableChannel(Macro):
+
+    param_def = [
+            ['MeasurementGroup',Type.String, None, "Measurement Group to work"],
+            ['ChannelState',
+            ParamRepeat(['channel', Type.String, None, 'Channel to change '
+                                                       'state'],
+                        ['state',  Type.Boolean, True, 'State, enable:True, '
+                                                       'disable:False'],
+                        min=1),
+                        None, 'List of channels/state pairs'],
+            ]               
+
+    def run(self, mntGrp,  *ChannelsState):
+        self.mntGrp = self.getObj(mntGrp, type_class=Type.MeasurementGroup)
+        elements = self.mntGrp.physical_elements
+        ch_names = {}
+        enable = []
+        disable = []
+        for par in ChannelsState:
+            for name, state in par:
+                if name in elements:
+                    if bool(state):
+                        enable.append(name)
+                    else:
+                        disable.append(name)
+                else:
+                    self.debug('Skipped %r Not found in the mntGrp %r'%(name,mntGrp))
+        if enable:  
+            self.mntGrp.enableChannels(enable)
+        if disable:
+            self.mntGrp.disableChannels(disable)
+        self.info('Setting ActiveMntGrp : %s'%mntGrp)        
+        self.setEnv('ActiveMntGrp', mntGrp)
 
 
 class voltagePolarityAlbaEm(Macro):
