@@ -396,6 +396,35 @@ class EMrange(Macro):
             self.output('%s changed range from %s to %s' %(ch, old_range,
                                                            ch.range))
 
+class set_mode(Macro):
+    """
+    Macro to set the Measuement Group acording to the experiment type:
+    * Transmission (transm)
+    * Fluorescence (fluo)
+    * CLEAR (clear)
+    * ALL (all)
+    """
+    env = ('ContScanMG','DefaultMG', 'ActiveMntGrp')
+    
+    param_def = [['ExpType', Type.String, None, 'transm, fluo, clear, all']]
+    
+    exp_type = {'transm': ['mg_cont', 'mg_step'],
+                'fluo': ['mg_xcont', 'mg_xstep'],
+                'clear': ['mg_mcont', 'mg_mstep'],
+                'all' : ['mg_all', 'mg_all']
+                }
+
+    def run(self, exptype):
+        exptype = exptype.lower()
+        
+        if exptype not in self.exp_type:
+            raise ValueError('The values must be: %r' % self.exp_type.keys())
+        mg_cont, mg_step = self.exp_type[exptype]
+        self.output('Setting mode...')
+        self.setEnv('ContScanMG', mg_cont)
+        self.setEnv('DefaultMG', mg_step)
+        self.setEnv('ActiveMntGrp', mg_step)
+        self.output('ContScanMG: %s\nDefaultMG: %s\n' %(mg_cont, mg_step))
 
 
 
