@@ -284,7 +284,7 @@ class BL22qExafs(object):
             if not self.flg_cleanup:
                 self.cleanup()
 
-    def run_nscan(self, start_pos, end_trigger, int_time, nr_repeat=1,
+    def run_nscan(self, start_pos, end_triggers, int_time, nr_repeat=1,
                   wait_fe=True, config_pid=True, ):
 
         if not self.sardana_new:
@@ -294,12 +294,13 @@ class BL22qExafs(object):
         self.int_time = int_time
         self.config_PID = config_pid
         self.wait_fe = wait_fe
-        nr_scans = len(end_trigger)
+        nr_scans = len(end_triggers)
 
         try:
             for rp in range(nr_repeat):
-                for idx_scan, end_pos, nr_triggers in enumerate(end_trigger):
-                    last_end_pos = end_pos
+                for idx_scan, end_trigger in enumerate(end_triggers):
+                    end_pos, nr_triggers = end_trigger
+                    
                     if idx_scan == 0:
                         self.scan_start_pos = start_pos
                     else:
@@ -313,7 +314,7 @@ class BL22qExafs(object):
                                                            self.energy_name,
                                                            self.scan_start_pos,
                                                            self.scan_end_pos,
-                                                           self.nr_of_trigger,
+                                                           self.nr_of_triggers,
                                                            self.int_time)
                     scan_macro.hooks = [(self.pre_configure_hook,
                                          ["pre-configuration"]),
@@ -324,10 +325,11 @@ class BL22qExafs(object):
                                         (self.post_move_hook,
                                          ["post-move"]),]
                     if idx_scan == nr_scans-1:
-                        scan_macro.append((self.cleanup, ["post-cleanup"]))
+                        scan_macro.hooks.append((self.cleanup, ["post-cleanup"]))
 
                     self.macro.debug("Running %d repetition" % rp)
                     self.macro.runMacro(scan_macro)
+                    last_end_pos = end_pos
 
         except Exception as e:
             self.macro.error('Exception: %s' % e)
@@ -434,12 +436,13 @@ class nqExafs(Macro):
                  ["configPID", Type.Boolean, True, ("Active the configuration"
                                                     " of the bragg PID ")]]
 
-    def run(self, startPos, end_triggers, intTime, nrOfRepetitions, wait_fe,
-            config_PID):
+    def run(self, startPos, end_triggers, intTime, nrOfRepetitions, waitFE,
+            configPID):
 
         qexafs = BL22qExafs(self)
-        self.info(startPos, end_triggers, intTime, nrOfRepetitions, wait_fe,
-            config_PID)
+        qexafs.run_nqexafs(startPos, end_triggers, intTime, nrOfRepetitions,
+                           waitFE, configPID, mythen=False)
+
 
 class qMythen(Macro):
     """
@@ -472,6 +475,37 @@ class qMythen(Macro):
                           wait_fe, config_pid, mythen=True)
 
 
+class nqMythen(Macro):
+    """
+    Macro to execute the quick Exafs experiment.
+    """
+
+    env = ('ContScanMG',)
+
+    hints = {}
+
+    param_def = [["startPos", Type.Float, None, "Starting position"],
+                 ["end_triggers", [
+                     ["endPos", Type.Float, None, "Ending pos value"],
+                     ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                     {'min': 1}], None, 'List of [end_pos, triggers] for the '
+                                        'region'],
+                 ["intTime", Type.Float, None, "Integration time per point"],
+
+                 ["nrOfRepetitions", Type.Integer, 1, "Nr of triggers"],
+
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")],
+
+                 ["configPID", Type.Boolean, True, ("Active the configuration"
+                                                    " of the bragg PID ")]]
+
+    def run(self, startPos, end_triggers, intTime, nrOfRepetitions, waitFE,
+            configPID):
+
+        qexafs = BL22qExafs(self)
+        qexafs.run_nqexafs(startPos, end_triggers, intTime, nrOfRepetitions,
+                           waitFE, configPID, mythen=True)
 
 # ******************************************************************************
 #                          Step Scan Macros
