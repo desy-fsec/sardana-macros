@@ -2210,7 +2210,7 @@ class mythen_setScan0Range(Macro):
 class mythen_take(Macro, MntGrpController):
     
     result_def = [['OutFile', Type.String, None, 'Full path to the output file'],
-                  ['nrOfPositions', Type.String, None, 'Number of positions'],
+                  ['nrOfPositions', Type.Integer, None, 'Number of positions'],
                   ['positions', Type.String, None, 'List of positions'],
                   ['monitors', Type.String, None, 'Monitors']
                  ]
@@ -2424,7 +2424,7 @@ class mythen_take(Macro, MntGrpController):
         monitors = monitorValueList
         self.warning('In mythen_take : Elapsed time : %.4f sec' %(time.time() - t0) )   
                             
-        return outFileName,str(nrOfPositions),str(positions),str(monitors)
+        return outFileName,nrOfPositions,str(positions),str(monitors)
 
 
 class mythen_getAngConv(Macro):
