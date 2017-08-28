@@ -149,7 +149,7 @@ def restartNotifd(self):
 
 class mntGrpEnableChannel_OLD(Macro):
     '''
-    mntGrpEnableChannel range_test 'lab/di/elem-02/range_ch1' false
+    mntGrpEnableChannel range_test channel1 false
 
     '''
     param_def = [
@@ -191,9 +191,9 @@ class mntGrpEnableChannel_OLD(Macro):
 class mntGrpEnableChannel(Macro):
 
     param_def = [
-            ['MeasurementGroup',Type.String, None, "Measurement Group to work"],
+            ['MeasurementGroup',Type.MeasurementGroup, None, "Measurement Group to work"],
             ['ChannelState',
-            ParamRepeat(['channel', Type.String, None, 'Channel to change '
+            ParamRepeat(['channel', Type.CTExpChannel, None, 'Channel to change '
                                                        'state'],
                         ['state',  Type.Boolean, True, 'State, enable:True, '
                                                        'disable:False'],
@@ -202,26 +202,26 @@ class mntGrpEnableChannel(Macro):
             ]               
 
     def run(self, mntGrp,  *ChannelsState):
-        self.mntGrp = self.getObj(mntGrp, type_class=Type.MeasurementGroup)
-        elements = self.mntGrp.physical_elements
+        elements = mntGrp.physical_elements
         ch_names = {}
         enable = []
         disable = []
         for par in ChannelsState:
-            for name, state in par:
-                if name in elements:
+            for ch, state in par:
+                ch = ch.name
+                if ch in elements:
                     if bool(state):
-                        enable.append(name)
+                        enable.append(ch)
                     else:
-                        disable.append(name)
+                        disable.append(ch)
                 else:
-                    self.debug('Skipped %r Not found in the mntGrp %r'%(name,mntGrp))
+                    self.debug('Skipped %r Not found in the mntGrp %r'%(ch,str(mntGrp)))
         if enable:  
-            self.mntGrp.enableChannels(enable)
+            mntGrp.enableChannels(enable)
         if disable:
-            self.mntGrp.disableChannels(disable)
-        self.info('Setting ActiveMntGrp : %s'%mntGrp)        
-        self.setEnv('ActiveMntGrp', mntGrp)
+            mntGrp.disableChannels(disable)
+        self.info('Setting ActiveMntGrp : %s'%mntGrp)
+        self.setEnv('ActiveMntGrp', str(mntGrp))
 
 
 class voltagePolarityAlbaEm(Macro):
@@ -237,9 +237,9 @@ class voltagePolarityAlbaEm(Macro):
         self.debug(invert)
         self.debug(ichannel)
         self.debug(xbdev)
-	
-	if xbdev == 'None': #raise Exception("no device given, should be xbhp/xbpd/xbo")
-	    self.info("WARNING! no device given, should be xbhp/xbpd/xbo")
+
+        if xbdev == 'None': #raise Exception("no device given, should be xbhp/xbpd/xbo")
+            self.info("WARNING! no device given, should be xbhp/xbpd/xbo")
             return
  
         if xbdev == "xbhp" :  emdev = "ELEM01R42-031-bl04"
