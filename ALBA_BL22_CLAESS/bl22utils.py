@@ -1,10 +1,10 @@
 import time
+import datetime
+import os
+import mmap
 from sardana.macroserver.macro import macro, Type, Macro, ViewOption, ParamRepeat
 import PyTango, taurus
-import time
-import datetime
 from taurus.console.table import Table
-import os
 import pyIcePAP
 from albaemlib import AlbaEm
 
@@ -428,5 +428,104 @@ class set_mode(Macro):
 
 
 
+
+class nextract(Macro):
+    """
+    Macro to extract multiples scans. It works with spec files.
+    """
+
+    env = ('ScanDir', 'ScanFile', 'ScanID')
+    param_def = [
+        ['NrScans', Type.Integer, None, 'Number of scans per repetition'],
+        ['NrRepetitions', Type.Integer, None, 'Number of repetitions'],
+        ['OutputFile', Type.String, None, 'Output filename (path included)'],
+        ['StartScanID', Type.Integer, -1, 'Start scan ID to process'],
+        ['SpecFile', Type.String, "", 'Spec file with the data']]
+
+    def get_output_file(self, filename):
+        fname, ext = os.path.splitext(filename)
+        temp_filename = fname + '_{0}' + ext
+        count = 0
+        while True:
+            self.checkPoint()
+            new_filename = temp_filename.format(count) 
+            if not os.path.exists(new_filename):
+                break
+            count += 1
+        return new_filename
+
+    def get_input_file(self, scan_file):
+        if scan_file == '':
+            scan_files = self.getEnv('ScanFile')
+            if type(scan_files) == list:
+                for f in scan_files:
+                    if '.dat' in f:
+                        scan_file = f
+                        break
+                else:
+                    self.error('You should save the data on Spec File')
+                    raise StopException()
+            elif type(f) == str:
+                if not '.dat' in f:
+                    self.error('You should save the data on Spec File')
+                    raise StopException()
+                scan_file = f
+            else:
+                self.error('You should save the data on Spec File')
+                raise StopException()
+        return scan_file
+
+    def run(self, nr_scans, nr_repeat, output_file, start_scanid, spec_file):
+        scans = nr_repeat * nr_scans
+        if start_scanid == -1:
+            start_scanid = self.getEnv('ScanID') - scans + 1
+
+        scan_dir = self.getEnv('ScanDir')
+        spec_file = self.get_input_file(spec_file)
+        input_file = os.path.join(scan_dir, spec_file)
+
+        with open(input_file, 'r') as f:
+            mem_file = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+        
+        start_scan_pos = 0
+        while True:
+            self.checkPoint()
+            start_scan_pos = mem_file.rfind('#S', 0, start_scan_pos-1)
+            if start_scan_pos < 0:
+                raise LookupError
+            mem_file.seek(start_scan_pos)
+            line = mem_file.readline()
+            scan_nr = int(line.split()[1])
+            if scan_nr == start_scanid:
+                break
+        
+        for rp in range(nr_repeat):
+            o_file = self.get_output_file(output_file)
+            self.info('Saving data in %s ...' % o_file)
+            first_scan = start_scanid + (nr_scans) * rp
+            last_scan = first_scan + nr_scans
+            with open(o_file, 'w') as f:
+                line = '#S 1 NoData\n#C\n\n\n'
+                line += '#S 2 nextract scans[%d %d] from %s\n' % \
+                    (first_scan, last_scan, spec_file)
+                f.write(line)
+                for nr_scan in range(nr_scans):
+                    while True:
+                        line = mem_file.readline()
+                        
+                        if 'ended' in line:
+                            break
+                        if nr_scan != 0 and '#' in line or line == '\n':
+                            pass
+                        else:
+                            f.write(line)
+                f.write(line)
+            if rp != nr_repeat-1:
+                next_scan = mem_file.find("#S")       
+                mem_file.seek(next_scan)
+                line = mem_file.readline()
+
+        
+        
 
 
