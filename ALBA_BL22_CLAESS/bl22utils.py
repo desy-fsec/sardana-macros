@@ -9,6 +9,7 @@ import pyIcePAP
 from albaemlib import AlbaEm
 
 
+
 def _getMotorAlias(dev_name):
     return PyTango.Database().get_alias(dev_name)
 
@@ -295,94 +296,99 @@ class HVset(Macro):
 
         self.info(msg)
 
+def is_sardana_new():
+    try:
+        import sardana.pool.poolsynchronization
+        return True
+    except ImportError:
+        return False
 
 class GasFillBase(object):
     """
     Macro to execute the quick Exafs experiment.
     """
 
-    eps_name = 'bl22/ct/eps-plc-02'
-    attrs = {'io2': {'energy': 'ConsignaI2_wr',
-                    'set': 'PLC_CONFIG_I02_CM',
-                    'done': 'CH3_done',
-                    'pressure': 'FL_PST_EH01_03_AF',
-                    'gases': {'Ar': 'TarjetI2_Ar',
-                              'He': 'TarjetI2_He',
-                              'Kr': 'TarjetI2_Kr',
-                              'N2': 'TarjetI2_N2',
-                              'Xe': 'TarjetI2_Xe'}
-                    }
-            }
-
-
-    def fill(self, io, energy):
-        if energy <= 4000 or energy >= 63000:
-            raise Exception('The energy is out of range[4000,63000]')
-        io = io.lower()
-        eps = self.getDevice(self.eps_name)
-        eps[self.attrs[io]['energy']] = energy
-        eps[self.attrs[io]['set']] = 1
-        self.info('Waiting....')
-        while not eps[self.attrs[io]['done']]:
-            time.sleep(0.01)
-            self.checkPoint()
-
-        # Time needed by the EPS DS to update the values
-        time.sleep(3)
-
-        msg = '%s fill done!\n' % io
-        msg += 'Presure: %r\n' % eps[self.attrs[io]['pressure']].value
-        for name, attr in self.attrs[io]['gases'].items():
-            msg += '%s: %r' % (name, eps[self.attrs[io]['gases'][name]].value)
-
-        self.output(msg)
+    device_name = 'bl22/ct/bl22gasfilling'
+    def __init__(self, macro_obj):
+        self.macro = macro_obj
+        self.device = PyTango.DeviceProxy(self.device_name)
+        if not is_sardana_new():
+            msg = 'The macro does not work with this version of Sardana'
+            raise RuntimeError(msg)
+        
+    def wait(self):
+        while True:
+            self.macro.checkPoint()
+            state = self.device.state()
+            if state in [PyTango.DevState.ALARM, PyTango.DevState.ON]:
+                break
+            time.sleep(0.1)
+        if state == PyTango.DevState.ALARM:
+            status = self.device.status()
+            self.macro.error('The DS is in ALARM state: %s' % status)
+        else:
+            self.macro.output('The process has ended successfully')
+        
+    def fill(self, values):
+        self.macro.output('Starting the filling...')
+        v = []
+        for i in values:
+            for j in i:
+                v.append(j)
+        self.device.fill(v)
+        self.wait()
 
     def clean(self, io):
+        self.macro.output('Starting the purge...')
+        self.device.clean(io)
+        self.wait()
 
-        io = io.lower()
-        eps = self.getDevice(self.eps_name)
-        eps[self.attrs[io]['energy']] = 0
-        eps[self.attrs[io]['set']] = 1
-
-        self.info('Cleaning....')
-        t1 = time.time()
-        while True:
-            self.checkPoint()
-            time.sleep(0.10)
-            if time.time() - t1 > 30:
-               break
-
-        self.output('IOChamber %r cleaned.' % io)
-
-
-class gasClean(Macro, GasFillBase):
+    def stop(self):
+        self.macro.output('Send stop to de device...')
+        self.device.stop()
+        
+class gasClean(Macro):
     """
     Macro to clean the IO Chamber.
     """
 
     hints = {}
 
-    param_def = [["IOChamber", Type.String, None, ""],]
+    param_def = [['values', [["IOChamber", Type.Integer, None, ""],{'min':1, 'max':3}],
+                 None, 'List of values']]
 
     def run(self, io):
-        self.clean(io)
+        self.gas_filling = GasFillBase(self)
+        self.gas_filling.clean(io)
+        
+    def on_abort(self):
+        self.gas_filling.stop()
 
-
-class gasFill(Macro, GasFillBase):
+class gasFill(Macro):
     """
     Macro to fill the IO Chamber.
     """
 
     hints = {}
 
-    param_def = [["IOChamber", Type.String, None, "IO name [io0, io1, io2]"],
-                 ["energy", Type.Float, None, "energy value"]]
+    param_def = [['values',
+                 [["IOChamber", Type.Integer, None, "IO chamber number [0, 1, 2]"],
+                 ["energy", Type.Integer, None, "energy value"], {'min':1, 'max':3}], 
+                 None, "List of values"]]
 
-    def run(self, io, energy):
-        self.fill(io, energy)
+    def run(self, values):
+        self.gas_filling = GasFillBase(self)
+        self.gas_filling.fill(values)
 
+    def on_abort(self):
+        self.gas_filling.stop()
+
+    
 
 class EMrange(Macro):
+    """
+    Macro to change the electrometer range.
+    """
     param_def = [['chns',
                   [['ch', Type.CTExpChannel, None, 'electrometer chn'],
                    ['range',  Type.String, None, 'Amplifier range'], 
