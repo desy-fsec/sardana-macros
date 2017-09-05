@@ -155,7 +155,7 @@ class MoveBeamline(ConfigAling):
             
             self.info('Configuring filters...')
             for ior in self.get_ioregisters():
-                wvalue = int(self.get_element(ior))
+                wvalue = int(float(self.get_element(ior)))
                 dev_ior = self.getDevice(ior)
                 dev_ior.write_attribute('value', wvalue)
                 for i in range(retries):
