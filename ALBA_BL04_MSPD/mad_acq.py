@@ -150,6 +150,7 @@ class _madscan(Macro, SoftShutterController):
     def run(self, startPos, finalPos, speed, integTime):
         #works only in positive direction
         scanTime = ((finalPos - startPos) / speed) * 60
+	scanTime = round(scanTime, 5)
         self.debug("Scan time: %f" % scanTime) 
         if integTime < 0:
              integTime = (0.0005 / speed) * 60
@@ -174,6 +175,7 @@ class _madscan(Macro, SoftShutterController):
 
             ascanct_macro.hooks = [
                                    (self.preConfigure, ["pre-configuration"]),
+            #                       (self.preStart, ["pre-start"])
                                    (self.preStart, ["pre-start"])
                                   ]
             
