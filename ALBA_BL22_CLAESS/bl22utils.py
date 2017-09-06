@@ -1,12 +1,13 @@
 import time
+import datetime
+import os
+import mmap
 from sardana.macroserver.macro import macro, Type, Macro, ViewOption, ParamRepeat
 import PyTango, taurus
-import time
-import datetime
 from taurus.console.table import Table
-import os
 import pyIcePAP
 from albaemlib import AlbaEm
+
 
 
 def _getMotorAlias(dev_name):
@@ -295,94 +296,99 @@ class HVset(Macro):
 
         self.info(msg)
 
+def is_sardana_new():
+    try:
+        import sardana.pool.poolsynchronization
+        return True
+    except ImportError:
+        return False
 
 class GasFillBase(object):
     """
     Macro to execute the quick Exafs experiment.
     """
 
-    eps_name = 'bl22/ct/eps-plc-02'
-    attrs = {'io2': {'energy': 'ConsignaI2_wr',
-                    'set': 'PLC_CONFIG_I02_CM',
-                    'done': 'CH3_done',
-                    'pressure': 'FL_PST_EH01_03_AF',
-                    'gases': {'Ar': 'TarjetI2_Ar',
-                              'He': 'TarjetI2_He',
-                              'Kr': 'TarjetI2_Kr',
-                              'N2': 'TarjetI2_N2',
-                              'Xe': 'TarjetI2_Xe'}
-                    }
-            }
-
-
-    def fill(self, io, energy):
-        if energy <= 4000 or energy >= 63000:
-            raise Exception('The energy is out of range[4000,63000]')
-        io = io.lower()
-        eps = self.getDevice(self.eps_name)
-        eps[self.attrs[io]['energy']] = energy
-        eps[self.attrs[io]['set']] = 1
-        self.info('Waiting....')
-        while not eps[self.attrs[io]['done']]:
-            time.sleep(0.01)
-            self.checkPoint()
-
-        # Time needed by the EPS DS to update the values
-        time.sleep(3)
-
-        msg = '%s fill done!\n' % io
-        msg += 'Presure: %r\n' % eps[self.attrs[io]['pressure']].value
-        for name, attr in self.attrs[io]['gases'].items():
-            msg += '%s: %r' % (name, eps[self.attrs[io]['gases'][name]].value)
-
-        self.output(msg)
+    device_name = 'bl22/ct/bl22gasfilling'
+    def __init__(self, macro_obj):
+        self.macro = macro_obj
+        self.device = PyTango.DeviceProxy(self.device_name)
+        if not is_sardana_new():
+            msg = 'The macro does not work with this version of Sardana'
+            raise RuntimeError(msg)
+        
+    def wait(self):
+        while True:
+            self.macro.checkPoint()
+            state = self.device.state()
+            if state in [PyTango.DevState.ALARM, PyTango.DevState.ON]:
+                break
+            time.sleep(0.1)
+        if state == PyTango.DevState.ALARM:
+            status = self.device.status()
+            self.macro.error('The DS is in ALARM state: %s' % status)
+        else:
+            self.macro.output('The process has ended successfully')
+        
+    def fill(self, values):
+        self.macro.output('Starting the filling...')
+        v = []
+        for i in values:
+            for j in i:
+                v.append(j)
+        self.device.fill(v)
+        self.wait()
 
     def clean(self, io):
+        self.macro.output('Starting the purge...')
+        self.device.clean(io)
+        self.wait()
 
-        io = io.lower()
-        eps = self.getDevice(self.eps_name)
-        eps[self.attrs[io]['energy']] = 0
-        eps[self.attrs[io]['set']] = 1
-
-        self.info('Cleaning....')
-        t1 = time.time()
-        while True:
-            self.checkPoint()
-            time.sleep(0.10)
-            if time.time() - t1 > 30:
-               break
-
-        self.output('IOChamber %r cleaned.' % io)
-
-
-class gasClean(Macro, GasFillBase):
+    def stop(self):
+        self.macro.output('Send stop to de device...')
+        self.device.stop()
+        
+class gasClean(Macro):
     """
     Macro to clean the IO Chamber.
     """
 
     hints = {}
 
-    param_def = [["IOChamber", Type.String, None, ""],]
+    param_def = [['values', [["IOChamber", Type.Integer, None, ""],{'min':1, 'max':3}],
+                 None, 'List of values']]
 
     def run(self, io):
-        self.clean(io)
+        self.gas_filling = GasFillBase(self)
+        self.gas_filling.clean(io)
+        
+    def on_abort(self):
+        self.gas_filling.stop()
 
-
-class gasFill(Macro, GasFillBase):
+class gasFill(Macro):
     """
     Macro to fill the IO Chamber.
     """
 
     hints = {}
 
-    param_def = [["IOChamber", Type.String, None, "IO name [io0, io1, io2]"],
-                 ["energy", Type.Float, None, "energy value"]]
+    param_def = [['values',
+                 [["IOChamber", Type.Integer, None, "IO chamber number [0, 1, 2]"],
+                 ["energy", Type.Integer, None, "energy value"], {'min':1, 'max':3}], 
+                 None, "List of values"]]
 
-    def run(self, io, energy):
-        self.fill(io, energy)
+    def run(self, values):
+        self.gas_filling = GasFillBase(self)
+        self.gas_filling.fill(values)
 
+    def on_abort(self):
+        self.gas_filling.stop()
+
+    
 
 class EMrange(Macro):
+    """
+    Macro to change the electrometer range.
+    """
     param_def = [['chns',
                   [['ch', Type.CTExpChannel, None, 'electrometer chn'],
                    ['range',  Type.String, None, 'Amplifier range'], 
@@ -396,8 +402,136 @@ class EMrange(Macro):
             self.output('%s changed range from %s to %s' %(ch, old_range,
                                                            ch.range))
 
+class set_mode(Macro):
+    """
+    Macro to set the Measuement Group acording to the experiment type:
+    * Transmission (transm)
+    * Fluorescence (fluo)
+    * CLEAR (clear)
+    * ALL (all)
+    """
+    env = ('ContScanMG','DefaultMG', 'ActiveMntGrp')
+    
+    param_def = [['ExpType', Type.String, None, 'transm, fluo, clear, all']]
+    
+    exp_type = {'transm': ['mg_cont', 'mg_step'],
+                'fluo': ['mg_xcont', 'mg_xstep'],
+                'clear': ['mg_mcont', 'mg_mstep'],
+                'all' : ['mg_all', 'mg_all']
+                }
+
+    def run(self, exptype):
+        exptype = exptype.lower()
+        
+        if exptype not in self.exp_type:
+            raise ValueError('The values must be: %r' % self.exp_type.keys())
+        mg_cont, mg_step = self.exp_type[exptype]
+        self.output('Setting mode...')
+        self.setEnv('ContScanMG', mg_cont)
+        self.setEnv('DefaultMG', mg_step)
+        self.setEnv('ActiveMntGrp', mg_step)
+        self.output('ContScanMG: %s\nDefaultMG: %s\n' %(mg_cont, mg_step))
 
 
 
+
+class nextract(Macro):
+    """
+    Macro to extract multiples scans. It works with spec files.
+    """
+
+    env = ('ScanDir', 'ScanFile', 'ScanID')
+    param_def = [
+        ['NrScans', Type.Integer, None, 'Number of scans per repetition'],
+        ['NrRepetitions', Type.Integer, None, 'Number of repetitions'],
+        ['OutputFile', Type.String, None, 'Output filename (path included)'],
+        ['StartScanID', Type.Integer, -1, 'Start scan ID to process'],
+        ['SpecFile', Type.String, "", 'Spec file with the data']]
+
+    def get_output_file(self, filename):
+        fname, ext = os.path.splitext(filename)
+        temp_filename = fname + '_{0}' + ext
+        count = 0
+        while True:
+            self.checkPoint()
+            new_filename = temp_filename.format(count) 
+            if not os.path.exists(new_filename):
+                break
+            count += 1
+        return new_filename
+
+    def get_input_file(self, scan_file):
+        if scan_file == '':
+            scan_files = self.getEnv('ScanFile')
+            if type(scan_files) == list:
+                for f in scan_files:
+                    if '.dat' in f:
+                        scan_file = f
+                        break
+                else:
+                    self.error('You should save the data on Spec File')
+                    raise StopException()
+            elif type(f) == str:
+                if not '.dat' in f:
+                    self.error('You should save the data on Spec File')
+                    raise StopException()
+                scan_file = f
+            else:
+                self.error('You should save the data on Spec File')
+                raise StopException()
+        return scan_file
+
+    def run(self, nr_scans, nr_repeat, output_file, start_scanid, spec_file):
+        scans = nr_repeat * nr_scans
+        if start_scanid == -1:
+            start_scanid = self.getEnv('ScanID') - scans + 1
+
+        scan_dir = self.getEnv('ScanDir')
+        spec_file = self.get_input_file(spec_file)
+        input_file = os.path.join(scan_dir, spec_file)
+
+        with open(input_file, 'r') as f:
+            mem_file = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+        
+        start_scan_pos = 0
+        while True:
+            self.checkPoint()
+            start_scan_pos = mem_file.rfind('#S', 0, start_scan_pos-1)
+            if start_scan_pos < 0:
+                raise LookupError
+            mem_file.seek(start_scan_pos)
+            line = mem_file.readline()
+            scan_nr = int(line.split()[1])
+            if scan_nr == start_scanid:
+                break
+        
+        for rp in range(nr_repeat):
+            o_file = self.get_output_file(output_file)
+            self.info('Saving data in %s ...' % o_file)
+            first_scan = start_scanid + (nr_scans) * rp
+            last_scan = first_scan + nr_scans
+            with open(o_file, 'w') as f:
+                line = '#S 1 NoData\n#C\n\n\n'
+                line += '#S 2 nextract scans[%d %d] from %s\n' % \
+                    (first_scan, last_scan, spec_file)
+                f.write(line)
+                for nr_scan in range(nr_scans):
+                    while True:
+                        line = mem_file.readline()
+                        
+                        if 'ended' in line:
+                            break
+                        if nr_scan != 0 and '#' in line or line == '\n':
+                            pass
+                        else:
+                            f.write(line)
+                f.write(line)
+            if rp != nr_repeat-1:
+                next_scan = mem_file.find("#S")       
+                mem_file.seek(next_scan)
+                line = mem_file.readline()
+
+        
+        
 
 
