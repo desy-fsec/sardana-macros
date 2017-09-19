@@ -1,4 +1,4 @@
-
+import PyTango
 import taurus
 from sardana.macroserver.macro import Macro, Type
 from sardana.macroserver.macro import *
@@ -56,19 +56,19 @@ def setNiConfig(dev, app, task):
          dev.init()
 
 
-#class ni_app_change(Macro):
-    #"""
-    #Macro to change the application type and the task name in the NI dev 
-    #selected.
-    #"""
-    #param_def = [
-        #["dev", Type.String, None, "Device to Change Application Type"],
-        #["application_type", Type.String, None, "Application Type name"],
-        #["task_name", Type.String, None, "TaskName to set"]]
+class ni_app_change(Macro):
+    """
+    Macro to change the application type and the task name in the NI dev 
+    selected.
+    """
+    param_def = [
+        ["dev", Type.String, None, "Device to Change Application Type"],
+        ["application_type", Type.String, None, "Application Type name"],
+        ["task_name", Type.String, None, "TaskName to set"]]
 
-    #def run(self, dev, application_type, task_name):
-         #setNiConfig(dev, application_type, task_name)
-         #self.debug("NI660X is ready to work in %s Type", application_type)
+    def run(self, dev, application_type, task_name):
+         setNiConfig(dev, application_type, task_name)
+         self.debug("NI660X is ready to work in %s Type", application_type)
 
 
 class restoreNI(Macro):
@@ -147,7 +147,7 @@ class restoreNI(Macro):
 def restartNotifd(self):
     call(['alba_notifd', 'restart'])
 
-class mntGrpEnableChannel_OLD(Macro):
+class mntGrpEnableChannel_old(Macro):
     '''
     mntGrpEnableChannel range_test channel1 false
 
@@ -176,7 +176,7 @@ class mntGrpEnableChannel_OLD(Macro):
             # 1Sep,2016 FF replace channel['label'] by channel['name'] for the cases of pseudo counters (eg gastemp, ...) 
             #ch = channel['label']   
             ch = channel['name']
-	    self.debug(channel)	            
+	    #self.debug(channel)	            
             #self.info(ch)
             #self.output(ch_names.keys())
             if ch in ch_names.keys():
@@ -202,10 +202,11 @@ class mntGrpEnableChannel(Macro):
             ]               
 
     def run(self, mntGrp,  *ChannelsState):
-        elements = mntGrp.physical_elements
+        elements = mntGrp.getChannelNames()
         ch_names = {}
         enable = []
         disable = []
+        not_found = []
         for par in ChannelsState:
             for ch, state in par:
                 ch = ch.name
@@ -216,12 +217,17 @@ class mntGrpEnableChannel(Macro):
                         disable.append(ch)
                 else:
                     self.debug('Skipped %r Not found in the mntGrp %r'%(ch,str(mntGrp)))
+                    not_found.append(ch)	
         if enable:  
             mntGrp.enableChannels(enable)
         if disable:
             mntGrp.disableChannels(disable)
-        self.info('Setting ActiveMntGrp : %s'%mntGrp)
-        self.setEnv('ActiveMntGrp', str(mntGrp))
+        self.debug("MntGrp Used: %r"%mntGrp)
+        self.debug("Enabling: %r" %enable)
+        self.debug("Disabling: %r" %disable)
+        self.debug("Channels not found: %r"%not_found)
+#        self.info('Setting ActiveMntGrp : %s'%mntGrp)
+#        self.setEnv('ActiveMntGrp', str(mntGrp))
 
 
 class voltagePolarityAlbaEm(Macro):
@@ -319,3 +325,147 @@ class checkNIProcess(Macro):
             self.warning("Execute 'restartNi' macro to restart them")
             return
         self.info('The Ni are correctly configured')
+
+class ct_custom(Macro):                                                                                         
+    """Count for the specified time on the active measurement group"""
+
+    env = ('ActiveMntGrp',)
+
+    param_def = [
+       ['integ_time', Type.Float, 1.0, 'Integration time'],
+       ['mnt_grp_name', Type.String, 'MntGrp_not_defined', 'MntGrp to use by '
+                                                      'default ActiveMntGrp']
+    ]
+
+    def prepare(self, integ_time, mnt_grp_name, **opts):
+        if mnt_grp_name == 'MntGrp_not_defined':
+            mnt_grp_name = self.getEnv('ActiveMntGrp')        
+        self.mnt_grp = self.getObj(mnt_grp_name, type_class=Type.MeasurementGroup)
+        self.mnt_grp_name = mnt_grp_name
+
+    def run(self, integ_time, mnt_grp_name):
+        if self.mnt_grp is None:
+            self.error('%r MeasurementGroup does not exist'%self.mnt_grp_name)
+            return
+        self.debug("Using %s Measurement Group", self.mnt_grp_name)
+        self.debug("Counting for %s sec", integ_time)
+        self.outputDate()
+        self.output('')
+        self.flushOutput()
+
+        state, data = self.mnt_grp.count(integ_time)
+        names, counts = [], []
+        for ch_info in self.mnt_grp.getChannelsEnabledInfo():
+            names.append('%s' % ch_info.label)
+            ch_data = data.get(ch_info.full_name)
+            if ch_data is None:
+                counts.append("<nodata>")
+            elif ch_info.shape > [1]:
+                counts.append(list(ch_data.shape))
+            else:
+                counts.append(ch_data)
+
+        table = Table([counts], row_head_str=names, row_head_fmt='  %*s',
+                      col_sep='  =  ')
+        for line in table.genOutput():
+            self.output(line)
+
+        # Prepare data result to be extracted by getData()
+        self._data = {}
+        self._data['mntGrp'] = self.mnt_grp.name
+        self._data['integ_time'] = integ_time
+        self._data['data'] = zip(names, counts)
+        self.debug(self._data)
+
+class ct_manual(Macro):
+    param_def = [
+            ['acq_time',Type.Float, 1, "Acq_time"],
+            ['MeasurementGroup',Type.String, 'None', "Measurement Group to work"],
+            ]
+    def run(self, act_time, mntGrp):
+        a = self.execMacro('ct_custom %r %s' % (act_time, mntGrp))  
+        
+        try:
+            self.info(a.data)
+          
+            a = a.data
+        except:
+            self.error('Not data in measurement Grp')
+            pass
+        self.info(" ".join("%s %s" % tup for tup in a.getData()['data']))
+
+class ct_manual_without_output(Macro):
+    param_def = [
+            ['acq_time',Type.Float, 1, "Acq_time"],
+            ['MeasurementGroup',Type.String, 'None', "Measurement Group to work"],
+            ]
+
+    def run(self, act_time, mntGrp):
+        a = self.execMacro('ct_custom %r %s' % (act_time, mntGrp))  
+        #ct_custom = self.createMacro("ct_custom", act_time, mntGrp)
+        #a = self.runMacro(ct_custom)
+        try:
+            self.info(a.data)
+          
+            a = a.data
+        except:
+            self.error('Not data in measurement Grp')
+            pass
+        self.info(" ".join("%s %s" % tup for tup in a.getData()['data']))
+
+
+class adlink_setFormula(Macro):
+    '''
+    Pass 
+    '''
+    param_def = [["adlink_channel", Type.String, 'None',  "adlink channel"],
+                  ['offset',Type.Float, 0, "offset"],
+                  ['sign',Type.Float, -1, "sign"],
+              ]
+
+    def run(self,adlink_channel, offset, sign):
+        PyTango.DeviceProxy(adlink_channel).write_attribute('FORMULA',('%r * value + %r' %(sign, offset)))
+
+class adlink_getFormula(Macro):
+    '''
+    Pass 
+    '''
+    param_def = [["adlink_channel", Type.String, 'None',  "adlink channel"],
+              ]
+
+    def run(self,adlink_channel):
+        formula = PyTango.DeviceProxy(adlink_channel).read_attribute('FORMULA').value
+        self.debug(formula)
+        sign , offset = formula.split('* value +')
+        self.debug(sign)
+        self.debug(offset)
+        return sign, offset
+
+class test_env(Macro):
+
+    def run(self):
+        Temp0 = ''
+        a = self.getEnv('adlinks')
+        self.debug(a)
+        self.debug(type(a))
+        self.debug(a[0])
+        #result = self.execMacro('mythen_getPositions').getResult()               
+        #f = eval(result)[0]
+        f = eval(self.execMacro('mythen_getPositions').getResult())[0]               
+        self.info(f)
+        a = self.execMacro('ct_custom %r %s' %(0.1,'adlink_simple'))
+        a = a.data
+        self.info(a)
+        self.error(a['data'])
+        Temp0 = " ".join("%s %s" % tup for tup in a['data'])
+        self.warning(Temp0)
+        chVolt = self.execMacro('ct_custom %r %s' %(0.1,'adlink_simple')).data
+        self.info(chVolt)
+        Vnow = [float(chVolt['data'][1][1]),float(chVolt['data'][2][1]),float(chVolt['data'][3][1]),float(chVolt['data'][4][1])]
+        self.info(Vnow)
+        self.setEnv('adlinks',Vnow)
+        a = self.getEnv('adlinks')
+        self.warning(a)
+
+        #motion=self.getMotion(['pd_msam','pd_mc'])
+        #motion.move([0.,f])
