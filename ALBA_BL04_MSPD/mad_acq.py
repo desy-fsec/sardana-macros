@@ -74,22 +74,19 @@ class mad_ascan(Macro, SoftShutterController):
 
 class _madscan(Macro, SoftShutterController):
 
-    mntGrp = "mad_cs_test"
-
+    mntGrp = "mad_cs"
+    #mntGrp = "mad_cs_test"
     motName = "pd_oc"
-    #motName = 'dmot1'
-    _fsShutter = None
-      
+    #motName = 'dmot1'      
     posName = "oc"
-    
-    
+    tg = 'tg1'    
+    software_delay= 0.05
     param_def = [["startPos", Type.Float, None, "Starting position"],
                  ["endPos", Type.Float, None, "Ending pos value"],
                  ["speed", Type.Float, None, "deg/min"],
                  ["integTime", Type.Float, -1.0, "Integration time"]]
     
     def prepare(self, *args, **kwargs):
-        #SoftShutterController.init(self)
         self.debug("prepare entering...")
         
         #Comprove if Power of Moveable is ON
@@ -141,16 +138,13 @@ class _madscan(Macro, SoftShutterController):
     
     def preStart(self):
         self.debug("preStart entering...")
-        mot = taurus.Device(self.motName)
-        initialPosition = mot["Position"].value
-             
-        posChan = taurus.Device(self.posName)
-        posChan["initialPos"] = initialPosition
+        tg = taurus.Device(self.tg)
+        tg["extraInitialDelayTime"] = self.software_delay
 
     def run(self, startPos, finalPos, speed, integTime):
         #works only in positive direction
         scanTime = ((finalPos - startPos) / speed) * 60
-	scanTime = round(scanTime, 5)
+        scanTime = round(scanTime, 5)
         self.debug("Scan time: %f" % scanTime) 
         if integTime < 0:
              integTime = (0.0005 / speed) * 60
@@ -161,21 +155,16 @@ class _madscan(Macro, SoftShutterController):
         self.setEnv("ActiveMntGrp", self.mntGrp)
         try:
             moveable = self.getMoveable(self.motName)
-            # To use in sep6-bliss
-            #ascanct_macro, _ = self.createMacro("ascanct", moveable,
-            #                                              startPos, finalPos, 
-            #                                              nrOfTriggers, 
-            #                                              integTime, 100)
+            mot = taurus.Device(self.motName)
 
-            #to use in SEP 6
+            self.debug('%r %r %r %r %r 0'%(moveable, startPos, finalPos, nrOfTriggers, integTime))
             ascanct_macro, _ = self.createMacro("ascanct", moveable,
                                                           startPos, finalPos, 
                                                           nrOfTriggers, 
-                                                          integTime, 0)
+                                                          integTime)
 
             ascanct_macro.hooks = [
                                    (self.preConfigure, ["pre-configuration"]),
-            #                       (self.preStart, ["pre-start"])
                                    (self.preStart, ["pre-start"])
                                   ]
             
@@ -197,11 +186,14 @@ class _madscan(Macro, SoftShutterController):
             #self.info("Scan #%i ended at %s"%(self.MadScanID,now))
 
  #           self.debug('Restoring %s'%self.bkpScanRecorder)
+            posChan = taurus.Device(self.posName)
+            posChan.stop()
+
             self.setEnv("ScanFile", self.bkpScanFile)
-            if not self.bkpScanRecorder is None:
+            if self.bkpScanRecorder:
                 self.debug('Restoring %s'%self.bkpScanRecorder)
                 self.setEnv("ascanct.ScanRecorder", self.bkpScanRecorder)
             self.setEnv("ScanDir", self.bkpScanDir)
             self.setEnv("MadScanID", self.getEnv("ScanID") )
-	    
+            self.setEnv('ascanct.ScanRecorder', None)	    
             self.setEnv("ScanID", self.bkpScanID)
