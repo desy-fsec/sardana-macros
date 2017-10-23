@@ -387,7 +387,7 @@ class mxraster(Macro):
         inumber = int(self.execMacro('lima_getconfig','pilatus','NextNumber'
                              ).getResult())
         
-        id = str("%04d" % inumber)
+        id = str("%04d" % (inumber - 1))
         format = self.execMacro('lima_getconfig','pilatus','FileFormat'
                              ).getResult() 
 
