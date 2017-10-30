@@ -4,7 +4,7 @@ import time
 
 BL_ENERGY_CONFIG = {'2.4keV': 'en < 5.6 and en >= 2.4',
                     '5.6keV': 'en < 7.6 and en >= 5.6',
-                    '7.6keV' : 'en < 11.5 and en >= 7.6' ,
+                    '7.6keV': 'en < 11.5 and en >= 7.6',
                     '11.5keV': 'en < 14 and en >= 11.5',
                     '14keV': 'en < 35 and en >= 14',
                     '35keV': 'en < 62.5 and en >=35'}
@@ -15,39 +15,40 @@ CLEAR_111_ENERGY_CONFIG = {'6keV': 'en < 8.3 and en >= 6',
 CLEAR_311_ENERGY_CONFIG = {'6.4keV': 'en < 8.3 and en >= 6.4',
                            '8.3keV': 'en <= 14 and en >= 8.3'}
 
-class ConfigAling(object):
+
+class ConfigAlign(object):
     """
     Class Helper to read the configuration file.
     """
 
+
     def printConfig(self):
-        equation = self.config_range[self.config]
-        self.output('Use the %r configuration: (%r)' % (self.config, equation))
-        
-    def initConfig(self, energy, config_range, config_path):
-        self.config_range = config_range
+        self.output('Use the %r configuration: (%r) file: %r' % 
+                    (self.config, self.equation, self.config_path))
+
+    def initConfig(self, energy, config_path, config_range=None):
+        if energy > 62500 or energy < 2400:
+            msg = 'Value out of range [2400, 62500]'
+            raise ValueError(msg)
+
+        self.config = None
+        self.equation = None
         self.config_file = ConfigParser.RawConfigParser()
         self.config_file.read(config_path)
         self.config_path = config_path
-        
-        try:
-            self.energy =  energy / 1000.0 # to use keV
-        except Exception as e:
-            raise ValueError('The energy should be: clear or a number')
-
-        if self.energy > 62.5 or self.energy < 2.4:
-            msg = 'Value out of range [2400, 62500]'
-            raise ValueError(msg)
-        for configuration, equation in config_range.items():
-            if eval(equation,{'en': self.energy}):
-                self.config = configuration
-                break
-        else:
-            msg = 'There is not configuration for this energy'
-            raise ValueError(msg)
-
+        self.energy = energy / 1000  # All formulas are in keV
         self.motors_cal = self._tolist(self.config_file.get('general',
                                                             'equation'))
+        if config_range is not None:
+            for configuration, equation in config_range.items():
+                if eval(equation, {'en': self.energy}):
+                    self.config = configuration
+                    self.equation = equation
+                    break
+            else:
+                msg = 'There is not configuration for this energy'
+                raise ValueError(msg)
+
     def _tolist(self, data):
         data = data.replace('\n', ' ')
         data = data.replace(',', ' ')
@@ -66,7 +67,7 @@ class ConfigAling(object):
                 if motor == 'oh_dcm_xtal2_pitch':
                     pos = self.calc_xtal2_pitch()
                 else:
-                    pos = eval(equation,{'en': self.energy})
+                    pos = eval(equation, {'en': self.energy})
             cmd += ' %s %s' % (motor, pos)
             if not all_motors:
                 cmds.append(cmd)
@@ -88,24 +89,23 @@ class ConfigAling(object):
         new_d = new_pos - old_pos
         self.config_file.set(self.config, 'xtal2_pitch_d', new_d)
 
-
     def get_motors(self, instrument):
         return self._tolist(self.config_file.get(instrument, 'motors'))
 
     def get_instruments(self):
-        return self._tolist(self.config_file.get('general','instruments'))
+        return self._tolist(self.config_file.get('general', 'instruments'))
 
     def get_element(self, element):
         return self.config_file.get(self.config, element)
 
     def get_ioregisters(self):
-        return self._tolist(self.config_file.get('general','ioregisters'))
+        return self._tolist(self.config_file.get('general', 'ioregisters'))
         
     def save_file(self, filename):
         """
         :param filename: New file name to save the current configuration.
         """
-        with open(filename,'w') as f:
+        with open(filename, 'w') as f:
             self.config_file.write(f)
 
     def create_bkp(self):
@@ -139,17 +139,20 @@ class ConfigAling(object):
         self.info(self.config_file.items(self.config))
 
 
-class MoveBeamline(ConfigAling):
+class MoveBeamline(ConfigAlign):
     """
     Class Helper to execute the flow of the movement of the beamline. 
     """
     
     energy_name = 'energy'
     
-    def runMoveBeamline(self, energy, config_env, config_range, retries):
+    def runMoveBeamline(self, energy, config_env, config_range, retries, 
+                        debug_on=False):
         try:
+            if debug_on:
+                self.execMacro = self.info
             config_path = self.getEnv(config_env)
-            self.initConfig(energy, config_range, config_path)
+            self.initConfig(energy, config_path, config_range)
             self.printConfig()
             self.execMacro('feclose')
             
@@ -170,7 +173,7 @@ class MoveBeamline(ConfigAling):
             # Load motor position from the configuration except table_z
             self.info('Moving motors....')
             for instrument in self.get_instruments():
-                if instrument in ['table_z','eh_slits']:
+                if instrument in ['table_z', 'eh_slits']:
                     continue
                 for cmd in self.get_cmds_mov(instrument):
                     for i in range(retries):
@@ -180,7 +183,12 @@ class MoveBeamline(ConfigAling):
             eng = self.energy*1000.0 
             self.info('Moving energy to: %f' % eng)
             self.execMacro('mv energy %f' % eng)
-            self.setEnv('LastBlConfig', self.config)
+            # Save last configuration
+            last_config = {'configuration': self.config,
+                           'equation': self.equation,
+                           'file_config': config_path,}
+            self.setEnv('LastBlConfig', last_config)
+
             try:
                 self.execMacro('feopen')
             except:
@@ -207,15 +215,17 @@ class MoveBeamline(ConfigAling):
         mot_energy = self.getDevice(self.energy_name)
         energy = mot_energy.read_attribute('position').value
         self.info('Saving at %r eV' % energy)
-        self.initConfig(energy, config_range, config_path)
+        self.initConfig(energy, config_path, config_range)
         self.update_config()
 
-    def runMoveMono(self, energy, config_env, config_range, retries):
+    def runMoveMono(self, energy, retries):
         try:
-            config_path = self.getEnv(config_env)
-            self.initConfig(energy, config_range, config_path)
             last_config = self.getEnv('LastBlConfig')
-            self.config = last_config
+            config_path = last_config['file_config']
+            self.initConfig(energy, config_path)
+            last_config = self.getEnv('LastBlConfig')
+            self.config = last_config['configuration']
+            self.equation = last_config['equation']
             self.printConfig()
             motors = self.get_motors('mono')
             self.info('Moving motors except oh_dcm_z and energy')
@@ -230,8 +240,8 @@ class MoveBeamline(ConfigAling):
                 if motor == 'oh_dcm_z':
                     new_dcm_z = pos
                     continue
-
-                self.execMacro('mv %s %s' % (motor, pos))
+                for i in range(retries):
+                    self.execMacro('mv %s %s' % (motor, pos))
             self.info('Moving oh_dcm_z and energy')
             dev = self.getDevice('oh_dcm_z')
             current_dcm_z = dev.read_attribute('position').value
@@ -243,8 +253,11 @@ class MoveBeamline(ConfigAling):
                 cmd1 = 'mv oh_dcm_z %s' % new_dcm_z
                 cmd2 = 'mv energy %s' % energy
 
-            self.execMacro(cmd1)
-            self.execMacro(cmd2)
+            for i in range(retries):
+                self.execMacro(cmd1)
+
+            for i in range(retries):
+                self.execMacro(cmd2)
 
         except Exception as e:
             self.error('Exception with alignment: %s' % e)
@@ -261,14 +274,13 @@ class mvblE(Macro, MoveBeamline):
 
     param_def = [['energy', Type.Float, None, 'Beamline energy in eV'],
                  ['retries', Type.Integer, 3, 
-                  'Number of retries to move the motors']]
+                  'Number of retries to move the motors'],
+                  ['debug', Type.Boolean, False, 'Debug mode']]
 
-    
-                   
-    def run(self, energy, retries):
+    def run(self, energy, retries, debug):
         self.info('Enter mvblE')
         self.runMoveBeamline(energy, 'BeamlineEnergyConfig', BL_ENERGY_CONFIG,
-                             retries)
+                             retries, debug)
 
 
 class mvE(Macro, MoveBeamline):
@@ -287,8 +299,7 @@ class mvE(Macro, MoveBeamline):
 
     def run(self, energy, retries):
         self.info('Enter mvE')
-        self.runMoveMono(energy, 'BeamlineEnergyConfig', BL_ENERGY_CONFIG,
-                             retries)
+        self.runMoveMono(energy, retries)
 
 
 class saveblE(Macro, MoveBeamline):
@@ -327,38 +338,16 @@ class mvblEc(Macro, MoveBeamline):
     param_def = [['energy', Type.Float, None, 'Beamline energy in eV'],
                  ['crystal', Type.String, None, 'Monochromator crystal'],
                  ['retries', Type.Integer, 3, 
-                  'Number of retries to move the motors']]
+                  'Number of retries to move the motors'],
+                  ['debug', Type.Boolean, False, 'Debug mode']]
 
-    
                    
-    def run(self, energy, crystal, retries):
+    def run(self, energy, crystal, retries, debug):
                 
         config_env, config_range = selectCrystal(self, crystal)
 
-        self.runMoveBeamline(energy, config_env, config_range, retries)
-
-
-class mvEc(Macro, MoveBeamline):
-    """
-    Macro to align the mono to a specific energy. The macro move different
-    motor of the mono. The sign of the oh_dcm_z movement determines if the
-    macro moves first the energy or the high of the mono.
-
-    The macro need the an environment variables Clear311BeamlineEnergyConfig
-    and Clear111BeamlineEnergyConfig with the configuration of the beamline
-    for different energies by using the CLEAR.
-    """
-
-
-    param_def = [['energy', Type.Float, None, 'Beamline energy in eV'],
-                 ['crystal', Type.String, None, 'Monochromator crystal'],
-                 ['retries', Type.Integer, 3,
-                  'Number of retries to move the motors']]
-
-    def run(self, energy, crystal, retries):
-        config_env, config_range = selectCrystal(self, crystal)
-
-        self.runMoveMono(energy, config_env, config_range, retries)
+        self.runMoveBeamline(energy, config_env, config_range, retries,
+                             debug)
 
 
 class saveblEc(Macro, MoveBeamline):
@@ -371,8 +360,3 @@ class saveblEc(Macro, MoveBeamline):
 
         config_env, config_range = selectCrystal(self, crystal)
         self.runSaveConfig(config_env, config_range)
-        
-
-
-
-
