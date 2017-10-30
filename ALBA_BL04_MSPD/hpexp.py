@@ -18,7 +18,7 @@ class BaseExp:
         self.countId = None         #id of the measurement group count
         self.marSave = None         #writing or not lima file
         self.rayonixSpecific = taurus.Device("rayonix_custom") #lima device implementing specifics of rayonix detector
-        self.hpDiode = taurus.Device("hpi") # hp diode actuator device   
+        #self.hpDiode = taurus.Device("hpi") # hp diode actuator device   
         self.debug("BaseExp.init() leaving...")
         self.rayonixCCD = taurus.Device('bl04/eh/rayonixlima')
 
@@ -55,10 +55,12 @@ class BaseExp:
 
     def checkDiode(self):
         self.debug("BaseExp.checkDiode() entering...")        
-        hpi_status = self.hpDiode.read_attribute('value').value
+        #hpi_status = self.hpDiode.read_attribute('value').value
+        hpi_status = self.getDevice("bl04/ct/eps-plc-01").read_attribute('pd_eh01_diode').value
         if hpi_status == 0:
             self.warning("Diode is in, so move it out!!!")
-            self.hpDiode.write_attribute('value', 1)
+            #self.hpDiode.write_attribute('value', 1)
+            self.getDevice("bl04/ct/eps-plc-01").write_attribute('pd_eh01_diode', 1)
         self.debug("BaseExp.checkDiode() leaving...")
 
     def prepareDetector(self):
@@ -104,6 +106,7 @@ class BaseExp:
     def waitMntGrp(self):
         self.debug("BaseExp.waitMntGrp() entering...")
         self.mntGrp.waitFinish(id=self.countId)
+        self.countId = None
         self.debug("BaseExp.waitMntGrp() leaving...")    
 
     def monitorDetector(self, wait_time = 0.2):
@@ -364,14 +367,15 @@ class mar_scan(Macro, BaseScan):
 
     def _configNi(self):
         self.debug("mar_scan._configNi() entering...")
-        self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_3_NAME))
-        self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_4_NAME))
+    
+        #self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_3_NAME))
+        #self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_4_NAME))
         self.debug("mar_scan._configNi() leaving...")
 
     def _restoreNi(self):
         self.debug("mar_scan._restoreNi() entering...")
-        self.execMacro('ni_default %s' % self.BLADE_3_NAME[0])
-        self.execMacro('ni_default %s' % self.BLADE_4_NAME[0])
+        #self.execMacro('ni_default %s' % self.BLADE_3_NAME[0])
+        #self.execMacro('ni_default %s' % self.BLADE_4_NAME[0])
         self.debug("mar_scan._restoreNi() leaving...")
 
     def checkParams(self, args):
@@ -499,6 +503,7 @@ class mar_scan(Macro, BaseScan):
             self.warning('-------> Elapsed time (End Meas group) / (since End 2D integrating) : %.4f sec / %.4f sec' %(time.time() - t0,time.time()-t1) )
             if self.marSave:
                 self.writeImage()
+            if self.getEnv("MarProcess") : self.execMacro("_runovedf")
             #self.warning('-------> Elapsed time (Total) : %.4f sec' %(time.time() - t0) )
         finally:
             #dev.command_inout("DisconnectTerms", ["/Dev1/PFI36", "/Dev1/PFI28"])
@@ -632,6 +637,8 @@ class mar_ct(Macro, BaseExp, SoftShutterController):
             self.warning('-------> Elapsed time (End Meas group) / (since End 2D integrating) : %.4f sec / %.4f sec' %(time.time() - t0,time.time()-t1) )
             if self.marSave:
                 self.writeImage()
+	    if self.getEnv("MarProcess") == 1 : self.execMacro("_runovedf")
+	    if self.getEnv("MarProcess") == 2 : self.execMacro("_runffcake")
             self.warning('-------> Elapsed time (Total) : %.4f sec' %(time.time() - t0) )
         except Exception as e:
             self.debug('abort out')
