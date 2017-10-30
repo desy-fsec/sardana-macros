@@ -2295,16 +2295,44 @@ class mythen_take(Macro, MntGrpController):
             Temps = ["dynTa","dynSP1"]
             Temp0 = " T0 %.2f"%(taurus.Device(Temps[0]).value)
         if 'elchem' in snap: 
-            acq_time = 0.05
+            acq_time = 0.1 ##FF18Sep2017  put 0.1 but used to be 0.05 in June 2017
             mnt_grp = 'adlink_simple'
+            env_grp = 'adlinks'
             try:
                 Temp0 = ''
-                a = self.execMacro('ct_custom %r %s' % (acq_time, mnt_grp))                
-                #a = a.getData()
-                a = a.data
-               # a0 = a.data
-                Temp0 = " ".join("%s %s" % tup for tup in a['data'])
-               # Temp0 = " ".join("%s_end %s" % tup for tup in a['data'])
+                #a = self.execMacro('ct_custom %r %s' % (acq_time, mnt_grp))                
+                #a = a.data
+                #Temp0 = " ".join("%s %s" % tup for tup in a['data'])
+                chVolt = self.execMacro('ct_custom %r %s' %(0.1,mnt_grp)).data
+                self.debug("chVolt %s"%repr(chVolt))
+                Vnow  = [float(chVolt['data'][1][1]),float(chVolt['data'][2][1]),float(chVolt['data'][3][1]),float(chVolt['data'][4][1])]
+                Vname = [chVolt['data'][1][0],chVolt['data'][2][0],chVolt['data'][3][0],chVolt['data'][4][0]] 
+                Vwas = self.getEnv(env_grp)
+                self.error("Vwas %s"%repr(Vwas))
+                self.error("Vnow %s"%repr(Vnow))
+                for _v in range(len(Vwas)) :
+                   Vdiff = Vnow[_v] - Vwas[_v]
+                   #Vis = float(chVolt['data'][_v][1])
+                   #Vdiff = Vis - Vwas[_v]
+                   Voff=2.
+                   if abs(Vdiff) > 1.95  :
+                      self.error("_v %d Vwas %.3f Vis %.3f Vdiff %.3f"%(_v,Vwas[_v],Vnow[_v],Vdiff))
+                      #Vnow[_v] += Vdiff/abs(Vdiff)*Voff
+                      Vnow[_v] += (-1.)*Vdiff/abs(Vdiff)*Voff
+                      sign,offset=self.execMacro("adlink_getFormula",Vname[_v]).getResult()
+                      newOffset = float(offset)-Vdiff/abs(Vdiff)*Voff
+                      #self.execMacro("adlink_setFormula %s %f" %(Vname[_v], newOffset))
+                      self.execMacro("adlink_setFormula %s %f" %(Vname[_v], newOffset))
+                self.setEnv('adlinks',Vnow)
+            #    Temp0 = " ".join("%s_end %s" % tup for tup in Vnow)
+                res = [None]*(len(Vname)+len(Vnow))
+                res[::2]=Vname
+                res[1::2]=Vnow
+                self.error(res)
+                Temp0 = " ".join("%s " % tup for tup in res)
+                #Temp0 = " ".join("%s %s" % tup for tup in chVolt['data'])
+                self.warning(Temp0)
+
             except Exception as e:
                 self.error('Error on take data in measurement Group, %r' %e)
                 pass
