@@ -11,8 +11,8 @@ import socket
 NI_DEFAULT_CONFIG = {
     # Dev1
     'bl04/io/ibl0403-dev1-ctr0':['CIPulseWidthChan', 'i15'],
-    'bl04/io/ibl0403-dev1-ctr1':['CIPulseWidthChan', 'Blade3'],
-    'bl04/io/ibl0403-dev1-ctr2':['CIPulseWidthChan', 'Blade4'],
+    'bl04/io/ibl0403-dev1-ctr1':['COPulseChanTicks', 'Blade3'],
+    'bl04/io/ibl0403-dev1-ctr2':['COPulseChanTicks', 'Blade4'],
     'bl04/io/ibl0403-dev1-ctr3':['CIPulseWidthChan', 'ivf1'],
     'bl04/io/ibl0403-dev1-ctr4':['CIPulseWidthChan', 'ivf2'],
     'bl04/io/ibl0403-dev1-ctr5':['CIAngEncoderChan', 'hp_som'],
@@ -435,7 +435,7 @@ class adlink_getFormula(Macro):
 
     def run(self,adlink_channel):
         formula = PyTango.DeviceProxy(adlink_channel).read_attribute('FORMULA').value
-        self.debug(formula)
+        self.info(formula)
         sign , offset = formula.split('* value +')
         self.debug(sign)
         self.debug(offset)
@@ -453,17 +453,22 @@ class test_env(Macro):
         #f = eval(result)[0]
         f = eval(self.execMacro('mythen_getPositions').getResult())[0]               
         self.info(f)
-        a = self.execMacro('ct_custom %r %s' %(0.1,'adlink_simple'))
-        a = a.data
-        self.info(a)
-        self.error(a['data'])
-        Temp0 = " ".join("%s %s" % tup for tup in a['data'])
-        self.warning(Temp0)
+        #a = self.execMacro('ct_custom %r %s' %(0.1,'adlink_simple'))
+        #a = a.data
+        #self.info(a)
+        #self.error(a['data'])
+        #Temp0 = " ".join("%s %s" % tup for tup in a['data'])
+        #self.warning(Temp0)
         chVolt = self.execMacro('ct_custom %r %s' %(0.1,'adlink_simple')).data
+        Vnow  = [float(chVolt['data'][1][1]),float(chVolt['data'][2][1]),float(chVolt['data'][3][1]),float(chVolt['data'][4][1])]
+        Vname = [chVolt['data'][1][0],chVolt['data'][2][0],chVolt['data'][3][0],chVolt['data'][4][0]]
         self.info(chVolt)
-        Vnow = [float(chVolt['data'][1][1]),float(chVolt['data'][2][1]),float(chVolt['data'][3][1]),float(chVolt['data'][4][1])]
         self.info(Vnow)
-        self.setEnv('adlinks',Vnow)
+        self.info(Vname)
+        for _v in range(len(Vnow)) :
+            sign,offset=self.execMacro("adlink_getFormula",Vname[_v]).getResult()
+            self.info("%d %s %f %f "%(_v,Vname[_v],float(sign),float(offset)))
+        #self.setEnv('adlinks',Vnow)
         a = self.getEnv('adlinks')
         self.warning(a)
 
