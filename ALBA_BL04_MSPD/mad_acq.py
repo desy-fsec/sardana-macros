@@ -79,8 +79,10 @@ class _madscan(Macro, SoftShutterController):
     motName = "pd_oc"
     #motName = 'dmot1'      
     posName = "oc"
+    #Oct 2017 setting the attribute tg1.extraInitialDelayTime to 50microsec (empirical value)
     tg = 'tg1'    
-    software_delay= 0.05
+    software_delay= 0.05 
+
     param_def = [["startPos", Type.Float, None, "Starting position"],
                  ["endPos", Type.Float, None, "Ending pos value"],
                  ["speed", Type.Float, None, "deg/min"],
