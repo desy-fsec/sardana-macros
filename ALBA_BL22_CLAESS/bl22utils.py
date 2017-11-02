@@ -152,24 +152,37 @@ class reconfig(Macro):
         self.info('Set the electrometer polarity')
         host_e0 = self.getEnv('ElemI0Host')
         host_e1 = self.getEnv('ElemI1I2Host')
-        e0 = AlbaEm(host_e0)
         if moco_pos:
             chn = ['1', 'NO']
         else:
             chn = ['1', 'YES']
 
-        e0_channels = [chn, ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
-        e0.setInvs(e0_channels)
-        time.sleep(0.5)
-        e0_inv = e0.getInvs([1,2,3,4])
-        self.info('EMET-02 signal invertions: %s' % e0_inv)
+        try:
+            e0 = AlbaEm(host_e0)
+            e0_channels = [chn, ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
+            e0.setInvs(e0_channels)
+            time.sleep(0.5)
+            e0_inv = e0.getInvs([1,2,3,4])
+            self.info('EMET-02 signal invertions: %s' % e0_inv)
+        except Exception as e:
+            self.warning('It was not possible to configure the EMET-02')
+            self.debug(e)
 
-        e1 = AlbaEm(host_e1)
-        e1_channels = [['1', 'YES'], ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
-        e1.setInvs(e1_channels)
-        time.sleep(0.5)
-        e1_inv = e1.getInvs([1,2,3,4])
-        self.info('EMET-03 signal invertions: %s' % e1_inv)
+        try:
+            e1 = AlbaEm(host_e1)
+            e1_channels = [['1', 'YES'], ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
+            e1.setInvs(e1_channels)
+            time.sleep(0.5)
+            e1_inv = e1.getInvs([1,2,3,4])
+            self.info('EMET-03 signal invertions: %s' % e1_inv)
+        except Exception as e:
+            self.warning('It was not possible to configure the EMET-03')
+            self.debug(e)
+
+        # workaround for Adlink starts taking too long see JIRA-14384
+        mnt_grps = self.getMeasurementGroups()
+        for _, mnt_grp in mnt_grps.items():
+            mnt_grp.set_timeout_millis(15000)
 
 
 class getScanFile(Macro):
