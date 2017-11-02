@@ -410,10 +410,11 @@ class EMrange(Macro):
 
     def run(self, chns):
         for ch, rg in chns:
-            old_range = ch.range
-            ch.range = rg            
+            old_range = ch.read_attribute("Range").value
+            ch.write_attribute("Range", rg)
+            new_range = ch.read_attribute("Range").value
             self.output('%s changed range from %s to %s' %(ch, old_range,
-                                                           ch.range))
+                                                           new_range))
 
 class set_mode(Macro):
     """
