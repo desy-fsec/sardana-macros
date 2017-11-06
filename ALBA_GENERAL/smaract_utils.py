@@ -10,6 +10,7 @@ DEV_STATE_ON = PyTango.DevState.ON
 IPAP_TIMEOUT = 1
 NR_STEPS = 1000
 
+
 class smaract_sdc_homing(Macro):
     """
     Category: Configuration
@@ -113,7 +114,7 @@ def isSmaractMCSController(macro, controller):
     return True
 
 
-class smaract_mcs_homing(Macro):
+class smaract_mcs_tango_homing(Macro):
     """
     Category: Configuration
 
@@ -161,5 +162,97 @@ class smaract_mcs_homing(Macro):
 
         if ans == "READY":
             self.info(ans)
+        else:
+            self.error(ans)
+
+
+class smaract_mcs_homing(Macro):
+    """
+    Category: Configuration
+
+    This macro does a homing procedure on the SmaractMCSCtrl controller. It
+    executes a find reference command according to the direction strategy
+    provided.
+
+    Since the command is synchronous, we capture the possible Tango Timeout at
+    the macro level and wait the motor to finish. Tha maximum extra timeout
+    has been set to 30 seconds,
+
+    This are the possible direction strategy modes:
+
+    FORWARD = 0
+    BACKWARD = 1
+    FORWARD_BACKWARD = 2
+    BACKWARD_FORWARD = 3
+    FORWARD_ABORT_ON_END = 4
+    BACKWARD_ABORT_ON_END = 5
+    FORWARD_BACKWARD_ABORT_ON_END = 6
+    BACKWARD_FORWARD_ABORT_ON_END = 7
+
+    """
+
+    param_def = [['motor',
+                  Type.Motor,
+                  None,
+                  'smaract motor'],
+                 ['direction',
+                  Type.String,
+                  None,
+                  'search direction']
+                 ]
+
+    def run(self, motor, direction):
+
+        direction = direction.lower()
+        if direction == 'forward':
+            self.direction = 0
+        elif direction == 'backward':
+            self.direction = 1
+        elif direction == 'forward_backward':
+            self.direction = 2
+        elif direction == 'backward_forward':
+            self.direction = 3
+        elif direction == 'forward_abort_on_end':
+            self.direction = 4
+        elif direction == 'backward_abort_on_end':
+            self.direction = 5
+        elif direction == 'forward_backward_abort_on_end':
+            self.direction = 6
+        elif direction == 'backward_forward_abort_on_end':
+            self.direction = 7
+        else:
+            msg = 'Invalid direction. Check macro help for possible values'
+            raise Exception(msg)
+
+        # Check if motor is an axis of a smaract MCS controller
+        if not isSmaractMCSMotor(self, motor):
+            raise Exception('This is not a valid MCS Smaract motor controller.')
+
+        self.debug('motor; %s' % repr(motor))
+        # Get axis number:
+        self.debug('axis %s' % motor.axis)
+        # Get the pool and controller objects
+        pool = motor.getPoolObj()
+        ctrl_name = motor.getControllerName()
+        self.debug('Pool: %s, Controller: %s' % (repr(pool), ctrl_name))
+        # Sent a homming command to controller from pool:
+        # The HM_CMD are defined in the SmaractMCSController
+        hm_cmd = 'homing %s %s' % (motor.axis, self.direction)
+
+        try:
+            ans = pool.SendToController([ctrl_name, hm_cmd])
+        except PyTango.DevFailed:
+            self.warning("Default Tango timeout exceeded")
+            self.warning("Waiting axis %s to stop homing" % motor.axis)
+            clock = 0
+            while motor.axis.state() != PyTango.DevState.MOVING and clock < 30:
+                time.sleep(1)
+                clock += 1
+
+        # This string is expected from controller command return
+        if ans == "[DONE]" and clock < 30:
+            self.info(ans)
+        elif clock >= 30:
+            self.error("Extra time out exceeded. Motor did not stop.")
         else:
             self.error(ans)
