@@ -8,7 +8,28 @@ import PyTango
 from taurus.console.table import Table
 import pyIcePAP
 from albaemlib import AlbaEm
+from albaEmUtils import em_range
+from tools import fewait
 
+
+###############################################################################
+#       Create aliases for general macros
+###############################################################################
+class EMrange(em_range):
+    """
+    Macro alias of em_range
+    """
+    pass
+
+
+class waitFE(fewait):
+    """
+    Macro alias of fewait
+    """
+    pass
+
+
+###############################################################################
 
 def _getMotorAlias(dev_name):
     return PyTango.Database().get_alias(dev_name)
@@ -74,11 +95,6 @@ class wa_print(Macro):
             self.printer.write(line+'\n')
 
         self.printer.close()
-
-
-@macro()
-def waitFE(self):
-    self.execMacro('fewait')
 
 
 @macro()
@@ -184,11 +200,6 @@ class reconfig(Macro):
         except Exception as e:
             self.warning('It was not possible to configure the EMET-03')
             self.debug(e)
-
-        # workaround for Adlink starts taking too long see JIRA-14384
-        mnt_grps = self.getMeasurementGroups()
-        for _, mnt_grp in mnt_grps.items():
-            mnt_grp.set_timeout_millis(15000)
 
 
 class getScanFile(Macro):
@@ -408,25 +419,6 @@ class gasFill(Macro):
 
     def on_abort(self):
         self.gas_filling.stop()
-
-
-class EMrange(Macro):
-    """
-    Macro to change the electrometer range.
-    """
-    param_def = [['chns',
-                  [['ch', Type.CTExpChannel, None, 'electrometer chn'],
-                   ['range',  Type.String, None, 'Amplifier range'],
-                   {'min': 1, 'max': 12}],
-                  None, 'List of [channels,range]']]
-
-    def run(self, chns):
-        for ch, rg in chns:
-            old_range = ch.read_attribute("Range").value
-            ch.write_attribute("Range", rg)
-            new_range = ch.read_attribute("Range").value
-            self.output('%s changed range from %s to %s' % (ch, old_range,
-                                                            new_range))
 
 
 class set_mode(Macro):
