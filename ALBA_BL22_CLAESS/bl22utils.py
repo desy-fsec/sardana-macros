@@ -2,12 +2,12 @@ import time
 import datetime
 import os
 import mmap
-from sardana.macroserver.macro import macro, Type, Macro, ViewOption, ParamRepeat
-import PyTango, taurus
+from sardana.macroserver.macro import macro, Type, Macro, ViewOption
+from sardana.macroserver.msexception import StopException
+import PyTango
 from taurus.console.table import Table
 import pyIcePAP
 from albaemlib import AlbaEm
-
 
 
 def _getMotorAlias(dev_name):
@@ -24,27 +24,27 @@ class wa_print(Macro):
         self.table_opts = {}
 
         printer_name = self.getEnv('Printer')
-        if printer_name == None:
+        if printer_name is None:
             print 'Printer is None, set printer Name in Printer enviroment'
             return
-       
-        self.printer = os.popen('lpr -P %s' %printer_name,'w')
+
+        self.printer = os.popen('lpr -P %s' % printer_name, 'w')
 
     def run(self):
         nr_motors = len(self.all_motors)
         if nr_motors == 0:
             self.output('No motor defined')
             return
-        
+
         d = datetime.datetime.now().isoformat(' ')
-        
-        self.printer.write('\n\nCurrent positions (user) on %s\n\n\n' %d)
-        self.output('Current positions (user) on %s' %d) 
-        
+
+        self.printer.write('\n\nCurrent positions (user) on %s\n\n\n' % d)
+        self.output('Current positions (user) on %s' % d)
+
         show_dial = self.getViewOption(ViewOption.ShowDial)
         motor_width = 9
         motor_names = []
-        motor_pos   = []
+        motor_pos = []
         motor_list = list(self.all_motors)
         motor_list.sort()
         for motor in motor_list:
@@ -58,13 +58,13 @@ class wa_print(Macro):
                 dial_pos = motor.getDialPosition(force=True)
                 if dial_pos is None:
                     dial_pos = float('NAN')
-                motor_pos.append((pos,dial_pos))
+                motor_pos.append((pos, dial_pos))
             else:
                 motor_pos.append((pos,))
 
-            motor_width = max(motor_width,len(name))
+            motor_width = max(motor_width, len(name))
 
-        fmt = '%c*.%df' % ('%',motor_width - 5)
+        fmt = '%c*.%df' % ('%', motor_width - 5)
 
         table = Table(motor_pos, elem_fmt=[fmt],
                       col_head_str=motor_names, col_head_width=motor_width,
@@ -75,9 +75,11 @@ class wa_print(Macro):
 
         self.printer.close()
 
+
 @macro()
 def waitFE(self):
     self.execMacro('fewait')
+
 
 @macro()
 def sho(self):
@@ -85,55 +87,58 @@ def sho(self):
     time.sleep(2)
     self.execMacro('moco_go')
 
+
 @macro()
 def shc(self):
     self.execMacro('moco_stop')
     time.sleep(2)
     self.execMacro('shclose')
 
+
 class tripod_z_homming(Macro):
-    jack_steps = 5128 #steps_per_unit 1mm
+    jack_steps = 5128  # steps_per_unit 1mm
     icepap_name = 'icebl2202'
 
     motors_conf = [[PyTango.DeviceProxy('motor/eh_ipap_ctrl/6'), 1085],
                    [PyTango.DeviceProxy('motor/eh_ipap_ctrl/7'), 28300],
                    [PyTango.DeviceProxy('motor/eh_ipap_ctrl/5'), 15210]]
-    
+
     def run(self):
         self.execMacro('mv tripod_z 16')
         macro = 'ipap_homing True False tripod_j1 -1 tripod_j2 -1 tripod_j3 -1'
         self.execMacro(macro)
-        states=[]    
+        states = []
 
-        #go to home position horizontal
-        for motor,offset in self.motors_conf:
+        # go to home position horizontal
+        for motor, offset in self.motors_conf:
             motor.step_per_unit = 1
-            motor.position=offset
+            motor.position = offset
             states.append(motor.state)
 
-        #wait for each motor finish
+        # wait for each motor finish
         while True:
-           time.sleep(0.1)
-           count = 0
-           for state in states:
-              if state() == PyTango._PyTango.DevState.ON:
-                count +=1
-           if count == 3:
+            time.sleep(0.1)
+            count = 0
+            for state in states:
+                if state() == PyTango._PyTango.DevState.ON:
+                    count += 1
+            if count == 3:
                 break
-           
-        #recover the step per unit set the current position as homming
+
+        # recover the step per unit set the current position as homing
         ipap = pyIcePAP.EthIcePAP(self.icepap_name)
-        for motor,offset in self.motors_conf:
+        for motor, offset in self.motors_conf:
             motor.step_per_unit = self.jack_steps
             axis = int(motor.dev_name()[-1])
-            ipap.setPosition(axis,0)
+            ipap.setPosition(axis, 0)
 
 
 class reconfig(Macro):
     """Macro to configure some elements at nominal conditions: pcmac, fluo_x,
     Adlink, electrometers."""
 
-    param_def = [["moco_pos", Type.Boolean, True, "Work in moco position mode"]]
+    param_def = [["moco_pos", Type.Boolean, True,
+                  "Work in moco position mode"]]
 
     def run(self, moco_pos):
         self.execMacro('qExafsCleanup')
@@ -162,7 +167,7 @@ class reconfig(Macro):
             e0_channels = [chn, ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
             e0.setInvs(e0_channels)
             time.sleep(0.5)
-            e0_inv = e0.getInvs([1,2,3,4])
+            e0_inv = e0.getInvs([1, 2, 3, 4])
             self.info('EMET-02 signal invertions: %s' % e0_inv)
         except Exception as e:
             self.warning('It was not possible to configure the EMET-02')
@@ -170,11 +175,12 @@ class reconfig(Macro):
 
         try:
             e1 = AlbaEm(host_e1)
-            e1_channels = [['1', 'YES'], ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
+            e1_channels = [['1', 'YES'], ['2', 'YES'], ['3', 'YES'],
+                           ['4', 'YES']]
             e1.setInvs(e1_channels)
             time.sleep(0.5)
-            e1_inv = e1.getInvs([1,2,3,4])
-            self.info('EMET-03 signal invertions: %s' % e1_inv)
+            e1_inv = e1.getInvs([1, 2, 3, 4])
+            self.info('EMET-03 signal inversions: %s' % e1_inv)
         except Exception as e:
             self.warning('It was not possible to configure the EMET-03')
             self.debug(e)
@@ -189,7 +195,7 @@ class getScanFile(Macro):
     """
     The macro returns the scanFile: ScanDir+ScanFile
     """
-    result_def = [['scan_filenames',Type.String, None, '']]
+    result_def = [['scan_filenames', Type.String, None, '']]
 
     def run(self):
         scan_dir = self.getEnv('ScanDir')
@@ -198,8 +204,8 @@ class getScanFile(Macro):
         if type(scan_files) is not list:
             scan_files = [scan_files]
         for filename in scan_files:
-            scan_filenames +='%s/%s,' % (scan_dir, filename)
-            
+            scan_filenames += '%s/%s,' % (scan_dir, filename)
+
         return scan_filenames
 
 
@@ -207,9 +213,9 @@ class getScanID(Macro):
     """
     The macro returns the scanid.
     """
-        
-    result_def = [['scanid',Type.Integer, None, '']]
-    
+
+    result_def = [['scanid', Type.Integer, None, '']]
+
     def run(self):
         scanid = self.getEnv('ScanID')
         return scanid
@@ -223,7 +229,6 @@ class HVread(Macro):
     param_def = [['chambers', [['chamber', Type.String, None, 'i0,i1 or i2'],
                                {'min': 1, 'max': 3}],
                   None, 'List of IO chambers']]
-
 
     I0_DsName = 'bl22/ct/nhq_x0xx_01'
     I1I2_DSName = 'bl22/ct/nhq_x0xx_02'
@@ -249,7 +254,7 @@ class HVread(Macro):
 
         self.info(msg)
 
-    
+
 class HVset(Macro):
     """
     Macro to set the high voltage of the IO chambers power supplies.
@@ -260,11 +265,10 @@ class HVset(Macro):
                                {'min': 1, 'max': 3}],
                   None, 'List of IO chambers']]
 
-
     I0_DsName = 'bl22/ct/nhq_x0xx_01'
     I1I2_DSName = 'bl22/ct/nhq_x0xx_02'
     AttrNames = {'i0': 'voltageA', 'i1': 'voltageA', 'i2': 'voltageB'}
-    
+
     TOLERANCE = 10  # value in volts
     RAMPSPEED = 100  # V/s
 
@@ -300,7 +304,8 @@ class HVset(Macro):
                 current_value = attr.read().value / factor
                 error = abs(abs(current_value) - abs(value))
                 if error <= self.TOLERANCE:
-                    msg += '%s = %fV [Error: %f]\n' % (io, current_value, error)
+                    msg += '%s = %fV [Error: %f]\n' % (io, current_value,
+                                                       error)
                     rm.append(chamber)
             for i in rm:
                 attrs.remove(i)
@@ -309,6 +314,7 @@ class HVset(Macro):
 
         self.info(msg)
 
+
 def is_sardana_new():
     try:
         import sardana.pool.poolsynchronization
@@ -316,19 +322,21 @@ def is_sardana_new():
     except ImportError:
         return False
 
+
 class GasFillBase(object):
     """
     Macro to execute the quick Exafs experiment.
     """
 
     device_name = 'bl22/ct/bl22gasfilling'
+
     def __init__(self, macro_obj):
         self.macro = macro_obj
         self.device = PyTango.DeviceProxy(self.device_name)
         if not is_sardana_new():
             msg = 'The macro does not work with this version of Sardana'
             raise RuntimeError(msg)
-        
+
     def wait(self):
         while True:
             self.macro.checkPoint()
@@ -341,7 +349,7 @@ class GasFillBase(object):
             self.macro.error('The DS is in ALARM state: %s' % status)
         else:
             self.macro.output('The process has ended successfully')
-        
+
     def fill(self, values):
         self.macro.output('Starting the filling...')
         v = []
@@ -359,7 +367,8 @@ class GasFillBase(object):
     def stop(self):
         self.macro.output('Send stop to de device...')
         self.device.stop()
-        
+
+
 class gasClean(Macro):
     """
     Macro to clean the IO Chamber.
@@ -367,15 +376,17 @@ class gasClean(Macro):
 
     hints = {}
 
-    param_def = [['values', [["IOChamber", Type.Integer, None, ""],{'min':1, 'max':3}],
+    param_def = [['values', [["IOChamber", Type.Integer, None, ""],
+                             {'min': 1, 'max': 3}],
                  None, 'List of values']]
 
     def run(self, io):
         self.gas_filling = GasFillBase(self)
         self.gas_filling.clean(io)
-        
+
     def on_abort(self):
         self.gas_filling.stop()
+
 
 class gasFill(Macro):
     """
@@ -385,8 +396,10 @@ class gasFill(Macro):
     hints = {}
 
     param_def = [['values',
-                 [["IOChamber", Type.Integer, None, "IO chamber number [0, 1, 2]"],
-                 ["energy", Type.Integer, None, "energy value"], {'min':1, 'max':3}], 
+                 [["IOChamber", Type.Integer, None,
+                   "IO chamber number [0, 1, 2]"],
+                  ["energy", Type.Integer, None, "energy value"],
+                  {'min': 1, 'max': 3}],
                  None, "List of values"]]
 
     def run(self, values):
@@ -396,7 +409,6 @@ class gasFill(Macro):
     def on_abort(self):
         self.gas_filling.stop()
 
-    
 
 class EMrange(Macro):
     """
@@ -404,17 +416,18 @@ class EMrange(Macro):
     """
     param_def = [['chns',
                   [['ch', Type.CTExpChannel, None, 'electrometer chn'],
-                   ['range',  Type.String, None, 'Amplifier range'], 
-                   {'min':1, 'max':12}],
-                  None, 'List of [channels,range]'],]
+                   ['range',  Type.String, None, 'Amplifier range'],
+                   {'min': 1, 'max': 12}],
+                  None, 'List of [channels,range]']]
 
     def run(self, chns):
         for ch, rg in chns:
             old_range = ch.read_attribute("Range").value
             ch.write_attribute("Range", rg)
             new_range = ch.read_attribute("Range").value
-            self.output('%s changed range from %s to %s' %(ch, old_range,
-                                                           new_range))
+            self.output('%s changed range from %s to %s' % (ch, old_range,
+                                                            new_range))
+
 
 class set_mode(Macro):
     """
@@ -424,19 +437,19 @@ class set_mode(Macro):
     * CLEAR (clear)
     * ALL (all)
     """
-    env = ('ContScanMG','DefaultMG', 'ActiveMntGrp')
-    
+    env = ('ContScanMG', 'DefaultMG', 'ActiveMntGrp')
+
     param_def = [['ExpType', Type.String, None, 'transm, fluo, clear, all']]
-    
+
     exp_type = {'transm': ['mg_cont', 'mg_step'],
                 'fluo': ['mg_xcont', 'mg_xstep'],
                 'clear': ['mg_mcont', 'mg_mstep'],
-                'all' : ['mg_all', 'mg_all']
+                'all': ['mg_all', 'mg_all']
                 }
 
     def run(self, exptype):
         exptype = exptype.lower()
-        
+
         if exptype not in self.exp_type:
             raise ValueError('The values must be: %r' % self.exp_type.keys())
         mg_cont, mg_step = self.exp_type[exptype]
@@ -444,9 +457,7 @@ class set_mode(Macro):
         self.setEnv('ContScanMG', mg_cont)
         self.setEnv('DefaultMG', mg_step)
         self.setEnv('ActiveMntGrp', mg_step)
-        self.output('ContScanMG: %s\nDefaultMG: %s\n' %(mg_cont, mg_step))
-
-
+        self.output('ContScanMG: %s\nDefaultMG: %s\n' % (mg_cont, mg_step))
 
 
 class nextract(Macro):
@@ -468,7 +479,8 @@ class nextract(Macro):
         count = 0
         while True:
             self.checkPoint()
-            new_filename = temp_filename.format(count) 
+
+            new_filename = temp_filename.format(count)
             if not os.path.exists(new_filename):
                 break
             count += 1
@@ -485,11 +497,10 @@ class nextract(Macro):
                 else:
                     self.error('You should save the data on Spec File')
                     raise StopException()
-            elif type(f) == str:
-                if not '.dat' in f:
+            elif type(scan_files) == str:
+                if '.dat' not in scan_file:
                     self.error('You should save the data on Spec File')
                     raise StopException()
-                scan_file = f
             else:
                 self.error('You should save the data on Spec File')
                 raise StopException()
@@ -506,7 +517,7 @@ class nextract(Macro):
 
         with open(input_file, 'r') as f:
             mem_file = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-        
+
         start_scan_pos = 0
         while True:
             self.checkPoint()
@@ -518,7 +529,7 @@ class nextract(Macro):
             scan_nr = int(line.split()[1])
             if scan_nr == start_scanid:
                 break
-        
+
         for rp in range(nr_repeat):
             o_file = self.get_output_file(output_file)
             self.info('Saving data in %s ...' % o_file)
@@ -532,7 +543,7 @@ class nextract(Macro):
                 for nr_scan in range(nr_scans):
                     while True:
                         line = mem_file.readline()
-                        
+
                         if 'ended' in line:
                             break
                         if nr_scan != 0 and '#' in line or line == '\n':
@@ -540,12 +551,8 @@ class nextract(Macro):
                         else:
                             f.write(line)
                 f.write(line)
+
             if rp != nr_repeat-1:
-                next_scan = mem_file.find("#S")       
+                next_scan = mem_file.find("#S")
                 mem_file.seek(next_scan)
                 line = mem_file.readline()
-
-        
-        
-
-
