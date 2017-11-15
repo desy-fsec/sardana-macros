@@ -122,6 +122,21 @@ class save_mntgrp(Macro, MntGrpConf):
         config = mg.read_attribute('configuration').value
         self.save(mg.getName(), config)
 
+class save_allmntgrp(Macro):
+    """
+    Macro to create backups of all measurement group configurations
+
+    """
+    param_def = [['path', Type.String, None, 'Path to saved files'],
+                 ['prefix', Type.String, None, 'File prefix']]
+
+    def run(self, path, prefix):
+        mg_list = self.findObjs('.*', 
+                                type_class=Type.MeasurementGroup,
+                                subtype=Macro.All,
+                                reserve=False)
+        for mg in mg_list:
+            self.execMacro('save_mntgrp', mg.getName())
 
 class load_mntgrp(Macro, MntGrpConf):
     """
@@ -154,3 +169,18 @@ class load_mntgrp(Macro, MntGrpConf):
             self.output('Loaded backup')
         else:
             self.output(msg)
+
+class load_allmntgrp(Macro, MntGrpConf):
+    """
+    Macro to create backups of the measurement group configurations
+
+    """
+
+    env = ('MntGrpConfFile',)
+    param_def = [['Config file', Type.String, None, 'Config file name']]
+
+    def run(self, file):
+        self.init_config(file)
+
+        for mg in self.config_file.sections():
+            self.execMacro('load_mntgrp', mg)
