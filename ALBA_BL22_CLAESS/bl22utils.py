@@ -10,6 +10,7 @@ import pyIcePAP
 from albaemlib import AlbaEm
 from albaEmUtils import em_range
 from tools import fewait
+from mntgroup_utils import MGManager
 
 
 ###############################################################################
@@ -423,34 +424,101 @@ class gasFill(Macro):
 
 class set_mode(Macro):
     """
-    Macro to set the Measuement Group acording to the experiment type:
-    * Transmission (transm)
-    * Fluorescence (fluo)
-    * CLEAR (clear)
-    * ALL (all)
+    Macro to enable/disable the channel of mg_all measurement group
+    according to the experiment type.
     """
+
     env = ('ContScanMG', 'DefaultMG', 'ActiveMntGrp')
 
     param_def = [['ExpType', Type.String, None, 'transm, fluo, clear, all']]
 
-    exp_type = {'transm': ['mg_cont', 'mg_step'],
-                'fluo': ['mg_xcont', 'mg_xstep'],
-                'clear': ['mg_mcont', 'mg_mstep'],
-                'all': ['mg_all', 'mg_all']
-                }
 
-    def run(self, exptype):
-        exptype = exptype.lower()
+    # Channels by elements
+    iochamber_chns = ['a_i0i1_timer', 'a_i0_1', 'a_i0_2', 'a_i1_1', 'a_i1_2',
+                      'n_timer', 'n_i0_1', 'n_i1_1', 'n_i1_2', 'n_i2_1',]
 
-        if exptype not in self.exp_type:
-            raise ValueError('The values must be: %r' % self.exp_type.keys())
-        mg_cont, mg_step = self.exp_type[exptype]
-        self.output('Setting mode...')
-        self.setEnv('ContScanMG', mg_cont)
-        self.setEnv('DefaultMG', mg_step)
-        self.setEnv('ActiveMntGrp', mg_step)
-        self.output('ContScanMG: %s\nDefaultMG: %s\n' % (mg_cont, mg_step))
+    amptek_chns = ['n_timer', 'n_icr', 'n_tcr', 'n_sca1', 'n_sca2', 'n_sca3',
+                   'n_sca4']
 
+    xpress3_chns = ['x_timer', 'x_ch1_roi1', 'x_ch2_roi1', 'x_ch3_roi1',
+                    'x_ch4_roi1', 'x_ch5_roi1', 'x_ch1_roi2', 'x_ch2_roi2',
+                    'x_ch3_roi2', 'x_ch4_roi2', 'x_ch5_roi2', 'x_ch1_roi3',
+                    'x_ch2_roi3', 'x_ch3_roi3', 'x_ch4_roi3', 'x_ch5_roi3',
+                    'x_ch1_roi4', 'x_ch2_roi4', 'x_ch3_roi4', 'x_ch4_roi4',
+                    'x_ch5_roi4', 'x_ch1_roi5', 'x_ch2_roi5', 'x_ch3_roi5',
+                    'x_ch4_roi5', 'x_ch5_roi5']
+
+    xpress3_dt_chns = ['x_timer', 'x_dt_1', 'x_dt_2', 'x_dt_3', 'x_dt_4',
+                       'x_dt_5', 'x_dtf_1', 'x_dtf_2', 'x_dtf_3', 'x_dtf_4',
+                       'x_dtf_5']
+
+    mythen_chns = ['m_raw', 'm_roi1', 'm_roi2', 'm_roi3']
+
+    # energyc is the timer first channel and it
+    # does not  work on the macro
+    common_chns = ['sr_i_1', 'Tn', 'Td']
+
+    # Dictionary with the experiment types and their enabled channels
+    exp_type_conf = {
+        'transm': iochamber_chns + amptek_chns + common_chns,
+        'fluo': iochamber_chns + amptek_chns + xpress3_chns + common_chns,
+        'fluodt': iochamber_chns +amptek_chns + xpress3_chns +
+                  xpress3_dt_chns + common_chns,
+        'clear': iochamber_chns + amptek_chns + mythen_chns + common_chns,
+        'all': iochamber_chns + amptek_chns + mythen_chns + xpress3_chns +
+               xpress3_dt_chns + common_chns
+    }
+
+    mg_name = 'mg_all'
+
+    def run(self, exp_type):
+        exp_type = exp_type.lower()
+        if exp_type not in self.exp_type_conf:
+            raise ValueError('The values must be: %r' %
+                             self.exp_type_conf.keys())
+
+        self.setEnv('ContScanMG', self.mg_name)
+        self.setEnv('DefaultMG', self.mg_name)
+        self.setEnv('ActiveMntGrp', self.mg_name)
+
+        chns_names = self.exp_type_conf[exp_type]
+        mg = self.getMeasurementGroup(self.mg_name)
+        mg_manager = MGManager(self, mg, chns_names)
+        mg_manager.enable_only_channels()
+        mg_manager.status()
+
+
+# Old version of set_mode macro
+# class set_mode(Macro):
+#     """
+#     Macro to set the Measuement Group acording to the experiment type:
+#     * Transmission (transm)
+#     * Fluorescence (fluo)
+#     * CLEAR (clear)
+#     * ALL (all)
+#     """
+#     env = ('ContScanMG', 'DefaultMG', 'ActiveMntGrp')
+#
+#     param_def = [['ExpType', Type.String, None, 'transm, fluo, clear, all']]
+#
+#     exp_type = {'transm': ['mg_cont', 'mg_step'],
+#                 'fluo': ['mg_xcont', 'mg_xstep'],
+#                 'clear': ['mg_mcont', 'mg_mstep'],
+#                 'all': ['mg_all', 'mg_all']
+#                 }
+#
+#     def run(self, exptype):
+#         exptype = exptype.lower()
+#
+#         if exptype not in self.exp_type:
+#             raise ValueError('The values must be: %r' % self.exp_type.keys())
+#         mg_cont, mg_step = self.exp_type[exptype]
+#         self.output('Setting mode...')
+#         self.setEnv('ContScanMG', mg_cont)
+#         self.setEnv('DefaultMG', mg_step)
+#         self.setEnv('ActiveMntGrp', mg_step)
+#         self.output('ContScanMG: %s\nDefaultMG: %s\n' % (mg_cont, mg_step))
+#
 
 class nextract(Macro):
     """
