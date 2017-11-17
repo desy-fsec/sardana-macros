@@ -435,7 +435,8 @@ class set_mode(Macro):
 
     # Channels by elements
     iochamber_chns = ['a_i0i1_timer', 'a_i0_1', 'a_i0_2', 'a_i1_1', 'a_i1_2',
-                      'n_timer', 'n_i0_1', 'n_i1_1', 'n_i1_2', 'n_i2_1',]
+                      'n_timer', 'n_i0_1', 'n_i0_2', 'n_i1_1', 'n_i1_2',
+                      'n_i2_1', 'n_i2_2']
 
     amptek_chns = ['n_timer', 'n_icr', 'n_tcr', 'n_sca1', 'n_sca2', 'n_sca3',
                    'n_sca4']
@@ -456,7 +457,7 @@ class set_mode(Macro):
 
     # energyc is the timer first channel and it
     # does not  work on the macro
-    common_chns = ['sr_i_1', 'Tn', 'Td']
+    common_chns = ['energyc', 'sr_i_1', 'Tn', 'Td']
 
     # Dictionary with the experiment types and their enabled channels
     exp_type_conf = {
