@@ -5,55 +5,20 @@ import taurus
 from find_spots import find_spots
 
 
-class oav_raster_config(Macro):
+class mxraster_config(Macro):
     """
     Category: Configuration
 
     This macro is used to set/get the raster macro configuration.
-    There are 4 possible parameters to configure:
+    There are 3 parameters to configure:
 
-    * PhiY: Motor for the Y direction.
-    * PhyZ: for the Z direction.
     * Att: Motor for the beam attenuation.
     * MeritMethod: function name used to rank the different rastered regions.
+    * Simulation: boolena used to test the macro in a safe environment.
 
     If the macro is executed without parameters, it shows the current
     raster configuration.
-    """
-    # TODO: param repeat will change on the future.
-    PARAMS_ALLOWED = ['PhiY', 'PhiZ', 'Att', 'MeritMethod'] 
-
-    param_def = [['param_list', ParamRepeat(['Param', Type.String, None, 'Name of the parameter'],
-                                            ['Value', Type.String, None, 'Value of the parameter'], min=0, max=4),
-                  None, '']]
-
-    def run(self, *param_list):
-
-        if param_list is not None:
-
-            config = self.getEnv('MXRasterConfig')
-
-            for key, value in param_list[0]:
-                if key not in self.PARAMS_ALLOWED:
-                    raise ValueError('The allowed parameters are %s' % repr(self.PARAMS_ALLOWED))
-                config[key] = value
-            
-            self.setEnv('MXRasterConfig', config)
-
-        config = self.getEnv('MXRasterConfig')
-        self.info('Raster configuration:')
-        self.info('=====================')
-        for key in config:
-            self.info("[%s] = %s" %(key, config[key]))
-            pass
-
-
-class oav_merit_method(Macro):
-    # TODO: complete merit method descriptions.
-    """
-    Category: Configuration
-
-    This macro is used to set/get the merit method for the mxraster macro.
+    
     The merit method selected depends on the available methods defined in
     find_spots.py module:
 
@@ -63,60 +28,40 @@ class oav_merit_method(Macro):
     * random: Only for test purposes. This method 'random' simulates finding
     spots on an image using a random method from the image filename. Returns
     a random value between 810 and 1120.
-
-    If the macro is executed without parameters, it shows the current method.
     """
+    # TODO: param repeat will change on the future.
+    PARAMS_ALLOWED = {'Att': str, 'MeritMethod': str, 'Simulation': bool}
 
-    PARAMS_ALLOWED = ['xds', 'labelit', 'random']
-
-    param_def = [['param_list', ParamRepeat(['MeritMethod', Type.String, None, 'Name of the merit method selected'], min=0, max=1),
+    param_def = [['param_list', ParamRepeat(['Param', Type.String, None, 'Name of the parameter'],
+                                            ['Value', Type.String, None, 'Value of the parameter'], min=0, max=4),
                   None, '']]
 
     def run(self, *param_list):
-
-        key = 'MeritMethod'
-
+        self.info(param_list)
         if param_list is not None:
 
             config = self.getEnv('MXRasterConfig')
 
-            for value in param_list[0]:
-                if value not in self.PARAMS_ALLOWED:
-                    raise ValueError('The allowed merit methods are %s' % repr(self.PARAMS_ALLOWED))
-                else:
-                    config[key] = value
-
+            for key, value in param_list[0]:
+                if key not in self.PARAMS_ALLOWED.keys():
+                    raise ValueError('The allowed parameters are %s' % repr(self.PARAMS_ALLOWED))
+                t_conv = self.PARAMS_ALLOWED[key]
+                if t_conv == bool:
+                    if value.upper() in ['TRUE','YES','1']:
+                        config[key] = True
+                    elif value.upper() in ['FALSE','NO','0']:
+                        config[key]= False
+                    else:
+                        raise ValueError('No valid value')
+            
             self.setEnv('MXRasterConfig', config)
 
         config = self.getEnv('MXRasterConfig')
-        self.info('Current merit method:')
+        self.info('Raster configuration:')
         self.info('=====================')
-        self.info("[%s] = %s" %(key, config[key]))
-
-
-class mxraster_config(Macro):
-    """
-    Category: Deprecated
-
-    Deprecated since 17/06/2015!
-    You MUST use oav_raster_config macro instead.
-    """
-    param_def = [['PhiY', Type.String, None, 'Motor for Y direction'],
-                 ['PhiZ', Type.String, None, 'Motor for Z direction'],
-                 ['Att', Type.String, None, 'Motor for Beam Attenuation'],
-                 ['MeritMethod', Type.String, None, 'Method for figure of merit'],
-                 ]
- 
-    def run(self, phiy, phiz, att, method):
-        msg = 'Deprecated since 17/06/2015!\n'
-        msg += 'You MUST use oav_raster_config macro instead.'
-        self.warning(msg)
-        # config_dir = {'PhiY':  phiy,
-        #                'PhiZ':  phiz,
-        #                'Att':  att,
-        #                'MeritMethod':  method,
-        #               }
-        # self.setEnv('MXRasterConfig', config_dir)
+        for key in config:
+            self.info("[%s] = %s" %(key, config[key]))
+            pass
 
 
 class spots_finder(Macro):
@@ -151,9 +96,11 @@ class mxraster(Macro):
     The macro is intended to be used through a graphical user interface.
     """
     env = ('MXRasterConfig',)
-    param_def = [['phiy_start_pos', Type.Float, None, 'Starting position'],
+    param_def = [['phiy_name', Type.String, None, 'Motor name'],
+                 ['phiy_start_pos', Type.Float, None, 'Starting position'],
                  ['phiy_end_pos', Type.Float, None, 'Ending pos value'],
                  ['phiy_steps', Type.Integer, None, 'Steps'],
+                 ['phiz_name', Type.String, None, 'Motor name'],
                  ['phiz_start_pos', Type.Float, None, 'Starting position'],
                  ['phiz_end_pos', Type.Float, None, 'Ending pos value'],
                  ['phiz_steps', Type.Integer, None, 'Moveable name'],
@@ -161,26 +108,49 @@ class mxraster(Macro):
                  ['bidir', Type.Boolean, None, 'Bidirectional scan'],
                  ['prefix', Type.String, 'mxraster', 'Filename prefix '],
                  ['save_dir', Type.String, '/beamlines/bl13/controls/tmp/mxraster' , ' '],
-                 ['att', Type.String, '8', 'Attenuation value (%)'],
-                 ]
+                 ['att', Type.String, '8', 'Attenuation value (%)'],]
 
     
     SIMULATION = False
     PILATUS_LATENCY = 0.0023
     LIMA_TRIGGER = 'INTERNAL_TRIGGER'
 
-    def prepare(self, phiy_start_position, phiy_end_position, phiy_steps, 
-                phiz_start_position, phiz_end_position, phiz_steps, 
-                int_time, bidir, prefix, save_dir, att):
-
+    def prepare(self, phiy_name, phiy_start_position, phiy_end_position,
+                phiy_steps, phiz_name,  phiz_start_position,
+                phiz_end_position, phiz_steps, int_time, bidir, prefix,
+                save_dir, att):
+        
+        self.info( '%r'% [phiy_name, phiy_start_position, phiy_end_position,
+                phiy_steps, phiz_name,  phiz_start_position,
+                phiz_end_position, phiz_steps, int_time, bidir, prefix,
+                save_dir, att])
+        
         config = self.getEnv('MXRasterConfig')
         self.debug("Config: " + str(config))
         self.merit_method = config['MeritMethod']
+        
+        phiy_alias = taurus.Device(phiy_name).getDisplayName().split()[0]
+        phiz_alias = taurus.Device(phiz_name).getDisplayName().split()[0]
+        self.phiy = self.getMoveable(phiy_alias)
+        self.phiz = self.getMoveable(phiz_alias)
+        self.att = self.getMoveable(config['Att'])
 
-        self.phiy = self.getMoveable( config['PhiY'] )
-        self.phiz = self.getMoveable( config['PhiZ'] )
-        self.att = self.getMoveable( config['Att'] )
+        config_env = self.getEnv('collect_env')
 
+        # Define simulation mode
+        if config['Simulation']:
+            config_env.update({'force':'NO','pshu':'NO', 'slowshu':'NO', 'fe':'NO'})
+
+        # Set beamstop according to sample motors
+        if phiy_alias == "omegax":
+            config_env['beamstop'] = "FIXED"
+        elif phiy_alias == "catsx":
+            config_env['beamstop'] = "MOVEABLE"
+        else:
+            raise Exception("Invalid motor for raster")
+        self.setEnv('collect_env', config_env)
+
+        
         self.lima_prefix = prefix 
         self.lima_runno = int(datetime.datetime.now().strftime('%Y%m%d%H%M'))
         self.lima_save_dir = save_dir
@@ -212,7 +182,7 @@ class mxraster(Macro):
         self.execMacro("collect_prepare")
         self.execMacro("collect_saving", self.lima_save_dir, 
                        self.lima_prefix, 
-                       self.lima_runno, 'raster')
+                       self.lima_runno, 1, 'raster')
                
     def calc_points(self, beg, end, nbivals):
         vals = numpy.array([])
@@ -334,6 +304,8 @@ class mxraster(Macro):
         self.debug(" scanning y done " )
 
     def do_one_collect(self):
+        # Execute collect config only to write pilatus header
+        self.execMacro('collect_config', 0, 0, 1, self.int_time, 1, 'C60', 'raster') 
         self.prepare_one()
         self.collect_one()
         self.process_one()
@@ -343,7 +315,8 @@ class mxraster(Macro):
         self.debug("      - preparing.." )
         str_idx = '%s_%s' % (self.zidx, self.yidx)
         self._add_custom_suffix(str_idx)
-        self.execMacro('pilatus_set_first_image','pilatus_custom',self.curpt+1)
+        # Deprecated in Lima Core 1.7
+        # self.execMacro('pilatus_set_first_image','pilatus_custom',self.curpt+1)
         self.execMacro('lima_prepare', 'pilatus', self.int_time, 
                        self.PILATUS_LATENCY, 1, self.LIMA_TRIGGER)
         
@@ -409,9 +382,12 @@ class mxraster(Macro):
                              ).getResult() 
         prefix = self.execMacro('lima_getconfig','pilatus','FilePrefix'
                              ).getResult() 
-        inumber = self.execMacro('pilatus_get_first_image','pilatus_custom',
-                                ).getResult()
-        id = str("%04d" % inumber)
+#        inumber = self.execMacro('pilatus_get_first_image','pilatus_custom',
+#                                ).getResult()
+        inumber = int(self.execMacro('lima_getconfig','pilatus','NextNumber'
+                             ).getResult())
+        
+        id = str("%04d" % (inumber - 1))
         format = self.execMacro('lima_getconfig','pilatus','FileFormat'
                              ).getResult() 
 
@@ -434,11 +410,11 @@ class mxraster(Macro):
         lima_dev.reset()
 
         # move motor to origin
-        config = self.getEnv('MXRasterConfig')
-        phiy = taurus.Device(config['PhiY'])
-        phiz = taurus.Device(config['PhiZ'])
-        phiy.write_attribute('position', self.phiy_org)
-        phiz.write_attribute('position', self.phiz_org)
+
+
+        # TODO: Check path already running if raster for plates.
+        #self.phiy.write_attribute('position', self.phiy_org)
+        #self.phiz.write_attribute('position', self.phiz_org)
 
         # close slowshu
         eps = taurus.Device('bl13/ct/eps-plc-01')

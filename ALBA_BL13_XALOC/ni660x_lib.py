@@ -9,11 +9,12 @@ DET_DELAY = 'detector_delay'
 DET_HIGH = 'det_high'
 DET_LOW = 'det_low'
 TRIGGERS_COUNT = 'triggers_count'
-
+ENCODER_RESOLUTION = 80000
 
 class ni660x_configure_collect(Macro):
     """
     Category: Configuration
+
     Configures the ni6602 card to generate triggers for the fast shutter and
     the pilatus detector. Implememts a trigger by position scheme.
     The NI card to generate a single trigger gate at a given position. It is
@@ -22,6 +23,7 @@ class ni660x_configure_collect(Macro):
     velocity and pilatus takes images every certain time configured via Lima
     controller. In such a way, a synchronization between omega positions and
     pilatus images is guarantied."""
+
     param_def = [['shutter_delay_time', Type.Float, None,
                   'Time for shutter to be opened (seconds).'],
                ['det_trigger_pos', Type.Float, None,
@@ -39,15 +41,15 @@ class ni660x_configure_collect(Macro):
         ni_name = 'BL13/IO/ibl1302-dev1'
         omega = self.getDevice('omega')
         ni_dev = taurus.Device(ni_name)
-        ni_poschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr0')
+        ni_poschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr4')
+        ni_pilatuschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr1')
         ni_shutterchan = taurus.Device('BL13/IO/ibl1302-dev1-ctr2')
-        ni_pilatuschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr4')
 
         vel_0 = 0.
         vel = omega.read_attribute('velocity').value
         t_acc = omega.read_attribute('acceleration').value
         t_shutter = shutter_delay_time
-        enc_resolution_X4 = 80175
+        enc_resolution_X4 = ENCODER_RESOLUTION
         x_abs_0 = omega.read_attribute('position').value
         x_abs_trigger = det_trigger_pos
         x_rel_high = pulse_high_width
@@ -64,6 +66,8 @@ class ni660x_configure_collect(Macro):
             self.info('Applying configuration to the DS.')
             ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
                                            ni_pilatuschan, ni_cfg_dict)
+            for k, v in ni_cfg_dict.items():
+                self.info('[%s] = %s' % (k, v))
             self.info('Remember to unconfigure the card at the end of the'
                       'collection.')
         except Exception, e:
@@ -77,9 +81,9 @@ class ni660x_unconfigure_collect(Macro):
     def run(self):
         # some values do not need to be passed through the macro...
         ni_dev = taurus.Device('BL13/IO/ibl1302-dev1')
-        ni_poschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr0')
+        ni_poschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr4')
+        ni_pilatuschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr1')
         ni_shutterchan = taurus.Device('BL13/IO/ibl1302-dev1-ctr2')
-        ni_pilatuschan = taurus.Device('BL13/IO/ibl1302-dev1-ctr4')
 
         ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan,
                                          ni_pilatuschan)
@@ -175,7 +179,7 @@ def build_trigger_config(vel_0, vel, t_acc, t_shutter, enc_resolution_X4,
 def ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan,
                                      ni_pilatuschan):
     # output of ctr4 to output of ctr1
-    ni_dev.command_inout('DisconnectTerms',['/Dev1/PFI20', '/Dev1/PFI32'])
+    #ni_dev.command_inout('DisconnectTerms',['/Dev1/PFI20', '/Dev1/PFI32'])
     # indexer X4 phase A
     # ni_dev.command_inout('DisconnectTerms',['/Dev1/PFI39', '/Dev1/PFI12'])
     # timebase
@@ -183,8 +187,8 @@ def ni660x_tango_unconfigure_collect(ni_dev, ni_poschan, ni_shutterchan,
 
     # Stop jobs
     ni_poschan.command_inout('Stop')
-    ni_shutterchan.command_inout('Stop')
     ni_pilatuschan.command_inout('Stop')
+    ni_shutterchan.command_inout('Stop')
 
 
 def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
@@ -203,7 +207,7 @@ def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
     # generate pulse on overflow (default: Toggle)
     ni_poschan.write_attribute('OutputEventBehaviour', 'Pulse')
     # use default output PFI for overflow pulse
-    ni_poschan.write_attribute('OutputEventTerminal', '/Dev1/PFI36')
+    ni_poschan.write_attribute('OutputEventTerminal', '/Dev1/PFI20')
     # counter overflow occurs when it reaches 2^32 - 1
     # configure initial position to 2^32 - 2
     # so with an increment of 1 it will reach overflow
@@ -231,7 +235,7 @@ def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
         ni_cfg_dict[SHUT_LOW] = 2
 
     # use position measurement overflow pulses as source of trigger
-    ni_shutterchan.write_attribute('SourceTerminal', '/Dev1/PFI36')
+    ni_shutterchan.write_attribute('SourceTerminal', '/Dev1/PFI20')
     # configuring nr of pulses (it has to be a long type)
     ni_shutterchan.write_attribute('SampPerChan', ni_cfg_dict[TRIGGERS_COUNT])
     # configure finite generation of triggers (not infinite)
@@ -257,7 +261,7 @@ def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
 
 
     # use position measurement overflow pulses as source of trigger
-    ni_pilatuschan.write_attribute('SourceTerminal', '/Dev1/PFI36')
+    ni_pilatuschan.write_attribute('SourceTerminal', '/Dev1/PFI20')
     # configuring nr of pulses (it has to be a long type)
     ni_pilatuschan.write_attribute('SampPerChan', ni_cfg_dict[TRIGGERS_COUNT])
     # configure finite generation of triggers (not infinite)
@@ -278,8 +282,8 @@ def ni660x_tango_configure_collect(ni_dev, ni_poschan, ni_shutterchan,
     # CONFIGURE NI 660X INTERNAL CONNECTIONS
     # CRYPTIC RIGHT NOW...
     # output of ctr4 to output of ctr1
-    ni_dev.command_inout('ConnectTerms',['/Dev1/PFI20', '/Dev1/PFI32',
-                                         'DoNotInvertPolarity'])
+   # ni_dev.command_inout('ConnectTerms',['/Dev1/PFI20', '/Dev1/PFI32',
+   #                                      'DoNotInvertPolarity'])
     # indexer X4 phase A
     # ni_dev.command_inout('ConnectTerms',['/Dev1/PFI39', '/Dev1/PFI12', 'DoNotInvertPolarity'])
     # timebase

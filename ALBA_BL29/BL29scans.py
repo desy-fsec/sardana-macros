@@ -7,7 +7,7 @@ Specific scan macros for beamline Alba BL29
 import numpy
 import PyTango
 
-from sardana.macroserver.macro import Macro, Type, ParamRepeat
+from sardana.macroserver.macro import Macro, Type
 from sardana.macroserver.scan import SScan
 
 
@@ -105,8 +105,10 @@ class rscan(Macro):
      intervals for each region.
     It uses the gscan framework.
 
-    NOTE: Due to a ParamRepeat limitation, integration time has to be
-    specified before the regions.
+    NOTE: Due to an historical ParamRepeat limitation (this limitation no
+    longer exist), the integration time has to be specified before the regions:
+    thought this could be now avoid we keep old parameters order for backward
+    compatibility.
     """
 
     hints = {'scan': 'rscan'}
@@ -116,21 +118,15 @@ class rscan(Macro):
         ['motor',      Type.Motor,   None, 'Motor to move'],
         ['integ_time', Type.Float,   None, 'Integration time'],
         ['start_pos',  Type.Float,   None, 'Start position'],
-        ['step_region',
-         ParamRepeat([
-                        'next_pos',
-                        Type.Float,
-                        None,
-                        'next position'],
-                     [
-                        'region_nr_intervals',
-                        Type.Float,
-                        None,
-                        'Region number of intervals']),
-         None, 'List of tuples: (next_pos, region_nr_intervals']
+        ['step_region', [
+            ['next_pos', Type.Float, None, 'next position'],
+            ['region_nr_intervals', Type.Float, None,
+                'Region number of intervals']],
+            None,
+            'List of pairs: next_pos, region_nr_intervals']
     ]
 
-    def prepare(self, motor, integ_time, start_pos, *regions, **opts):
+    def prepare(self, motor, integ_time, start_pos, regions, **opts):
         self.name = self.__class__.__name__
         self.integ_time = integ_time
         self.start_pos = start_pos
@@ -220,6 +216,10 @@ class escanct(Macro):
             'number of points'],
         ['integ_time',   Type.Float,   None,
             'integration time'],
+        # ['mode',         Type.String,  'auto',
+        #  'ID mode to use (only makes sense if move_id is true): auto (auto '
+        #  'detect mode: this is the default) parallel (force parallel mode) '
+        #  'or antiparallel (force antiparallel mode)'],
         ['move_id',      Type.Boolean, True,
             'move ID energy motor: if set to false only the mono will be moved'
             ' and lock_phase parameter will be ignored (optional True/False, '
@@ -312,6 +312,7 @@ class escanct(Macro):
                 self.antiparallel = False
             else:
                 self.antiparallel = True
+            self.antiparallel = False  # temporal force requested by user
             self.id_energy_name = self.id_energy_names[int(self.antiparallel)]
             self.id_phase_name = self.id_phase_names[int(self.antiparallel)]
 
@@ -348,25 +349,14 @@ class escanct(Macro):
 
     def preConfigure(self):
         self.debug('preConfigure entering...')
-        # since sardana channels when written are also read, SampleClockSource
-        # can not be read after writing - probably bug in the ds
-        ct_device_name = self.pos_channel['channelDevName'].value
-        ct_device = PyTango.DeviceProxy(ct_device_name)
-        ct_device['SampleClockSource'] = self.sample_clock
-        ct_device['SampleTimingType'] = 'SampClk'
-        ct_device['ZIndexEnabled'] = False
-        # @todo: for some reason PulsesPerRevolution only admits int
-        ct_device['PulsesPerRevolution'] = int(self.enc_resolution)
-        ct_device['Units'] = 'Ticks'
+        self.pos_channel['sampleClockSource'] = self.sample_clock
+        # @todo: for some reason pulsesPerRevolution only admits int
+        self.pos_channel['zIndexEnabled'] = False
+        self.pos_channel['pulsesPerRevolution'] = int(self.enc_resolution)
+        self.pos_channel['Units'] = 'Ticks'
 
     def preStart(self):
         self.debug('preStart entering...')
-
-        # initializations
-        gr_motor = PyTango.DeviceProxy(self.gr_name)
-        initial_position = gr_motor['EncEncin'].value
-        self.debug('initial_position: %f' % initial_position)
-        self.pos_channel['InitialPosition'] = initial_position
 
         # if we are told not to move the ID then quit now
         if not self.move_id:
@@ -644,11 +634,9 @@ class timescanct(escanct):
     """
 
     param_def = [
-        ['nr_of_points', Type.Integer, None,
-            'number of points'],
-        ['integ_time',   Type.Float,   None,
-            'integration time'],
-        ]
+        ['nr_of_points', Type.Integer, None, 'number of points'],
+        ['integ_time',   Type.Float,   None, 'integration time'],
+    ]
 
     def prepare(self, *args, **kwargs):
         """
@@ -686,3 +674,64 @@ class timescanct(escanct):
         motor.write_attribute('velocity', 1e4)
         motor.write_attribute('acceleration', 1e-3)
         motor.write_attribute('position', self.start_pos)
+
+
+class xbpm_timescanct(Macro):
+    """
+    timescanct meant to measure front end xbpm values
+
+    Note that the macro requires environment parameters to be correctly set:
+        - dummy_scan: dummy motor and positions to be used to run the scan
+                      used to trigger measurements
+            * must be typed between brackets (e.g. 'ascanct dummy_mot01 0 10')
+        - meas: the measurement group to be used for reading xbpm values
+    """
+    env_params = {
+        'dummy_scan': None,  # dummy scan to run
+        'meas': None,        # measurement group to use
+    }
+
+    param_def = [
+        ['nr_of_points', Type.Integer, None, 'Number of points'],
+        ['integ_time',   Type.Float,   None, 'Integration time'],
+        ['latency_time', Type.Float,   0,    'Latency time'],
+    ]
+
+    def prepare(self, points, integration, latency, **opts):
+        # get macro parameters from environment
+        self.name = self.__class__.__name__
+        try:
+            # get parameters
+            for param_name in self.env_params.keys():
+                if not hasattr(self, param_name):
+                    value = self.getEnv(param_name, macro_name=self.name)
+                    type_ = self.env_params[param_name]
+                    if type_ is not None:
+                        value = type_(value)
+                    setattr(self, param_name, value)
+                    print param_name, value
+        except Exception, e:
+            self.error('Error while getting environment: %s' % str(e))
+            raise
+
+    def run(self, points, integration, latency, **opts):
+        # run macro
+        try:
+            key = 'ActiveMntGrp'
+            # backup and set measurement group if necessary
+            if self.meas != '':
+                meas_back = self.getEnv(key)
+                self.info('Setting env %s to %s' % (key, self.meas))
+                self.setEnv(key, self.meas)
+            scan_params = self.dummy_scan.split()
+            scan_params.append(points)
+            scan_params.append(integration)
+            scan_params.append(latency)
+            scan, pars = self.createMacro(scan_params)
+            # run scan
+            self.runMacro(scan)
+        # cleanup actions
+        finally:
+            if self.meas != '':
+                self.info('Restoring env %s to %s' % (key, meas_back))
+                self.setEnv(key, meas_back)

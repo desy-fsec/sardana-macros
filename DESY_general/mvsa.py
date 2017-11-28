@@ -115,7 +115,7 @@ class mvsa(Macro):
         #
         # scanInfo:
         #{
-        #  motors: [{'start': 0.0, 'stop': 0.1, 'name': 'e6cctrl_l', 'proxy': PseudoMotor(pm/e6cctrl/3)}],
+        #  motors: [{'start': 0.0, 'stop': 0.1, 'name': 'e6cctrl_l'}],
         #  serialno: 1230,
         #  title: 'hscan 0.0 0.1 20 0.1",
         # }
@@ -149,7 +149,8 @@ class mvsa(Macro):
         if interactiveFlag == 1:
             self.output( "File name: %s " % fileName)
             for elm in motorArr:
-                self.output( "Move %s from %g to %g" % ( elm[ 'name'], elm[ 'proxy'].Position, elm[ 'targetPos']))
+                p = PyTango.DeviceProxy( elm['name'])
+                self.output( "Move %s from %g to %g" % ( elm[ 'name'], p.Position, elm[ 'targetPos']))
             answer = self.input( "Exec move(s) [Y/N], def. 'N': ")
             if not (answer.lower() == "yes" or answer.lower() == "y"):
                 self.output( "Motor(s) not moved!")
@@ -165,19 +166,22 @@ class mvsa(Macro):
                                               motorArr[2]['targetPos']))
         else:
             for elm in ( motorArr):
-                elm[ 'proxy'].write_attribute( "Position", elm[ 'targetPos'])
+                p = PyTango.DeviceProxy( elm['name'])
+                p.write_attribute( "Position", elm[ 'targetPos'])
         moving = True
         while moving:
             moving = False
             for elm in ( motorArr):
-                if elm[ 'proxy'].State() == PyTango.DevState.MOVING:
+                p = PyTango.DeviceProxy( elm['name'])
+                if p.State() == PyTango.DevState.MOVING:
                     moving = True
                     break
             time.sleep( 0.1)
         result = "status=True"
         for elm in ( motorArr):
-            self.output( "Motor %s is now at %g" % ( elm[ 'name'], elm[ 'proxy'].Position))
-            result = result + ",%s=%s" % (elm[ 'name'], str(elm[ 'proxy'].Position))
+            p = PyTango.DeviceProxy( elm['name'])
+            self.output( "Motor %s is now at %g" % ( elm[ 'name'], p.Position))
+            result = result + ",%s=%s" % (elm[ 'name'], str(p.Position))
 
         # self.output( "mvsa returns %s" % result)
         return result

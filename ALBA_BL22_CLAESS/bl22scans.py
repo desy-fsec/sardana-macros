@@ -3,10 +3,539 @@ from sardana.macroserver.scan import SScan
 from sardana.macroserver.macros.scan import ascan, getCallable, UNCONSTRAINED
 import taurus
 import PyTango
-from numpy import linspace, sqrt
-import time
+from numpy import sqrt
+
+
+PMAC_REGISTERS = {'MotorDir': 4080, 'StartBuffer': 4081, 'RunProgram': 4082,
+                  'NrTriggers': 4083, 'Index': 4084, 'StartPos': 4085,
+                  'PulseWidth': 4086, 'AutoInc': 4087}
 
 EV2REVA = 0.2624682843
+c = 299792458
+h = 4.13566727*10**(-15)
+aSi = 5.43102088*10**(-10) # Simo macro su spec
+overflow_pmac = 8388608
+
+
+# Function to detect the sardana version
+def is_sardana_new():
+    try:
+        import sardana.pool.poolsynchronization
+        return True
+    except ImportError:
+        return False
+
+
+class BL22qExafs(object):
+    """
+    Class to implement the continuous scan methods. 
+    """
+    
+    mem_overload = 1000000
+    min_itime = 0.005
+    energy_name = "energy"
+    bragg_name = "oh_dcm_bragg"
+    perp_name = 'oh_dcm_perp'
+    pmac_name = 'pmac'
+    pmac_ctrl_name = 'controller/dcmturbopmaccontroller/dcm_pmac_ctrl'
+    adlinks_names = ['bl22/ct/adc-ibl2202-01', 'bl22/ct/adc-ibl2202-02']
+    ni_trigger_name = 'bl22/io/ibl2202-dev1-ctr0'
+    sard_trigger_name = 'triggergate/ni_tg_ctrl/1'
+
+    def __init__(self, macro):
+        self.sardana_new = is_sardana_new()
+        self.macro = macro
+        self.pmac = taurus.Device(self.pmac_name)
+        self.pmac_ctrl = taurus.Device(self.pmac_ctrl_name)
+        self.energy = taurus.Device(self.energy_name)
+        self.perp = taurus.Device(self.perp_name)
+        self.bragg = taurus.Device(self.bragg_name)
+        self.sard_trigger = None
+        self.ni_trigger = None
+        self.adlinks = None
+        self.flg_post_move = False
+        self.int_time = None
+        self.nr_of_triggers = None
+        self.scan_start_pos = None
+        self.scan_end_pos = None
+        self.config_PID = True
+        self.wait_fe = True
+        self.flg_cleanup = False
+
+        if self.sardana_new:
+            self.sard_trigger = taurus.Device(self.sard_trigger_name)
+        else:
+            self.adlinks = []
+            for adlink_name in self.adlinks_names:
+                self.adlinks.append(taurus.Device(adlink_name))
+            self.ni_trigger = taurus.Device(self.ni_trigger_name)
+
+    def check_parameters(self, speed_check=True):
+        scan_time = self.int_time * self.nr_of_triggers
+        if speed_check:
+            if self.int_time < self.min_itime:
+                raise Exception(('You must use a higher integration time.'
+                                 'The minimum value is %r' % self.min_itime))
+        else:
+            self.macro.warning('The speed verification is not active')
+
+        mem = self.nr_of_triggers * scan_time
+        if mem > self.mem_overload:
+            raise Exception(('You can not send this scan, because there is not '
+                             'enough memory. The combination of the nrOfTrigger'
+                             '*scanTime < 1000000'))
+
+    def prepare_pmac_plc0(self):
+        self.macro.info('Configuring Pmac...')
+        # Configure the start trigger from the pmac. This should be moved to
+        # the pmac trigger controller.
+        bragg_spu = self.bragg['step_per_unit'].value
+        bragg_offset = self.bragg['offset'].value
+        bragg_pos = float(self.pmac.SendCtrlChar("P").split()[0])
+        bragg_enc = float(self.pmac.GetMVariable(101))
+
+        th1 = self.energy.CalcAllPhysical([self.scan_start_pos])[0]
+        offset_counts = bragg_pos - bragg_enc + (bragg_offset * bragg_spu)
+
+        start_enc = (th1 * bragg_spu) - offset_counts
+        if start_enc > overflow_pmac:
+            start_enc = start_enc - 2 * overflow_pmac
+        elif start_enc < -overflow_pmac:
+            start_enc = start_enc + 2 * overflow_pmac
+
+        if (self.scan_start_pos < self.scan_end_pos):
+            self.direction = long(0)
+        else:
+            self.direction = long(1)
+        self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'], self.direction])
+        self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], long(start_enc)])
+
+        if not self.sardana_new:
+            # configuring position capture control
+            self.pmac.SetIVariable([7012, 2])
+            # configuring position capture flag select
+            self.pmac.SetIVariable([7013, 3])
+            # after enabling position capture, M117 is set to 1, forcing readout
+            # of M103, to reset it, so PLC0 won't copy outdated data
+            self.pmac.GetMVariable(103)
+            # enabling plc0 execution
+            self.pmac.SetIVariable([5, 3])
+
+    def prepare_couters(self):
+        self.macro.info('Preparing counters...')
+        if not self.sardana_new:
+            self.macro.debug('Configuring Adlink...')
+            for adlink in self.adlinks:
+                if adlink.State() != PyTango.DevState.STANDBY:
+                    adlink.Stop()
+            self.macro.ni_config_counter('continuous')
+
+    def prepare_trigger(self):
+        self.macro.info('Preparing triggers...')
+        if self.sardana_new:
+            # Configure the Ni660XTrigger
+            ni_state = self.sard_trigger.state()
+            if ni_state != PyTango.DevState.ON:
+                self.sard_trigger.stop()
+            self.sard_trigger['slave'] = True
+            self.sard_trigger['retriggerable'] = False
+        else:
+            output_signals = ['/DEV1/C0O', '/DEV1/C0A',
+                              '/DEV1/C1O', '/DEV1/C1A',
+                              '/DEV1/RTSI0']
+            self.macro.ni_connect_channels(output_signals, 'DoNotInvertPolarity')
+            #Configuration for the Xspress3
+            self.macro.ni_connect_channels(['/DEV1/C0O', '/DEV1/C2O'],'InvertPolarity')
+            # Channel 0 source
+            self.ni_trigger['StartTriggerSource'] = '/Dev1/PFI39'
+            self.ni_trigger['StartTriggerType'] = 'DigEdge'
+
+    def prepare_pmac_motors(self, final_pos=None):
+        self.macro.info('Preparing Bragg and Perp')
+        # TODO verify calculation of the start position on gscan
+        # We need to move relative the bragg to solve the problem.
+
+        if self.direction:
+            self.macro.execMacro('mvr oh_dcm_bragg -0.005')
+        else:
+            self.macro.execMacro('mvr oh_dcm_bragg 0.005')
+
+        if self.config_PID:
+            self.macro.setPID('new')
+
+        if self.sardana_new:
+            #Configure motor protection Sardana Bug
+            if final_pos == None:
+                self.macro.warning('ascanct is not prepared to protect '
+                                   ' the DCM movement!!!')
+                return
+            bragg_offset = self.bragg['offset'].value
+            bragg_sign = self.bragg['sign'].value
+            perp_offset = self.perp['offset'].value
+            perp_sign = self.perp['sign'].value
+
+            bragg_final, perp_final = final_pos
+            bragg_dial = bragg_sign * bragg_final - bragg_offset
+            perp_dial = perp_sign * perp_final - perp_offset
+
+            self.pmac_ctrl['NextPosition'] = [bragg_dial, perp_dial]
+            self.pmac_ctrl['UseqExafs'] = True
+      
+
+    def pre_configure_hook(self):
+        self.prepare_pmac_plc0()
+        self.prepare_couters()
+        self.prepare_trigger()
+
+        if self.wait_fe:
+            try:
+                self.macro.waitFE()
+            except Exception as e:
+                raise RuntimeError( 'There was an exception with the waitFE '
+                                    'macro: %s' % e)
+    def post_configure_hook(self):
+        self.macro.warning('post configure hook is not implemented')
+
+    def pre_start_hook(self, final_pos=None):
+        self.prepare_pmac_motors(final_pos)
+
+    def post_move_hook(self):
+        self.macro.setPID('old')
+        self.flg_post_move = True
+
+    def cleanup(self):
+        self.macro.debug('Restore Default Measurement Group')
+        mg = self.macro.getEnv('DefaultMG')
+        self.macro.setEnv('ActiveMntGrp', mg)
+
+        if self.sardana_new:
+            ni_state = self.sard_trigger.state()
+            if ni_state != 'ON':
+                self.sard_trigger.stop()
+            self.sard_trigger['slave'] = False
+            self.sard_trigger['retriggerable'] = False
+        else:
+            for adlink in self.adlinks:
+                if adlink.State() != PyTango.DevState.STANDBY:
+                    adlink.Stop()
+                else:
+                    adlink.Init()
+                adlink.getAttribute("TriggerSources").write("SOFT")
+                adlink.getAttribute("TriggerMode").write(0)
+                adlink.getAttribute("TriggerInfinite").write(0)
+            self.macro.ni_config_counter('step')
+
+        self.macro.restorePmac()
+
+        self.macro.info("qExafs cleanup is done")
+        self.flg_cleanup = True
+
+    def run_scan(self, start_pos, end_pos, nr_of_trigger, int_time,
+                 speed_check, wait_fe, config_pid, nr_repeat=1, 
+                 back_forth=False):
+
+        self.scan_start_pos = start_pos
+        self.scan_end_pos = end_pos
+        self.nr_of_triggers = nr_of_trigger
+        self.int_time = int_time
+        self.config_PID = config_pid
+        self.check_parameters(speed_check)
+        self.wait_fe = wait_fe
+        if back_forth:
+            nr_repeat *= 2
+
+        if self.sardana_new:
+            macro_name = 'ascanct'
+        else:
+            macro_name = 'ascanct_ni'
+
+        try:
+            for i in range(nr_repeat):
+                self.flg_post_move = False
+                self.flg_cleanup = False
+                scan_macro, pars = self.macro.createMacro(macro_name,
+                                                          self.energy_name,
+                                                          start_pos, end_pos,
+                                                          nr_of_trigger,
+                                                          int_time)
+
+                scan_macro.hooks = [(self.pre_configure_hook,
+                                     ["pre-configuration"]),
+                                    (self.post_configure_hook,
+                                     ["post-configuration"]),
+                                    (self.pre_start_hook,
+                                     ["pre-start"]),
+                                    (self.post_move_hook,
+                                     ["post-move"]),
+                                    (self.cleanup,
+                                     ["post-cleanup"]),]
+
+                self.macro.debug("Running %d repetition" % i)
+                self.macro.runMacro(scan_macro)
+                if back_forth:
+                    self.macro.debug("Swapping start with end")
+                    start_pos, end_pos = end_pos, start_pos
+
+        except Exception as e:
+            self.macro.error('Exception: %s' % e)
+            raise e
+            
+        finally:
+            if not self.flg_cleanup:
+                self.cleanup()
+
+    def run_nscan(self, start_pos, end_triggers, int_time, nr_repeat=1,
+                  wait_fe=True, config_pid=True, ):
+
+        if not self.sardana_new:
+            raise RuntimeError('this macro does not work with this version of '
+                               'sardana')
+
+        self.int_time = int_time
+        self.config_PID = config_pid
+        self.wait_fe = wait_fe
+        nr_scans = len(end_triggers)
+
+        try:
+            for rp in range(nr_repeat):
+                for idx_scan, end_trigger in enumerate(end_triggers):
+                    end_pos, nr_triggers = end_trigger
+                    
+                    if idx_scan == 0:
+                        self.scan_start_pos = start_pos
+                    else:
+                        self.scan_start_pos = last_end_pos
+
+                    self.scan_end_pos = end_pos
+                    self.nr_of_triggers = nr_triggers
+                    self.check_parameters(True)
+
+                    scan_macro, _ = self.macro.createMacro('ascanct',
+                                                           self.energy_name,
+                                                           self.scan_start_pos,
+                                                           self.scan_end_pos,
+                                                           self.nr_of_triggers,
+                                                           self.int_time)
+                    scan_macro.hooks = [(self.pre_configure_hook,
+                                         ["pre-configuration"]),
+                                        (self.post_configure_hook,
+                                         ["post-configuration"]),
+                                        (self.pre_start_hook,
+                                         ["pre-start"]),
+                                        (self.post_move_hook,
+                                         ["post-move"]),]
+                    if idx_scan == nr_scans-1:
+                        scan_macro.hooks.append((self.cleanup, ["post-cleanup"]))
+
+                    self.macro.debug("Running %d repetition" % rp)
+                    self.macro.runMacro(scan_macro)
+                    last_end_pos = end_pos
+
+        except Exception as e:
+            self.macro.error('Exception: %s' % e)
+            raise e
+
+        finally:
+            if not self.flg_cleanup:
+                self.cleanup()
+
+    def set_mythen(self, activated):
+        if activated:
+            mg = self.macro.getEnv('ContqMythenMG')
+        else:
+            mg = self.macro.getEnv('ContScanMG')
+        self.macro.setEnv('ActiveMntGrp', mg)
+        self.macro.execMacro('feauto 1')
+
+    def run_qexafs(self, start_pos, end_pos, nr_trigger, int_time, speed_check, 
+                   wait_fe, config_pid, mythen=False):
+
+        self.set_mythen(mythen)
+        self.run_scan(start_pos, end_pos, nr_trigger, int_time, speed_check,
+                      wait_fe, config_pid)
+
+    def run_nqexafs(self, start_pos, end_triggers, int_time, nr_repeat,
+                    wait_fe, config_pid, mythen=False):
+
+        self.set_mythen(mythen)
+        self.run_nscan(start_pos, end_triggers, int_time, nr_repeat, wait_fe,
+                       config_pid)
+
+
+# ******************************************************************************
+#                          Utils Macros
+# ******************************************************************************
+
+class qExafsCleanup(Macro):
+    """
+    Macro to cleanup the system after a qExafs scan.
+    """
+
+    def run(self):
+        qexafs = BL22qExafs(self)
+        qexafs.cleanup()
+
+# ******************************************************************************
+#                          Continuous Scan Macros
+# ******************************************************************************
+
+class qExafs(Macro):
+    """
+    Macro to execute the quick Exafs experiment.
+    """
+
+    env = ('ContScanMG',)
+
+    hints = {}
+
+    param_def = [["startPos", Type.Float, None, "Starting position"],
+                 ["endPos", Type.Float, None, "Ending pos value"],
+                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                 ["intTime", Type.Float, None, "Integration time per point"],
+
+                 ["speedLim", Type.Boolean, True, ("Active the verification "
+                                                   "of the speed and "
+                                                   "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")],
+                 
+                 ["configPID", Type.Boolean, True, ("Active the configuration"
+                                                 " of the bragg PID ")]]
+
+
+    def run(self, startPos, finalPos, nrOfTriggers, intTime, speedLim, wait_fe,
+            config_PID):
+
+        qexafs = BL22qExafs(self)
+        qexafs.run_qexafs(startPos, finalPos, nrOfTriggers, intTime, speedLim,
+                          wait_fe, config_PID)
+
+
+class nqExafs(Macro):
+    """
+    Macro to execute the quick Exafs experiment.
+    """
+
+    env = ('ContScanMG',)
+
+    hints = {}
+
+    param_def = [["startPos", Type.Float, None, "Starting position"],
+                 ["end_triggers", [
+                     ["endPos", Type.Float, None, "Ending pos value"],
+                     ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                     {'min': 1}], None, 'List of [end_pos, triggers] for the '
+                                        'region'],
+                 ["intTime", Type.Float, None, "Integration time per point"],
+
+                 ["nrOfRepetitions", Type.Integer, 1, "Nr of triggers"],
+
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")],
+
+                 ["configPID", Type.Boolean, True, ("Active the configuration"
+                                                    " of the bragg PID ")]]
+
+    def run(self, startPos, end_triggers, intTime, nrOfRepetitions, waitFE,
+            configPID):
+
+        qexafs = BL22qExafs(self)
+        qexafs.run_nqexafs(startPos, end_triggers, intTime, nrOfRepetitions,
+                           waitFE, configPID, mythen=False)
+
+
+class qMythen(Macro):
+    """
+    Macro to execute the quick Exafs experiment.
+    """
+
+    env = ('ContqMythenMG',)
+
+    hints = {}
+
+    param_def = [["startPos", Type.Float, None, "Starting position"],
+                 ["endPos", Type.Float, None, "Ending pos value"],
+                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                 ["intTime", Type.Float, None, "Integration time per point"],
+
+                 ["speedLim", Type.Boolean, True, ("Active the verification "
+                                                   "of the speed and "
+                                                   "integration time")],
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")],
+
+                 ["configPID", Type.Boolean, True, ("Active the configuration"
+                                                    " of the bragg PID ")]]
+
+    def run(self, startPos, finalPos, nrOfTriggers, intTime, speedLim,
+            wait_fe, config_pid):
+
+        qexafs = BL22qExafs(self)
+        qexafs.run_qexafs(startPos, finalPos, nrOfTriggers, intTime, speedLim,
+                          wait_fe, config_pid, mythen=True)
+
+
+class nqMythen(Macro):
+    """
+    Macro to execute the quick Exafs experiment.
+    """
+
+    env = ('ContScanMG',)
+
+    hints = {}
+
+    param_def = [["startPos", Type.Float, None, "Starting position"],
+                 ["end_triggers", [
+                     ["endPos", Type.Float, None, "Ending pos value"],
+                     ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
+                     {'min': 1}], None, 'List of [end_pos, triggers] for the '
+                                        'region'],
+                 ["intTime", Type.Float, None, "Integration time per point"],
+
+                 ["nrOfRepetitions", Type.Integer, 1, "Nr of triggers"],
+
+                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
+                                                 "opening of Front End")],
+
+                 ["configPID", Type.Boolean, True, ("Active the configuration"
+                                                    " of the bragg PID ")]]
+
+    def run(self, startPos, end_triggers, intTime, nrOfRepetitions, waitFE,
+            configPID):
+
+        qexafs = BL22qExafs(self)
+        qexafs.run_nqexafs(startPos, end_triggers, intTime, nrOfRepetitions,
+                           waitFE, configPID, mythen=True)
+
+# ******************************************************************************
+#                          Step Scan Macros
+# ******************************************************************************
+
+class aEscan(Macro):
+    """
+    Macro to run a step scan. The macro verifies if the front end is open before
+    to measure in each point.
+    """
+    param_def = [['motor', Type.Moveable, None, 'Moveable to move'],
+                 ['start_pos',  Type.Float,   None, 'Scan start position'],
+                 ['final_pos',  Type.Float,   None, 'Scan final position'],
+                 ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
+                 ['integ_time', Type.Float,   None, 'Integration time']]
+
+    def pre_acquisition(self):
+        self.execMacro('waitFE')
+
+    def prepare(self, *args):
+        mg = self.getEnv('DefaultMG')
+        self.setEnv('ActiveMntGrp', mg)
+
+    def run(self, motor, start_pos, final_pos, nr_interv, integ_time):
+        macro_ascan, _ = self.createMacro('ascan', motor, start_pos, final_pos,
+                                          nr_interv, integ_time)
+
+        macro_ascan.hooks = [(self.pre_acquisition, ["pre-acq"]), ]
+
+        self.runMacro(macro_ascan)
 
 
 class constKscan(Macro, Hookable):
@@ -101,857 +630,3 @@ class constKscan(Macro, Hookable):
         return self._gScan.data
 
 
-class cdscan(Macro):
-    """
-    Macro to execute the continuous scan.
-    """
-    
-    param_def = [["motor", Type.Moveable, None, "Motor"],
-                 ["startPos", Type.Float, None, "Starting position"],
-                 ["endPos", Type.Float, None, "Ending pos value"],
-                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
-                 ["inttime", Type.Float, None, "Integration time per point"],
-
-                 ["speedLim", Type.Boolean, True, ("Active the verification "
-                                                   "of the speed and "
-                                                   "integration time")],
-                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
-                                                 "opening of Front End")]]
-    
-    def run(self, motor, startPos, finalPos, nrOfTriggers, intTime, speedLim, wait_fe):
-        pos = motor.position
-        st_pos = pos + startPos
-        end_pos = pos + finalPos
-        try:
-            scan_macro, pars = self.createMacro("cascan", motor, 
-                                                st_pos, end_pos,
-                                                nrOfTriggers,
-                                                intTime,
-                                                speedLim,
-                                                wait_fe)
-        
-            self.runMacro(scan_macro)
-        except Exception as e:
-            self.error(e)
-        finally:
-            self.info('Moving %s to %s' % (motor, pos))
-            self.execMacro('mv %s %s' % (motor, pos))
-
-class cascan(Macro):
-    """
-    Macro to execute the continuous scan.
-    """
-
-    env = ('CascanMG',)
-    
-    masterTriggerName = "bl22/io/ibl2202-dev1-ctr0"
-
-    mem_overload = 1000000
-    hints = {}
-
-    param_def = [["motor", Type.Moveable, None, "Motor"],
-                 ["startPos", Type.Float, None, "Starting position"],
-                 ["endPos", Type.Float, None, "Ending pos value"],
-                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
-                 ["inttime", Type.Float, None, "Integration time per point"],
-
-                 ["speedLim", Type.Boolean, True, ("Active the verification "
-                                                   "of the speed and "
-                                                   "integration time")],
-                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
-                                                 "opening of Front End")]]
-
-    def preConfigure(self):
-        self.debug("preConfigure entering...")
-        if self.run_startup:
-            self.execMacro('qExafsStartup')
-        if self.wait_fe:
-            try:
-                self.execMacro('waitFE')
-            except Exception as e:
-                self.error('There was an exception with the waitFE macro: '
-                           '%s' % e)
-                raise RuntimeError()
-
-    def postConfigure(self):
-        self.debug('postConfigure entering...')
-       
-
-    def preStart(self):
-        self.debug('preStart entering....')
-       
-    def postMove(self):
-        self.debug('postMove entering....')
-       
-    def postCleanup(self):
-        self.debug("postCleanup entering...")
-       
-    def prepare(self, *args, **kwargs):
-        # self.mg_bck = self.getEnv('ActiveMntGrp')
-        mg = self.getEnv('CascanMG')
-        self.setEnv('ActiveMntGrp', mg)
-        self.execMacro('feauto 1')
-
-    def run(self, motor, startPos, finalPos, nrOfTriggers, intTime, speedLim, wait_fe):
-        moveable = motor
-        scanTime =  intTime * nrOfTriggers
-        if speedLim:
-            if intTime < 0.5:
-                raise Exception(('You must use a higher integration time '
-                                 '(integration time = scanTime/nrOfTriggers).'
-                                 ' The minimum value is 0.5'))
-        else:
-            self.warning('The speed verification is desactive')
-
-        mem = nrOfTriggers * scanTime
-        if mem > self.mem_overload:
-            raise Exception(('You can not send this scan, because there is not '
-                             'enough memory. The combination of the nrOfTrigger'
-                             '*scanTime < 1000000'))
-
-        self.run_startup = True
-        self.run_cleanup = True
-        self.wait_fe = wait_fe
-
-        try:
-    
-            quickScanPosCapture, pars = self.createMacro("ascanct_ni",
-                                                         moveable,
-                                                         startPos,
-                                                         finalPos,
-                                                         nrOfTriggers,
-                                                         intTime)
-            quickScanPosCapture.hooks = [(self.preConfigure,
-                                          ["pre-configuration"]),
-                                         (self.postConfigure,
-                                          ["post-configuration"]),
-                                         (self.postCleanup,
-                                          ["post-cleanup"]),
-                                         (self.preStart,
-                                          ["pre-start"]),
-                                         (self.postMove,
-                                          ["post-move"])]
-            self.runMacro(quickScanPosCapture)
-
-        finally:
-            if self.run_cleanup:
-                mg = self.getEnv('DefaultMG')
-                self.setEnv('ActiveMntGrp', mg)
-                self.execMacro('qExafsCleanup')
-
-
-            
-class qExafs(Macro):
-    """
-    Macro to execute the quick Exafs experiment.
-    """
-
-    env = ('ContScanMG',)
-    motName = "energy"
-    bragg_Name = "oh_dcm_bragg"
-    pmacName = "pmac"
-
-    masterTriggerName = "bl22/io/ibl2202-dev1-ctr0"
-
-    mem_overload = 1000000
-    hints = {}
-
-    param_def = [["startPos", Type.Float, None, "Starting position"],
-                 ["endPos", Type.Float, None, "Ending pos value"],
-                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
-                 ["scanTime", Type.Float, None, "Scan time"],
-
-                 ["speedLim", Type.Boolean, True, ("Active the verification "
-                                                   "of the speed and "
-                                                   "integration time")],
-                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
-                                                 "opening of Front End")],
-                 
-                 ["configPID", Type.Boolean, True, ("Active the configuration"
-                                                 " of the bragg PID ")],
-                                                 
-                 ["runStartup", Type.Boolean, True, 'run qExasfStartup'],
-                 ["runCleanup", Type.Boolean, True, 'run qExasfCleanup'],
-
-                 ["pmacDelay", Type.Float, 0.01, ("Delay to run the motion "
-                                                  "of the speed and "
-                                                  "integration time")],
-
-                 ["acqTime", Type.Float, 99, ("Acquisition time per trigger. "
-                                              "Expressed in percentage of time"
-                                              " per trigger (scanTime/"
-                                              "nrOfTriggers)")],
-                 ["nrOfRepeats", Type.Integer, 1, "NrOfRepeats"],
-                 ["backAndForth", Type.Boolean, False, ('Scan in both'
-                                                        'directions')]]
-
-    def preConfigure(self):
-        self.debug("preConfigure entering...")
-        self.debug('Configuring Pmac...')
-        pmac = taurus.Device(self.pmacName)
-        # select the capture program
-        pmac.SetPVariable([4077, 1])
-        # configuring position capture control
-        pmac.SetIVariable([7012, 2])
-        # configuring position capture flag select
-        pmac.SetIVariable([7013, 3])
-        # after enabling position capture, M117 is set to 1, forcing readout
-        # of M103, to reset it, so PLC0 won't copy outdated data
-        pmac.GetMVariable(103)
-        # enabling plc0 execution
-        pmac.SetIVariable([5, 3])
-        if self.run_startup:
-            self.execMacro('qExafsStartup')
-        if self.wait_fe:
-            try:
-                self.execMacro('waitFE')
-            except Exception as e:
-                self.error('There was an exception with the waitFE macro: '
-                           '%s' % e)
-                raise RuntimeError()
-
-    def postConfigure(self):
-        self.debug('postConfigure entering...')
-        self.debug('Setting Pmac starting delay...')
-        dev = PyTango.DeviceProxy('bl22/io/ibl2202-dev1-ctr0')
-        delay = dev.read_attribute('InitialDelayTime').value
-        total_delay = delay + self.pmac_dt
-        #dev.write_attribute('InitialDelayTime', total_delay)
-
-    def preStart(self):
-        self.debug('preStart entering....')
-        if not self.config_PID:
-           self.info('Did not config bragg PID')
-           return
-        bragg = taurus.Device(self.bragg_Name)
-        self.info(bragg.velocity)
-        # TODO Load from file the configuration
-        #return
-        self.info('Configuring bragg PID....')
-        pmac = taurus.Device(self.pmacName)
-        #Kp I130
-        pmac.SetIVariable([130, 30000])
-        #Kd I131
-        pmac.SetIVariable([131, 375])
-        #Kvff I132
-        pmac.SetIVariable([132, 30000])
-        #K1 I133
-        pmac.SetIVariable([133, 5000])
-        #IM I134
-        pmac.SetIVariable([134, 0])
-        #Kaff I135
-        pmac.SetIVariable([135, 3500])
-
-    def postMove(self):
-        self.debug('postMove entering....')
-        self.info('load PID default config')
-        self.execMacro('configpmac')
-        self.flg_post_move = True
-
-    def postCleanup(self):
-        self.debug("postCleanup entering...")
-        pmac = taurus.Device(self.pmacName)
-        # setting position capture control to its default value
-        pmac.SetIVariable([7012, 1])
-        # setting position capture flag select to its default value
-        pmac.SetIVariable([7013, 0])
-        # disabling plc0 execution
-        pmac.SetIVariable([5, 2])
-
-    def prepare(self, *args, **kwargs):
-        # self.mg_bck = self.getEnv('ActiveMntGrp')
-        mg = self.getEnv('ContScanMG')
-        self.setEnv('ActiveMntGrp', mg)
-        self.execMacro('feauto 1')
-
-    def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, wait_fe,
-            config_PID, run_startup, run_cleanup, pmac_delay, acqTime, 
-            nrOfRepeats, backAndForth):
-        moveable = self.getMoveable(self.motName)
-        int_time = scanTime / nrOfTriggers
-        self.pmac_dt = pmac_delay
-        self.config_PID = config_PID
-        self.flg_post_move = False
-        if speedLim:
-            if int_time < 0.5:
-                raise Exception(('You must use a higher integration time '
-                                 '(integration time = scanTime/nrOfTriggers).'
-                                 ' The minimum value is 0.5'))
-        else:
-            self.warning('The speed verification is desactive')
-
-        mem = nrOfTriggers * scanTime
-        if mem > self.mem_overload:
-            raise Exception(('You can not send this scan, because there is not '
-                             'enough memory. The combination of the nrOfTrigger'
-                             '*scanTime < 1000000'))
-
-        self.run_startup = run_startup
-        self.run_cleanup = run_cleanup
-        self.wait_fe = wait_fe
-
-        try:
-            for i in range(nrOfRepeats):
-                quickScanPosCapture, pars = self.createMacro("ascanct_ni",
-                                                             moveable,
-                                                             startPos,
-                                                             finalPos,
-                                                             nrOfTriggers,
-                                                             int_time,
-                                                             acqTime)
-                quickScanPosCapture.hooks = [(self.preConfigure,
-                                              ["pre-configuration"]),
-                                             (self.postConfigure,
-                                              ["post-configuration"]),
-                                             (self.postCleanup,
-                                              ["post-cleanup"]),
-                                             (self.preStart,
-                                              ["pre-start"]),
-                                             (self.postMove,
-                                              ["post-move"])]
-                self.debug("Running %d repetition" % i)
-                self.runMacro(quickScanPosCapture)
-                if backAndForth:
-                    self.debug("Swapping start with end")
-                    temp = startPos
-                    startPos = finalPos
-                    finalPos = temp
-
-        finally:
-            if self.run_cleanup:
-                mg = self.getEnv('DefaultMG')
-                self.setEnv('ActiveMntGrp', mg)
-                self.execMacro('qExafsCleanup')
-            if not self.flg_post_move:
-                self.postMove()
-
-class qExafsStartup(Macro):
-    """
-    The macro configures the Adlink and the Ni660X for the
-    continuous scan
-    """
-
-    adlinks = ['bl22/ct/adc-ibl2202-01', 'bl22/ct/adc-ibl2202-02']
-
-    def run(self):
-        self.debug('Configuring Adlink...')
-        for adlink in self.adlinks:
-            adc = taurus.Device(adlink)
-            if adc.State() != PyTango.DevState.STANDBY:
-                adc.Stop()
-
-        self.debug('Configuring NI660X...')
-        output_signals = ['/DEV1/C0O', '/DEV1/C0A',
-                          '/DEV1/C1O', '/DEV1/C1A', '/DEV1/RTSI0']
-        self.ni_connect_channels(output_signals)
-        self.ni_config_counter('continuous')
-
-        self.info("qExafs startup is done")
-
-
-class qExafsCleanup(Macro):
-    adlinks = ['bl22/ct/adc-ibl2202-01', 'bl22/ct/adc-ibl2202-02']
-
-    def run(self):
-
-        self.debug('Configuring Adlink...')
-        for adlink in self.adlinks:
-            adc = taurus.Device(adlink)
-            if adc.State() != PyTango.DevState.STANDBY:
-                adc.Stop()
-            else:
-                adc.Init()
-                # in case of stopping acq, state is alredy STANDBY, but it does
-                # not allow starting new acq @todo in DS
-            adc.getAttribute("TriggerSources").write("SOFT")
-            adc.getAttribute("TriggerMode").write(0)
-            adc.getAttribute("TriggerInfinite").write(0)
-
-        # in case of aborting qExafs macro, seems that there is an exception in
-        # aborting adlink device,
-        # to be sure stopping trigger lines if they were not stopped.
-        self.debug('Configuring NI660X...')
-        output_signals = ['/DEV1/C0O', '/DEV1/C0A',
-                          '/DEV1/C1O', '/DEV1/C1A', '/DEV1/RTSI0']
-        self.ni_connect_channels(output_signals)
-        self.ni_config_counter('step')
-
-        self.info("qExafs cleanup is done")
-
-
-def getNrOfPoints(e0, e1, deltaE):
-    nr_points, modulo = divmod(abs(e0 - e1), deltaE)
-    if modulo != 0:
-        nr_points += 1
-
-    return int(nr_points)
-
-
-class qExafsE(Macro):
-    """
-    Macro to run the qExafs experiment using the energy resolution.
-
-    """
-    param_def = [["E0", Type.Float, None, "Starting energy"],
-                 ["E1", Type.Float, None, "Ending energy"],
-                 ["deltaE", Type.Float, None, "Energy resolution"],
-                 ["intTime", Type.Float, 0.5, "Integration time by point"],
-
-                 ["speedLim", Type.Boolean, True, ("Active the verification "
-                                                   "of the speed and "
-                                                   "integration time")],
-                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
-                                                 "opening of Front End")]]
-
-    def run(self, e0, e1, deltaE, int_time, speed_lim, wait_fe):
-        try:
-            nr_points = getNrOfPoints(e0, e1, deltaE)
-            scan_time = nr_points * int_time
-            qExafsScan, pars = self.createMacro('qExafs', e0, e1, nr_points,
-                                                scan_time, speed_lim, wait_fe,
-                                                True, False)
-            self.runMacro(qExafsScan)
-        finally:
-            self.execMacro('qExafsCleanup')
-
-
-class qSpectrum(Macro):
-    """
-    Macro to run the qExafs experiment using the energy resolution.
-
-    """
-    param_def = [["E1", Type.Float, None, "first energy (eV)"],
-                 ["E2", Type.Float, None, "second energy (eV)"],
-                 ["E3", Type.Float, None, "third energy (eV)"],
-                 ["E4", Type.Float, None, "fourth energy (eV)"],
-                 ["E0", Type.Float, None, "edge energy (eV)"],
-                 ["deltaE1", Type.Float, None, "Energy resolution (eV)"],
-                 ["deltaE2", Type.Float, None, "Energy resolution (eV)"],
-                 ["deltaK", Type.Float, None,
-                  "K resolution (A^-1) between first and second point"],
-                 ['filename', Type.String, None, "filename to extract data"],
-                 ["intTime", Type.Float, 0.5, "Integration time by point"],
-                 ["speedLim", Type.Boolean, True, ("Active the verification "
-                                                   "of the speed and "
-                                                   "integration time")],
-                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
-                                                 "opening of Front End")]]
-    mem_overload = 1000000
-
-    def run(self, e1, e2, e3, e4, e0, deltaE1, deltaE2, deltaK, filename,
-            int_time, speed_lim, wait_fe):
-
-        try:
-            run_cleanup = True
-
-            # First region
-            nr_points1 = getNrOfPoints(e1, e2, deltaE1)
-            scan_time1 = nr_points1 * int_time
-            mem_1 = nr_points1 * scan_time1
-            # Run the startup but not the cleanup
-            qExafsScan1, pars = self.createMacro('qExafs', e1, e2, nr_points1,
-                                                 scan_time1, speed_lim, wait_fe,
-                                                 True, False)
-
-            if mem_1 > self.mem_overload:
-                raise Exception(('You can not send this scan, because there is '
-                                 'not enough memory. The deltaE1 is too '
-                                 'small'))
-
-            # Second region
-            nr_points2 = getNrOfPoints(e2, e3, deltaE2)
-            scan_time2 = nr_points2 * int_time
-            mem_2 = nr_points2 * scan_time2
-            # Don't run the startup and the cleanup
-            qExafsScan2, pars = self.createMacro('qExafs', e2, e3, nr_points2,
-                                                 scan_time2, speed_lim, wait_fe,
-                                                 False, False)
-
-            if mem_2 > self.mem_overload:
-                raise Exception(('You can not send this scan, because there is '
-                                 'not enough memory. The deltaE2 is too '
-                                 'small'))
-
-            # Third region
-            h2_2me = 1.505e-18  # Constans h2/2me = 1.505 eVnm2
-            e3_e0 = abs(e3 - e0)
-            deltaE3 = (sqrt(e3_e0) - (deltaK * 1e10) * (
-                sqrt(h2_2me))) ** 2 - e3_e0
-            deltaE3 = abs(deltaE3)
-            nr_points3 = getNrOfPoints(e3, e4, deltaE3)
-            scan_time3 = nr_points3 * int_time
-            mem_3 = nr_points3 * scan_time3
-            # Run the cleanup but not the startup
-            qExafsScan3, pars = self.createMacro('qExafs', e3, e4, nr_points3,
-                                                 scan_time3, speed_lim, wait_fe,
-                                                 False, True)
-
-            if mem_3 > self.mem_overload:
-                raise Exception(('You can not send this scan, because there is '
-                                 'not enough memory. The deltaK is too '
-                                 'small'))
-
-            # Show the estimate time of the spectrum
-            total_time = (scan_time1 + scan_time2 + scan_time3) / 60.0
-            msg = 'The estimated time of the spectrum is %f min.' % total_time
-            self.info(msg)
-
-            self.runMacro(qExafsScan1)
-            self.runMacro(qExafsScan2)
-            self.runMacro(qExafsScan3)
-            run_cleanup = False
-            fname = '%s/%s.dat' % (self.getEnv('ScanDir'), filename)
-            self.execMacro('extractlastexafs %s 3 none' % (fname))
-
-        finally:
-            if run_cleanup:
-                self.execMacro('qExafsCleanup')
-
-
-class aEscan(Macro):
-    """
-    Macro to run a step scan. The macro verifies if the front end is open before
-    to measure in each point.
-    """
-    param_def = [['motor', Type.Moveable, None, 'Moveable to move'],
-                 ['start_pos',  Type.Float,   None, 'Scan start position'],
-                 ['final_pos',  Type.Float,   None, 'Scan final position'],
-                 ['nr_interv',  Type.Integer, None, 'Number of scan intervals'],
-                 ['integ_time', Type.Float,   None, 'Integration time']]
-
-    def pre_acquisition(self):
-        self.execMacro('waitFE')
-
-    def prepare(self, *args):
-        mg = self.getEnv('DefaultMG')
-        self.setEnv('ActiveMntGrp', mg)
-
-    def run(self, motor, start_pos, final_pos, nr_interv, integ_time):
-        macro_ascan, _ = self.createMacro('ascan', motor, start_pos, final_pos,
-                                          nr_interv, integ_time)
-
-        macro_ascan.hooks = [(self.pre_acquisition, ["pre-acq"]), ]
-
-        self.runMacro(macro_ascan)
-
-
-###############################################################################
-# Trigger by position
-###############################################################################
-
-class qExafsPos(Macro):
-    """
-    Macro to execute the quick Exafs experiment.
-    """
-
-    env = ('ContScanMG',)
-    motName = "energy"
-    # motName = "oh_dcm_bragg"
-    pmacName = "pmac"
-
-    masterTriggerName = "bl22/io/ibl2202-dev1-ctr0"
-
-    mem_overload = 1000000
-    hints = {}
-
-    param_def = [["startPos", Type.Float, None, "Starting position"],
-                 ["endPos", Type.Float, None, "Ending pos value"],
-                 ["nrOfTriggers", Type.Integer, None, "Nr of triggers"],
-                 ["scanTime", Type.Float, None, "Scan time"],
-
-                 ["speedLim", Type.Boolean, True, ("Active the verification "
-                                                   "of the speed and "
-                                                   "integration time")],
-                 ["waitFE", Type.Boolean, True, ("Active the waiting for "
-                                                 "opening of Front End")],
-
-                 ["runStartup", Type.Boolean, True, 'run qExasfStartup'],
-                 ["runCleanup", Type.Boolean, True, 'run qExasfCleanup'],
-
-                 ["pmacDelay", Type.Float, 0.01, ("Delay to run the motion "
-                                                  "of the speed and "
-                                                  "integration time")],
-
-                 ["acqTime", Type.Float, 99, ("Acquisition time per trigger. "
-                                              "Expressed in percentage of time"
-                                              " per trigger (scanTime/"
-                                              "nrOfTriggers)")],
-                 ["nrOfRepeats", Type.Integer, 1, "NrOfRepeats"],
-                 ["backAndForth", Type.Boolean, False, ('Scan in both'
-                                                        'directions')]]
-
-    def preConfigure(self):
-        self.debug("preConfigure entering...")
-        self.debug('Configuring Pmac...')
-        pmac = taurus.Device(self.pmacName)
-        # select the compare program
-        pmac.SetPVariable([4077, 2])
-        # prepare encoder table
-        energy_values = linspace(self.startPos, self.finalPos,
-                                 self.nrOfTriggers)
-        enc_values = energy_bragg_encoder(energy_values)
-        first_point_register_a = enc_values[0]
-        if (self.startPos < self.finalPos):
-            direction = 0
-            first_point_register_b = first_point_register_a + 5
-        else:
-            direction = 1
-            first_point_register_b = first_point_register_a - 5
-        pmac.SetPVariable([4075, direction])
-        pmac.SetPVariable([4078, self.nrOfTriggers])
-        start_buffer = int(pmac.GetPVariable(4076))
-        end_buffer = start_buffer + self.nrOfTriggers
-        for p_reg, value in zip(range(start_buffer, end_buffer), enc_values):
-            pmac.SetPVariable([p_reg, value])
-
-        # Configure the PLC0:
-        # first point on the compare register A&B
-        # set auto-increment to 0 to avoid the eneble of the compare circuit
-        # set output to start on Low Level
-        # update the signal output
-
-        pmac.SetMVariable([108, first_point_register_a])
-        pmac.SetMVariable([109, first_point_register_b])
-        pmac.SetMVariable([110, 0])
-        pmac.SetMVariable([112, 0])
-        pmac.SetMVariable([111, 1])
-
-        # enabling plc0 execution
-        pmac.SetIVariable([5, 3])
-        if self.run_startup:
-            self.execMacro('qExafsStartupPos')
-        if self.wait_fe:
-            self.execMacro('waitFE')
-
-    def postConfigure(self):
-        self.debug('postConfigure entering...')
-        self.debug('Setting Pmac starting delay...')
-        dev = PyTango.DeviceProxy('bl22/io/ibl2202-dev1-ctr0')
-        delay = dev.read_attribute('InitialDelayTime').value
-        total_delay = 0
-        dev.write_attribute('InitialDelayTime', delay)
-
-    def postCleanup(self):
-        self.debug("postCleanup entering...")
-        pmac = taurus.Device(self.pmacName)
-        # disabling plc0 execution
-        pmac.SetIVariable([5, 2])
-
-    def prepare(self, *args, **kwargs):
-        # self.mg_bck = self.getEnv('ActiveMntGrp')
-        mg = self.getEnv('ContScanMG')
-        self.setEnv('ActiveMntGrp', mg)
-
-    def run(self, startPos, finalPos, nrOfTriggers, scanTime, speedLim, wait_fe,
-            run_startup, run_cleanup, pmac_delay, acqTime, nrOfRepeats,
-            backAndForth):
-        moveable = self.getMoveable(self.motName)
-        int_time = scanTime / nrOfTriggers
-        self.pmac_dt = pmac_delay
-        if speedLim:
-            if int_time < 0.5:
-                raise Exception(('You must use a higher integration time '
-                                 '(integration time = scanTime/nrOfTriggers).'
-                                 ' The minimum value is 0.5'))
-        else:
-            self.warning('The speed verification is desactive')
-
-        mem = nrOfTriggers * scanTime
-        if mem > self.mem_overload:
-            raise Exception(('You can not send this scan, because there is not '
-                             'enough memory. The combination of the nrOfTrigger'
-                             '*scanTime < 1000000'))
-
-        self.run_startup = run_startup
-        self.run_cleanup = run_cleanup
-        self.wait_fe = wait_fe
-
-        self.startPos = startPos
-        self.finalPos = finalPos
-        self.nrOfTriggers = nrOfTriggers
-        try:
-            for i in range(nrOfRepeats):
-                quickScanPosCapture, pars = self.createMacro("ascanct",
-                                                             moveable,
-                                                             startPos,
-                                                             finalPos,
-                                                             nrOfTriggers,
-                                                             int_time,
-                                                             acqTime)
-                quickScanPosCapture.hooks = [(self.preConfigure,
-                                              ["pre-configuration"]),
-                                             (self.postConfigure,
-                                              ["post-configuration"]),
-                                             (self.postCleanup,
-                                              ["post-cleanup"])]
-                self.debug("Running %d repetition" % i)
-                self.runMacro(quickScanPosCapture)
-                if backAndForth:
-                    self.debug("Swapping start with end")
-                    temp = startPos
-                    startPos = finalPos
-                    finalPos = temp
-
-        finally:
-            if self.run_cleanup:
-                mg = self.getEnv('DefaultMG')
-                self.setEnv('ActiveMntGrp', mg)
-                self.execMacro('qExafsCleanupPos')
-
-
-def energy_bragg_encoder(energy_values):
-    """
-    :param energy_values: Array with the energy values
-    :return: Array with the bragg encoder values
-    """
-
-    energy_motor = taurus.Device('pm/dcm_energy_ctrl/1')  # energy
-    bragg_motor = taurus.Device('motor/dcm_pmac_ctrl/1')  # oh_dcm_bragg
-    pmac = taurus.Device('bl22/ct/pmaceth-01')
-
-    # Translations from  degrees to raw counts. Getting an offset between
-    # position and encoder register (offset = 2683367)
-    stepPerUnit = bragg_motor.read_attribute('step_per_unit').value
-    braggMotorOffset = bragg_motor.read_attribute('offset').value
-    braggMotorOffsetEncCounts = braggMotorOffset * stepPerUnit
-    braggPosCounts = float(pmac.SendCtrlChar("P").split()[0])
-    encRegCounts = float(pmac.GetMVariable(101))
-    offset = braggPosCounts - encRegCounts + braggMotorOffsetEncCounts
-
-    # Transform from energy to bragg angle, the first motor is bragg the
-    # second on is the perpendicular
-    maxCounts = 2**23  # encoder register 24 bits overflow
-
-    calc_bragg = lambda energy: energy_motor.CalcAllPhysical([energy])[0]
-    calc_enc = lambda bragg: (bragg * stepPerUnit) - offset
-
-    enc_values = []
-    for energy in energy_values:
-        # transform energy to bragg angle
-        bragg = calc_bragg(energy)
-        enc = calc_enc(bragg)
-        if enc > maxCounts:
-            enc_value = enc - 2 * maxCounts
-        elif enc < - maxCounts:
-            enc_value = enc + 2 * maxCounts
-        else:
-            enc_value = enc
-        enc_values.append(int(enc_value))
-    return enc_values
-
-
-class qExafsStartupPos(Macro):
-    """
-    The macro configures the Adlink and the Ni660X for the
-    continuous scan
-    """
-
-    adlinks = ['bl22/ct/adc-ibl2202-01', 'bl22/ct/adc-ibl2202-02']
-    slave_triggers = ['bl22/io/ibl2202-dev1-ctr2', 'bl22/io/ibl2202-dev1-ctr4']
-    counters = ['bl22/io/ibl2202-dev1-ctr6', 'bl22/io/ibl2202-dev1-ctr7',
-                'bl22/io/ibl2202-dev2-ctr0', 'bl22/io/ibl2202-dev2-ctr1',
-                'bl22/io/ibl2202-dev2-ctr2', 'bl22/io/ibl2202-dev2-ctr3',
-                'bl22/io/ibl2202-dev2-ctr4', 'bl22/io/ibl2202-dev2-ctr5',
-                'bl22/io/ibl2202-dev2-ctr6', 'bl22/io/ibl2202-dev2-ctr7']
-
-    ni_devName = 'bl22/io/ibl2202-dev1'
-    timer_trigger = '/Dev1/RTSI0'
-    timer_PFI = '/Dev1/PFI36'
-    master_timer = 'bl22/io/ibl2202-dev1-ctr0'
-
-    def run(self):
-        self.debug('Configuring Adlink...')
-        for adlink in self.adlinks:
-            adc = taurus.Device(adlink)
-            if adc.State() != PyTango.DevState.STANDBY:
-                adc.Stop()
-
-        self.debug('Configuring NI660X...')
-        ni_devs = self.slave_triggers + self.counters + [self.master_timer]
-        for ni_dev in ni_devs:
-            self.debug(ni_dev)
-            dev = taurus.Device(ni_dev)
-            dev.init()
-
-        dev = PyTango.DeviceProxy(self.ni_devName)
-        dev.ConnectTerms([self.timer_PFI, self.timer_trigger,
-                          "DoNotInvertPolarity"])
-
-        dev = PyTango.DeviceProxy(self.master_timer)
-        dev["StartTriggerSource"] = '/Dev1/PFI39'
-        dev["StartTriggerType"] = "DigEdge"
-
-        for trigger in self.slave_triggers:
-            dev = PyTango.DeviceProxy(trigger)
-            dev["StartTriggerSource"] = self.timer_trigger
-            dev["StartTriggerType"] = "DigEdge"
-
-        for ni_count in self.counters:
-            dev_proxy = PyTango.DeviceProxy(ni_count)
-            dev_proxy.write_attribute("SampleClockSource", self.timer_trigger)
-            dev_proxy.write_attribute('SampleTimingType', "SampClk")
-            if self.counters.index(ni_count) > 4:
-                dev_proxy.write_attribute(
-                    "DataTransferMechanism", 'Interrupts')
-
-        self.info("qExafs startup is done")
-
-
-class qExafsCleanupPos(Macro):
-    param_def = []
-    adlinks = ['bl22/ct/adc-ibl2202-01', 'bl22/ct/adc-ibl2202-02']
-    triggers = ['bl22/io/ibl2202-dev1-ctr0', 'bl22/io/ibl2202-dev1-ctr2',
-                'bl22/io/ibl2202-dev1-ctr4']
-    counters = ['bl22/io/ibl2202-dev1-ctr6', 'bl22/io/ibl2202-dev1-ctr7',
-                'bl22/io/ibl2202-dev2-ctr0', 'bl22/io/ibl2202-dev2-ctr1',
-                'bl22/io/ibl2202-dev2-ctr2', 'bl22/io/ibl2202-dev2-ctr3',
-                'bl22/io/ibl2202-dev2-ctr4', 'bl22/io/ibl2202-dev2-ctr5',
-                'bl22/io/ibl2202-dev2-ctr6', 'bl22/io/ibl2202-dev2-ctr7']
-
-    ni_devName = 'bl22/io/ibl2202-dev1'
-    timer_trigger = '/Dev1/RTSI0'
-    timer_PFI = '/Dev1/PFI36'
-    master_timer = 'bl22/io/ibl2202-dev1-ctr0'
-
-    def run(self):
-
-        self.debug('Configuring Adlink...')
-        for adlink in self.adlinks:
-            adc = taurus.Device(adlink)
-            if adc.State() != PyTango.DevState.STANDBY:
-                adc.Stop()
-            else:
-                adc.Init()
-                # in case of stopping acq, state is alredy STANDBY, but it does
-                # not allow starting new acq @todo in DS
-            adc.getAttribute("TriggerSources").write("SOFT")
-            adc.getAttribute("TriggerMode").write(0)
-            adc.getAttribute("TriggerInfinite").write(0)
-
-        # in case of aborting qExafs macro, seems that there is an exception in
-        # aborting adlink device,
-        # to be sure stopping trigger lines if they were not stopped.
-        self.debug('Configuring NI660X...')
-        ni_devs = self.triggers + self.counters
-        for ni_dev in ni_devs:
-            dev = taurus.Device(ni_dev)
-            dev.init()
-        #             if dev.State() != PyTango.DevState.STANDBY:
-        #                 dev.Stop()
-
-        dev = PyTango.DeviceProxy(self.ni_devName)
-        dev.ConnectTerms([self.timer_PFI, self.timer_trigger,
-                          "DoNotInvertPolarity"])
-
-        dev_timer = PyTango.DeviceProxy(self.master_timer)
-        dev_timer.write_attribute('InitialDelayTime', 0)
-        dev_timer.write_attribute('LowTime', 0.001)
-        dev_timer.write_attribute('SampPerChan', long(1))
-
-        for ni_count in self.counters:
-            dev_proxy = PyTango.DeviceProxy(ni_count)
-            dev_proxy.write_attribute("PauseTriggerType", "DigLvl")
-            dev_proxy.write_attribute('PauseTriggerSource', self.timer_trigger)
-            dev_proxy.write_attribute("PauseTriggerWhen", "Low")
-
-        self.info("qExafs cleanup is done")

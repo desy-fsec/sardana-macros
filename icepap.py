@@ -373,7 +373,8 @@ def ipap_reset_motor(self, motor):
     self.info(msg)
 
     waitSeconds(self, 5)
-    _initCrate(self, ctrl_obj, crate_nr)
+    self.debug("RESET finished")
+    #_initCrate(self, ctrl_obj, crate_nr)
 
     try: 
         efrom, eto = getResetNotificationAuthorAndRecipients(self)
@@ -385,7 +386,8 @@ def ipap_reset_motor(self, motor):
     ms_name = ms.get_name()
     efrom = '%s <%s>' % (ms_name,efrom)
     subject = SUBJECT % icepap_host
-    message =  'Macro: ipap_reset_motor(%s)\n' % motor_name
+    message =  'Summary:\n'
+    message +=  'Macro: ipap_reset_motor(%s)\n' % motor_name
     message += 'Pool name: %s\n' % pool_obj.name()
     message += 'Controller name: %s\n' % ctrl_name
     message += 'Motor name: %s\n' % motor_name
@@ -601,5 +603,16 @@ def _initCrate(macro, ctrl_obj, crate_nr):
             macro.info("Initializing %s..." % alias)
             try:
                 m.command_inout('Init')
+		# HOTFIX!!! only if offsets are lost 24/12/2016
+		#print 'IMPORTANT: OVERWRITTING centx/centy offsets!'
+		#if alias == 'centx':
+                #    centx_offset = -4.065240223463690
+		#    m['offset'] = centx_offset
+                #    print 'centx offset overwritten: %f' % centx_offset
+		#if alias == 'centy':
+                #    centy_offset = -2.759407821229050
+		#    m['offset'] = centy_offset
+                #    print 'centy offset overwritten: %f' % centy_offset
+
             except Exception:
                 macro.error('axis %s cannot be initialized' % alias)

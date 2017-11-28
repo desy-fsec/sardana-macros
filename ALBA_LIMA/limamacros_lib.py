@@ -52,10 +52,12 @@ class lima_saving(Macro):
                  ['Prefix', Type.String, None, 'Prefix for the experiment.'],
                  ['Format', Type.String, 'EDF', 'File format'],
                  ['Autosave' , Type.Boolean, True, 
-                  'Flag to save all frames automatically']]
+                  'Flag to save all frames automatically'],
+                 ['NextNumber', Type.Integer, 0, 'Number for the first image']
+                 ]
 
     @catch_error
-    def run(self,dev,basedir,prefix,fileformat,auto):
+    def run(self,dev,basedir,prefix,fileformat,auto,next):
         lima = taurus.Device(dev)
         lima.set_timeout_millis(30000)
 
@@ -80,6 +82,8 @@ class lima_saving(Macro):
         lima.write_attribute('saving_prefix', prefix)
         self.debug('Writing saving_format to %s' % fileformat)
         lima.write_attribute('saving_format', fileformat)
+        self.debug('Writing image next number to %s' % next)
+        lima.write_attribute('saving_next_number', next)
 
 
 

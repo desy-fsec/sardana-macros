@@ -7,7 +7,7 @@ from trigger import PositionBase, Trigger
 from macro_utils.macroutils import SoftShutterController
 
 MAR_EXTRA_ACQ_TIME = 0.8
-
+DIFF_ACQ_TIME = 0.0
 class BaseExp:
 
     def init(self):
@@ -18,7 +18,7 @@ class BaseExp:
         self.countId = None         #id of the measurement group count
         self.marSave = None         #writing or not lima file
         self.rayonixSpecific = taurus.Device("rayonix_custom") #lima device implementing specifics of rayonix detector
-        self.hpDiode = taurus.Device("hpi") # hp diode actuator device   
+        #self.hpDiode = taurus.Device("hpi") # hp diode actuator device   
         self.debug("BaseExp.init() leaving...")
         self.rayonixCCD = taurus.Device('bl04/eh/rayonixlima')
 
@@ -31,6 +31,14 @@ class BaseExp:
             self.info("Dark image must be taken first")
             self.info("Execute martake_bg")
             raise Exception("Marccd is not ready to start an acquisition.")
+
+
+        #To Prevent wrong State on prepareAcquisition
+        if acq == 'Running':
+            self.info("On checkDetector,  %s Detector is in Running State, "
+                      "stopping...")
+            self.execMacro('lima_stop','rayonix')
+
 
         self.marSave = self.getEnv("MarSave")
         if self.marSave:
@@ -47,10 +55,12 @@ class BaseExp:
 
     def checkDiode(self):
         self.debug("BaseExp.checkDiode() entering...")        
-        hpi_status = self.hpDiode.read_attribute('value').value
+        #hpi_status = self.hpDiode.read_attribute('value').value
+        hpi_status = self.getDevice("bl04/ct/eps-plc-01").read_attribute('pd_eh01_diode').value
         if hpi_status == 0:
             self.warning("Diode is in, so move it out!!!")
-            self.hpDiode.write_attribute('value', 1)
+            #self.hpDiode.write_attribute('value', 1)
+            self.getDevice("bl04/ct/eps-plc-01").write_attribute('pd_eh01_diode', 1)
         self.debug("BaseExp.checkDiode() leaving...")
 
     def prepareDetector(self):
@@ -58,7 +68,10 @@ class BaseExp:
         if self.marSave:
             self.execMacro(['lima_saving', 'rayonix', self.marDir, self.marFile, 'EDF', False]) #we write the file manually 
         latency = 2.5
+        #self.execMacro(['lima_nextimage', 'rayonix', 1])
         self.execMacro(['lima_prepare', 'rayonix', self.marAcqTime, latency])
+        #To set 1 the first image
+        #self.execMacro(['lima_nextimage', 'rayonix', 1])
         #taking the real file information
         self.marDir = self.execMacro(['lima_getconfig','rayonix', 'FileDir']).getResult()
         self.marFile = self.execMacro(['lima_getconfig','rayonix', 'FilePrefix']).getResult()
@@ -77,6 +90,7 @@ class BaseExp:
         cfg = self.mntGrp.getConfiguration()
         cfg.prepare()
         self.mntGrp.putIntegrationTime(self.mntGrpAcqTime)
+        self.debug("BaseExp.prepareMntGrp(): configuring %f as Integration Time..." % self.mntGrpAcqTime)
         self.debug("BaseExp.prepareMntGrp() leaving...")
 
     def acquireDetector(self):
@@ -92,12 +106,14 @@ class BaseExp:
     def waitMntGrp(self):
         self.debug("BaseExp.waitMntGrp() entering...")
         self.mntGrp.waitFinish(id=self.countId)
+        self.countId = None
         self.debug("BaseExp.waitMntGrp() leaving...")    
 
     def monitorDetector(self, wait_time = 0.2):
         self.debug("BaseExp.monitorDetector() entering...")
         while True:
             self.pausePoint()
+            self.checkPoint()
             acq = self.rayonixCCD.read_attribute('acq_status').value
             self.debug('RayonixCCD state is %s' % acq)
             if acq != 'Running':
@@ -120,7 +136,8 @@ class BaseExp:
         try:
             data = self.mntGrp.getValues()
             headerCounters, headerValues = [], []
-            for ch_info in self.mntGrp.getChannelsInfo():
+            #for ch_info in self.mntGrp..getChannelsInfo()
+            for ch_info in self.mntGrp.getChannelsEnabledInfo():
                 headerCounters.append(ch_info.label)
                 if ch_info.shape > [1]:
                     value = ch_info.shape
@@ -149,11 +166,12 @@ class BaseExp:
         except Exception, e:
             self.error("Error while populating header with _marpar macro result.")
             self.debug(e)
-                
+        
         header = "0;" + "|".join(headerLines)
+
         self.debug("BaseExp.populateHeader() setting lima header: %s" % header)
 
-        self.execMacro(['lima_image_header','rayonix', header]) 
+        self.execMacro(['lima_image_header','rayonix', [header]]) 
         self.debug("BaseExp.populateHeader() leving...")
 
     def writeImage(self):
@@ -168,16 +186,19 @@ class BaseExp:
     def abortAcq(self):
         self.debug('Abort the acquisition')
         if self.countId:
+            self.debug('abortAcq, waitFinish()')
             self.mntGrp.waitFinish()
         self.debug('Cleaned the event object of the Measurmente Group')
         self.rayonixCCD.stopAcq()
-        self.debug('Stop the rayonix')
         while True:     
             acq = self.rayonixCCD.read_attribute('acq_status').value
             self.debug('RayonixCCD state is %s' % acq)
             if acq != 'Running':
                 break
             time.sleep(0.2)
+
+
+
     
 class SoftShutterController:
 
@@ -228,7 +249,22 @@ class BaseScan(BaseExp):
         self.endPos = args[2]
         self.acqTime = args[3]
         self.marAcqTime = self.acqTime + MAR_EXTRA_ACQ_TIME
-        self.mntGrpAcqTime = self.acqTime - 0.02
+        #self.mntGrpAcqTime = self.acqTime - 0.02
+        self.mntGrpAcqTime = self.acqTime - DIFF_ACQ_TIME
+        #Check if the beam is available if is necessary
+        try:
+            need_beam = self.getEnv("_beamcheckEnable")
+            if need_beam:
+                while not self.execMacro("_beamcheckOK","60").getResult():
+                   self.output("Problem with incoming beam, so wait 1 min")
+                   self.execMacro("wait","60")
+            else:
+                self.error("!!!!!!! WARNING, _beamcheckEnable is disable Type\nsenv _beamcheckEnable True\nto enable it ")
+
+        except:
+            self.debug("Error occurred on check the beam")
+            pass
+
         self.debug("BaseScan.checkParams(%s) leaving..." % repr(args))    
 
     def prepareMotion(self):
@@ -284,15 +320,20 @@ class BaseScan(BaseExp):
         self.motor.write_attribute("position", self.postEndPos)
         self.debug("BaseScan.moveToPostend() leaving...")
 
-    def cleanup(self):
+    def cleanup(self, go_to_start_pos=True):
         self.debug("BaseScan.cleanup() entering...")
         self.motor.stop()
+        #if self.oldVel:
         self.motor.write_attribute("velocity", self.oldVel)
         #icepap recalculated acceleration, overwritting it
+        #if self.accTime:
         self.motor.write_attribute("acceleration", self.accTime)
-        self.motor.move(self.currentPos)
-        self.motor.move(self.currentPos)
-        self.info("Move %s back to initial position : %.4f" % (self.motor.name,self.currentPos) )
+
+        #To Go Back to Start Position at the end of the Scan
+        if go_to_start_pos:# and self.currentPos:            
+            self.motor.move(self.currentPos)
+            self.motor.move(self.currentPos)
+            self.info("Move %s back to initial position : %.4f" % (self.motor.name,self.currentPos) )
         self.debug("BaseScan.cleanup() leaving...")
 
 class mar_scan(Macro, BaseScan):
@@ -305,7 +346,9 @@ class mar_scan(Macro, BaseScan):
     param_def = [[ 'motor', Type.Motor, None, 'Motor to scan'],
                 [ 'start_pos', Type.Float, None, 'Start position'],
                 [ 'end_pos', Type.Float, None, 'End position'],
-                [ 'time', Type.Float, None, 'Count time']]
+                [ 'time', Type.Float, None, 'Count time'],
+                [ 'back_motor', Type.Boolean, True, 'Back to start position at '
+                                                 'the end']]
 
     POS_CTR_NAME_HP_SOM = 'bl04/io/ibl0403-dev1-ctr5' # hp_som position in NI660X
     POS_CTR_NAME_HP_SXD = 'bl04/io/ibl0403-dev1-ctr4' # hp_sxd position in NI660X
@@ -324,19 +367,24 @@ class mar_scan(Macro, BaseScan):
 
     def _configNi(self):
         self.debug("mar_scan._configNi() entering...")
-        self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_3_NAME))
-        self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_4_NAME))
+    
+        #self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_3_NAME))
+        #self.execMacro('ni_app_change %s ' % ' '.join(self.BLADE_4_NAME))
         self.debug("mar_scan._configNi() leaving...")
 
     def _restoreNi(self):
         self.debug("mar_scan._restoreNi() entering...")
-        self.execMacro('ni_default %s' % self.BLADE_3_NAME[0])
-        self.execMacro('ni_default %s' % self.BLADE_4_NAME[0])
+        #self.execMacro('ni_default %s' % self.BLADE_3_NAME[0])
+        #self.execMacro('ni_default %s' % self.BLADE_4_NAME[0])
         self.debug("mar_scan._restoreNi() leaving...")
 
     def checkParams(self, args):
         self.debug("mar_scan.checkParams(%s) entering..." % repr(args))
         BaseScan.checkParams(self, args)
+
+        #True/False: Go to back position at the end?
+        self.go_to_start_pos = args[4]
+
         motName = self.motor.name
         allowedMotors = ["hp_som"]
         if motName not in allowedMotors:
@@ -406,20 +454,24 @@ class mar_scan(Macro, BaseScan):
 
     def closeShutter(self):
         self.debug("mar_scan.closeShutter() entering...")
-        self.posBase.stop()
-        self.blade3.stop()
-        self.blade4.stop()
+        if self.posBase:
+            self.posBase.stop()
+        if self.blade3:
+            self.blade3.stop()
+        if self.blade4:
+            self.blade4.stop()
         self.debug("mar_scan.closeShutter() leaving...")
 
     def cleanup(self):
         self.debug("mar_scan.cleanup() entering...")
         self.closeShutter()
-        BaseScan.cleanup(self)
+        BaseScan.cleanup(self, self.go_to_start_pos)
         self.debug("mar_scan.cleanup() leaving...")
         
     def run(self, *args, **kwargs):
         #preparing the scan
         try:
+            t0 = time.time()
             self.init()
             self._configNi()
             self.checkParams(args)
@@ -429,28 +481,41 @@ class mar_scan(Macro, BaseScan):
             self.prepareDetector()
             self.prepareMntGrp()
             self.prepareShutter()
+            self.warning('-------> Elapsed time (Checking and Preparing) : %.4f sec' %(time.time() - t0) )
             self.moveToPrestart()
-            #dev = PyTango.DeviceProxy("bl04/io/ibl0403-dev1")
-            #dev.command_inout("ConnectTerms", ["/Dev1/PFI36", "/Dev1/PFI28", "DoNotInvertPolarity"])#ctr0.out (blade3) -> ctr2.out
-            #dev.command_inout("ConnectTerms", ["/Dev1/PFI27", "/Dev1/PFI16", "DoNotInvertPolarity"])#ctr3.src (PhaseA) -> ctr5.out
-            #dev.command_inout("ConnectTerms", ["/Dev1/PFI25", "/Dev1/PFI12", "DoNotInvertPolarity"])#ctr3.dir (PhaseB) -> ctr6.out
-            self.startShutter()
 
+            self.startShutter()
             self.moveToPostend()
+
             self.acquireDetector() # detector has to start acquiring before shutter is opened
+
+            self.debug("mar_scan. WAITING %f before to acquireMntGrp" % self.accTime)
             time.sleep(self.accTime)
             self.acquireMntGrp() # mnt grp have to start acquiring when shutter is already opened
+
             self.monitorDetector()
+            self.warning('-------> Elapsed time (End 2D Integrating) : %.4f sec' %(time.time() - t0) )
+            t1 = time.time()
+
             self.waitMntGrp()
+
             self.populateHeader()
+            self.warning('-------> Elapsed time (End Meas group) / (since End 2D integrating) : %.4f sec / %.4f sec' %(time.time() - t0,time.time()-t1) )
             if self.marSave:
                 self.writeImage()
+            if self.getEnv("MarProcess") : self.execMacro("_runovedf")
+            #self.warning('-------> Elapsed time (Total) : %.4f sec' %(time.time() - t0) )
         finally:
             #dev.command_inout("DisconnectTerms", ["/Dev1/PFI36", "/Dev1/PFI28"])
             #dev.command_inout("DisconnectTerms", ["/Dev1/PFI27", "/Dev1/PFI16"])
             #dev.command_inout("DisconnectTerms", ["/Dev1/PFI25", "/Dev1/PFI12"])
             self.cleanup()
+            self.warning('-------> Elapsed time (Total) : %.4f sec' %(time.time() - t0) )
             #self._restoreNi()
+
+    def on_abort(self):
+        #self.warning("Aborting mar_scan Macro..")
+        self.abortAcq()
 
 class mar_softscan(Macro, BaseScan, SoftShutterController):
 
@@ -523,13 +588,33 @@ class mar_ct(Macro, BaseExp, SoftShutterController):
     def checkParams(self, args):
         self.debug("mar_ct.checkParams(%s) entering..." % repr(args))
         self.acqTime = args[0]
+        if self.acqTime > 50:
+            raise Exception("mar_ct acquisition time can not exceed 50 seconds")
+
         self.marAcqTime = self.acqTime + MAR_EXTRA_ACQ_TIME
-        self.mntGrpAcqTime = self.acqTime - 0.02
+        #self.mntGrpAcqTime = self.acqTime - 0.02
+        self.mntGrpAcqTime = self.acqTime - DIFF_ACQ_TIME
         #self.mntGrpAcqTime = 0.1
+
+        #Check _beamcheckEnable environment variable to wait beam
+        try:
+            need_beam = self.getEnv("_beamcheckEnable")
+            if need_beam:
+                while not self.execMacro("_beamcheckOK","60").getResult():
+                   self.output("Problem with incoming beam, so wait 1 min")
+                   self.execMacro("wait","60")
+            else:           
+                self.error("!!!!!!! WARNING, _beamcheckEnable is disable Type\nsenv _beamcheckEnable True\nto enable it ")
+
+        except:
+            self.debug("Error occurred on check the beam")
+            pass
+
         self.debug("mar_ct.checkParams(%s) leaving..." % repr(args))    
 
     def run(self, *args, **kwargs):
         try:
+            t0 = time.time()
             BaseExp.init(self)
             SoftShutterController.init(self)
             self.checkParams(args)
@@ -538,22 +623,33 @@ class mar_ct(Macro, BaseExp, SoftShutterController):
             self.prepareShutter()
             self.prepareDetector()
             self.prepareMntGrp()
+            self.warning('-------> Elapsed time (Checking and Preparing) : %.4f sec' %(time.time() - t0) )
+            self.warning('...Integrating...')
             self.acquireDetector()
             self.exposureShutter()
             self.acquireMntGrp()
             self.monitorDetector()
+            self.warning('-------> Elapsed time (End 2D Integrating) : %.4f sec' %(time.time() - t0) )
+            t1 = time.time()
 
             self.waitMntGrp()
             self.populateHeader()
+            self.warning('-------> Elapsed time (End Meas group) / (since End 2D integrating) : %.4f sec / %.4f sec' %(time.time() - t0,time.time()-t1) )
             if self.marSave:
                 self.writeImage()
-        except:
+	    if self.getEnv("MarProcess") == 1 : self.execMacro("_runovedf")
+	    if self.getEnv("MarProcess") == 2 : self.execMacro("_runffcake")
+            self.warning('-------> Elapsed time (Total) : %.4f sec' %(time.time() - t0) )
+        except Exception as e:
             self.debug('abort out')
-            #self.on_abort()
+            self.error(e)
+            self.on_abort()
         finally:
             self.debug("Finally macro....")
             self.closeShutter()
 
     def on_abort(self):
-        self.warning("Please, wait 5 seconds before sending new command")
+        self.warning("Please, wait while restore the Detector ")
         self.abortAcq()
+        self.warning("Please, wait 5 seconds before sending new command")
+
