@@ -3,9 +3,9 @@ from bl13constants import (pentaaperpos_X, pentaaperpos_Z,
                            pentaaper_postolerance_X, pentaaper_postolerance_Z)
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
 
-PSEUDO='pentaaper'
+PSEUDO='aperture'
 
-class pentaaper_update(Macro):
+class aperture_update_configuration(Macro):
     """
     Category: Configuration
 
@@ -67,6 +67,7 @@ class pentaaper_update(Macro):
     def run(self):
         self.info('Sending calibration to %s.' % PSEUDO)
         try:
+            self.info(str(self.calibration))
             self.aperture.write_attribute('calibration', str(self.calibration))
             msg = 'done!'
             self.info(msg)
