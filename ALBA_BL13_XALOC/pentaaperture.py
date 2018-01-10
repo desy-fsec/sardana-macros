@@ -3,9 +3,10 @@ from bl13constants import (pentaaperpos_X, pentaaperpos_Z,
                            pentaaper_postolerance_X, pentaaper_postolerance_Z)
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
 
-PSEUDO='pentaaper'
+PSEUDO='aperture'
 
-class pentaaper_update(Macro):
+
+class aperture_update_configuration(Macro):
     """
     Category: Configuration
 
@@ -18,14 +19,14 @@ class pentaaper_update(Macro):
     the new calibration.
     """
 
-    def _createCalibration(self, pos, tol):
-        calib = []
+    def motor_fuzzy_positions_list(self, pos, tol):
+        flist = []
         for value, res in zip(pos, tol):
             min = value - res
             max = value + res
             p = [min, value, max]
-            calib.append(p)
-        return calib
+            flist.append(p)
+        return flist
 
     #param_def = [[]]
 
@@ -57,8 +58,8 @@ class pentaaper_update(Macro):
         # If the values are consistent, build the calibration
         if all(npos == x for x in size):
             self.calibration = []
-            self.calibration.append(self._createCalibration(xpos, xtol))
-            self.calibration.append(self._createCalibration(zpos, ztol))
+            self.calibration.append(self.motor_fuzzy_positions_list(xpos, xtol))
+            self.calibration.append(self.motor_fuzzy_positions_list(zpos, ztol))
             self.debug('Calibration:')
             self.debug(repr(self.calibration))
         else:
@@ -67,8 +68,9 @@ class pentaaper_update(Macro):
     def run(self):
         self.info('Sending calibration to %s.' % PSEUDO)
         try:
+            self.info(str(self.calibration))
             self.aperture.write_attribute('calibration', str(self.calibration))
-            msg = 'done!'
+            msg = '[done]'
             self.info(msg)
         except:
             raise Exception('Calibration cannot be sent to %s.' % PSEUDO)
