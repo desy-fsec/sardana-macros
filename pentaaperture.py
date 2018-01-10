@@ -5,6 +5,7 @@ from sardana.macroserver.macro import Macro, Type, ParamRepeat
 
 PSEUDO='aperture'
 
+
 class aperture_update_configuration(Macro):
     """
     Category: Configuration
@@ -18,14 +19,14 @@ class aperture_update_configuration(Macro):
     the new calibration.
     """
 
-    def _createCalibration(self, pos, tol):
-        calib = []
+    def motor_fuzzy_positions_list(self, pos, tol):
+        flist = []
         for value, res in zip(pos, tol):
             min = value - res
             max = value + res
             p = [min, value, max]
-            calib.append(p)
-        return calib
+            flist.append(p)
+        return flist
 
     #param_def = [[]]
 
@@ -57,8 +58,8 @@ class aperture_update_configuration(Macro):
         # If the values are consistent, build the calibration
         if all(npos == x for x in size):
             self.calibration = []
-            self.calibration.append(self._createCalibration(xpos, xtol))
-            self.calibration.append(self._createCalibration(zpos, ztol))
+            self.calibration.append(self.motor_fuzzy_positions_list(xpos, xtol))
+            self.calibration.append(self.motor_fuzzy_positions_list(zpos, ztol))
             self.debug('Calibration:')
             self.debug(repr(self.calibration))
         else:
@@ -69,7 +70,7 @@ class aperture_update_configuration(Macro):
         try:
             self.info(str(self.calibration))
             self.aperture.write_attribute('calibration', str(self.calibration))
-            msg = 'done!'
+            msg = '[done]'
             self.info(msg)
         except:
             raise Exception('Calibration cannot be sent to %s.' % PSEUDO)
