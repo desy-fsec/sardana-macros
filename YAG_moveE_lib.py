@@ -82,11 +82,8 @@ class YAG_moveE(Macro):
         # INITIAL E
         #LOW ZOOM ALIGNMENT
         if mode=='COMPLETE':
-            self.info('YAG_MOVEE: Low zoom: zoom set to 8')
-            diffractometer.movewaitzoom(8)
-            self.info('YAG_MOVEE: Low zoom: Finding correct MBAT attenuation and autofocusing')
-            transmission.YAG_mbat_adjust(170,20)
-            self.execMacro('autofocus')
+            diffractometer.movewaitzoom(9)
+            #self.execMacro('autofocus')
             transmission.YAG_mbat_adjust(210,100)
             self.info('YAG_MOVEE: ALIGNING at low  Zoom: finding beam and steering diftab...')
             self.execMacro('YAG_align diftab')
@@ -97,8 +94,6 @@ class YAG_moveE(Macro):
         diffractometer.movewaitzoom(12)
         
         self.info('YAG_MOVEE: Finding correct MBAT attenuation and autofocusing')
-        transmission.YAG_mbat_adjust(120,20)
-        self.execMacro('autofocus')
         transmission.YAG_mbat_adjust(230,100)
         self.info('YAG_MOVEE: ALIGNING: finding beam and steering diftab')
         self.execMacro('YAG_align diftab')
@@ -118,9 +113,6 @@ class YAG_moveE(Macro):
         else:
             #ALIGNMENT AND CONDITIONING AT FINAL E
             self.info('YAG_MOVEE: FINAL ALIGNMENT')
-            self.info('YAG_MOVEE: Finding correct MBAT attenuation and autofocusing')
-            transmission.YAG_mbat_adjust(120,20)
-            self.execMacro('autofocus')
             transmission.YAG_mbat_adjust(230,50)
             self.info('YAG_MOVEE: ALIGNING: finding beam and steering diftab')
             self.execMacro('YAG_align diftab')
