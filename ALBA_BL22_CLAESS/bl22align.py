@@ -2,7 +2,9 @@ import ConfigParser
 from sardana.macroserver.macro import Macro, Type
 import time
 
-BL_ENERGY_CONFIG = {'2.4keV': 'en < 5.6 and en >= 2.4',
+BL_ENERGY_CONFIG = {'2.4keV': 'en < 3.0 and en >= 2.4',
+                    '3.0keV': 'en < 4.0 and en >= 3.0',
+                    '4.0keV': 'en < 5.6 and en >= 4.0',
                     '5.6keV': 'en < 7.6 and en >= 5.6',
                     '7.6keV': 'en < 11.5 and en >= 7.6',
                     '11.5keV': 'en < 14 and en >= 11.5',
