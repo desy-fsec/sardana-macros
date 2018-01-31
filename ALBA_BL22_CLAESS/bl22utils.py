@@ -358,9 +358,10 @@ class GasFillBase(object):
             time.sleep(0.1)
         if state == PyTango.DevState.ALARM:
             status = self.device.status()
-            self.macro.error('The DS is in ALARM state: %s' % status)
+            raise RuntimeError('The DS is in ALARM state: %s' % status)
         else:
             self.macro.output('The process has ended successfully')
+
 
     def fill(self, values):
         self.macro.output('Starting the filling...')
@@ -368,14 +369,29 @@ class GasFillBase(object):
         for i in values:
             for j in i:
                 v.append(j)
+
         self.device.fill(v)
         self.wait()
-
+        msg_result = '  Ar: {0}%\n  He: {1}%\n  Kr: {2}%\n  Ne: {3}%\n  Xe: {4}%'
+        n2_attr_name = 'IO{0}N2'
+        he_attr_name = 'IO{0}He'
+        ar_attr_name = 'IO{0}Ar'
+        kr_attr_name = 'IO{0}Kr'
+        xe_attr_name = 'IO{0}Xe'
+        for i, e in values:
+            n2 = self.device.read_attribute(n2_attr_name.format(i)).value
+            he = self.device.read_attribute(he_attr_name.format(i)).value
+            ar = self.device.read_attribute(ar_attr_name.format(i)).value
+            kr = self.device.read_attribute(kr_attr_name.format(i)).value
+            xe = self.device.read_attribute(xe_attr_name.format(i)).value
+            self.macro.output('IO{0} Gases'.format(i))
+            self.macro.output(msg_result.format(ar, he, kr, n2, xe))
+        
     def clean(self, io):
         self.macro.output('Starting the purge...')
         self.device.clean(io)
         self.wait()
-
+    
     def stop(self):
         self.macro.output('Send stop to de device...')
         self.device.stop()
@@ -420,6 +436,52 @@ class gasFill(Macro):
 
     def on_abort(self):
         self.gas_filling.stop()
+
+
+class AluminiumValve(object):
+    def __init__(self, macro, timeout=10):
+        self.eps = PyTango.DeviceProxy('bl22/ct/eps-plc-02')
+        self.timeout = timeout
+        self.macro = macro
+        
+    def write(self, value):
+        t = time.time()
+        self.eps.write_attribute('VC_PNV_EH01_02', value)
+        while True:
+            self.macro.checkPoint()
+            v = self.eps.read_attribute('VC_PNV_EH01_02').value
+            if v == value:
+                break
+            if (time.time()-t) > self.timeout:
+                raise RuntimeError('The open/close the valve takes too'
+                                   'much time')
+            time.sleep(0.1)
+
+    def open(self):
+        self.write(1)
+
+    def close(self):
+        self.write(0)
+
+    
+class openAlValve(Macro):
+    param_def = [['timeout', Type.Float, 10,'Timeout']]
+
+    def run(self, timeout):
+         valve = AluminiumValve(self, timeout)
+         valve.open()
+
+
+class closeAlValve(Macro):
+    param_def = [['timeout', Type.Float, 10,'Timeout']]
+
+    def run(self, timeout):
+         valve = AluminiumValve(self, timeout)
+         valve.close()
+
+
+
+
 
 
 class set_mode(Macro):
