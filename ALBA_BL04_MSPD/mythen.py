@@ -40,8 +40,8 @@ class mythen_getThreshold(Macro):
         threshold = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -87,8 +87,8 @@ class mythen_setThreshold(Macro):
         threshold = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
         
@@ -132,8 +132,8 @@ class mythen_getIndex(Macro):
         index = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -178,8 +178,8 @@ class mythen_setIndex(Macro):
         index = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -222,8 +222,8 @@ class mythen_getOutFileName(Macro):
         fileName = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -264,8 +264,8 @@ class mythen_setOutFileName(Macro):
         fileName = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -304,8 +304,8 @@ class mythen_getOutDir(Macro):
         outDir = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -346,8 +346,8 @@ class mythen_setOutDir(Macro):
         outDir = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -386,8 +386,8 @@ class mythen_getExpTime(Macro):
         expTime = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -432,8 +432,8 @@ class mythen_setExpTime(Macro):
         expTime = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -476,8 +476,8 @@ class mythen_getFlatFieldDir(Macro):
         flatFieldDir = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -518,8 +518,8 @@ class mythen_setFlatFieldDir(Macro):
         flatFieldDir = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -559,8 +559,8 @@ class mythen_getFlatFieldFile(Macro):
         flatFieldFile = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -602,8 +602,8 @@ class mythen_setFlatFieldFile(Macro):
         flatFieldFile = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -656,8 +656,8 @@ class mythen_setPositions(Macro):
         positions = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -708,8 +708,8 @@ class mythen_getPositions(Macro):
         positions = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -923,8 +923,8 @@ class mythen_acquire(Macro):
         #error = self.slsDetectorProgram.getStdErr()
         
         #while True:
-            #outLine = output.readline();self.debug( "outLine: " + outLine)
-            #errLine = error.readline();self.debug("errLine: "  + errLine)
+            #outLine = output.readline()
+            #errLine = error.readline()
             #lenOutLine = len(outLine)
             #lenErrLine = len(errLine)
             #if lenOutLine != 0:
@@ -947,8 +947,8 @@ class mythen_acquire(Macro):
             #abortProgram = SlsDetectorPut(["status", "stop"])
             #abortProgram.execute()
             #while True:
-                #outLine = output.readline();self.debug( "outLine: " + outLine)
-                #errLine = error.readline();self.debug("errLine: "  + errLine)
+                #outLine = output.readline()
+                #errLine = error.readline()
                 #if lenOutLine != 0:
                     #self.output(outLine)
                 #if lenErrLine != 0:
@@ -978,8 +978,8 @@ class mythen_getStatus(Macro):
         status = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1027,8 +1027,8 @@ class mythen_getTiming(Macro):
         mode = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1077,8 +1077,8 @@ class mythen_setTiming(Macro):
         mode = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1135,8 +1135,8 @@ class mythen_getExtSignal(Macro):
         mode = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1194,8 +1194,8 @@ class mythen_setExtSignal(Macro):
         error = self.slsDetectorProgram.getStdErr()
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1238,8 +1238,8 @@ class mythen_getNrOfTriggers(Macro):
         nrOfTriggers = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1283,8 +1283,8 @@ class mythen_setNrOfTriggers(Macro):
         nrOfTriggers = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1327,8 +1327,8 @@ class mythen_getNrOfFramesPerTrigger(Macro):
         nrOfFramesPerTrigger = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1373,8 +1373,8 @@ class mythen_setNrOfFramesPerTrigger(Macro):
         nrOfFramesPerTrigger = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1417,8 +1417,8 @@ class mythen_getNrOfGates(Macro):
         nrOfGates = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1463,8 +1463,8 @@ class mythen_setNrOfGates(Macro):
         nrOfGates = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1507,8 +1507,8 @@ class mythen_getBinSize(Macro):
         binSize = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1552,8 +1552,8 @@ class mythen_setBinSize(Macro):
         binSize = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1596,8 +1596,8 @@ class mythen_getDr(Macro):
         dr = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1645,8 +1645,8 @@ class mythen_setDr(Macro):
         dr = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1689,8 +1689,8 @@ class mythen_getSettings(Macro):
         settings = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1734,8 +1734,8 @@ class mythen_setSettings(Macro):
         settings = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1778,8 +1778,8 @@ class mythen_getScan0Prec(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1824,8 +1824,8 @@ class mythen_setScan0Prec(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1868,8 +1868,8 @@ class mythen_getScan0Script(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1923,8 +1923,8 @@ class mythen_setScan0Script(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -1978,8 +1978,8 @@ class mythen_setScan1Script(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2023,8 +2023,8 @@ class mythen_getAngcallog(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2069,8 +2069,8 @@ class mythen_setAngcallog(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2114,8 +2114,8 @@ class mythen_getScan0Range(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2172,8 +2172,8 @@ class mythen_setScan0Range(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2469,8 +2469,8 @@ class mythen_getAngConv(Macro):
         error = self.slsDetectorProgram.getStdErr()
                 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2505,8 +2505,8 @@ class mythen_getBadChannels(Macro):
         error = self.slsDetectorProgram.getStdErr()
                 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2547,8 +2547,8 @@ class mythen_setBadChannels(Macro):
         error = self.slsDetectorProgram.getStdErr()
                 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2585,8 +2585,8 @@ class mythen_getGlobalOff(Macro):
         globaloff = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2633,8 +2633,8 @@ class mythen_setGlobalOff(Macro):
         globaloff = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -2680,8 +2680,8 @@ class mythen_setConfig(Macro):
         settings = None
         
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: "  + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3275,8 +3275,8 @@ class mythen_getScan0Prec(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3320,8 +3320,8 @@ class mythen_setScan0Prec(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3364,8 +3364,8 @@ class mythen_getScan0Script(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3412,8 +3412,8 @@ class mythen_setScan0Script(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3457,8 +3457,8 @@ class mythen_getAngcallog(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3503,8 +3503,8 @@ class mythen_setAngcallog(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3547,8 +3547,8 @@ class mythen_getEncallog(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3592,8 +3592,8 @@ class mythen_setEncallog(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3637,8 +3637,8 @@ class mythen_getScan0Range(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
@@ -3694,8 +3694,8 @@ class mythen_setScan0Range(Macro):
         parval = None
 
         while True:
-            outLine = output.readline();self.debug( "outLine: " + outLine)
-            errLine = error.readline();self.debug("errLine: " + errLine)
+            outLine = output.readline()
+            errLine = error.readline()
             lenOutLine = len(outLine)
             lenErrLine = len(errLine)
             if lenOutLine != 0:
