@@ -122,7 +122,6 @@ class GasFillBase(object):
             self.macro.output('The process has ended successfully')
 
     def fill(self, values):
-        self.macro.info('Starting the filling...')
         v = []
         is_open_al_valve = False
         io0_energy = 0
@@ -135,6 +134,7 @@ class GasFillBase(object):
             for j in i:
                 v.append(j)
 
+        self.macro.info('Starting the filling...')
         self.device.fill(v)
         self.wait()
         if is_open_al_valve and io0_energy > 4000:
