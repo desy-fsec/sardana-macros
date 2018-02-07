@@ -8,8 +8,8 @@ BL_ENERGY_CONFIG = {'2.4keV': 'en < 3.0 and en >= 2.4',
                     '5.6keV': 'en < 7.6 and en >= 5.6',
                     '7.6keV': 'en < 11.5 and en >= 7.6',
                     '11.5keV': 'en < 14 and en >= 11.5',
-                    '14keV': 'en < 35 and en >= 14',
-                    '35keV': 'en < 62.5 and en >=35'}
+                    '14keV': 'en < 45 and en >= 14',
+                    '45keV': 'en < 62.5 and en >=45'}
 
 CLEAR_111_ENERGY_CONFIG = {'6keV': 'en < 8.3 and en >= 6',
                            '8.3keV': 'en <= 13 and en >= 8.3'}
@@ -67,7 +67,7 @@ class ConfigAlign(object):
             if motor in self.motors_cal:
                 equation = pos
                 if motor == 'oh_dcm_xtal2_pitch':
-                    pos = self.calc_xtal2_pitch()
+                    pos = self.calc_xtal2_pitch(use_d=True)
                 else:
                     pos = eval(equation, {'en': self.energy})
             cmd += ' %s %s' % (motor, pos)
@@ -78,17 +78,19 @@ class ConfigAlign(object):
             cmds.append(cmd)
         return cmds
 
-    def calc_xtal2_pitch(self):
+    def calc_xtal2_pitch(self, use_d):
         equation = self.config_file.get(self.config, 'oh_dcm_xtal2_pitch')
         d = float(self.config_file.get(self.config, 'xtal2_pitch_d'))
+        if not use_d:
+            d = 0
         pos = eval(equation, {'en': self.energy, 'd': d})
         return pos
 
     def save_xtal2_pitch(self):
-        old_pos = self.calc_xtal2_pitch()
+        theo_pos = self.calc_xtal2_pitch(use_d=False)
         dev = self.getDevice('oh_dcm_xtal2_pitch')
         new_pos = dev.read_attribute('position').value
-        new_d = new_pos - old_pos
+        new_d = new_pos - theo_pos
         self.config_file.set(self.config, 'xtal2_pitch_d', new_d)
 
     def get_motors(self, instrument):
@@ -229,14 +231,14 @@ class MoveBeamline(ConfigAlign):
             self.config = last_config['configuration']
             self.equation = last_config['equation']
             self.printConfig()
-            motors = self.get_motors('mono')
-            self.info('Moving motors except oh_dcm_z and energy')
+            motors = ['oh_dcm_xtal2_pitch', 'oh_dcm_z']
+            self.info('Moving motors..')
             for motor in motors:
                 pos = self.config_file.get(self.config, motor)
                 if motor in self.motors_cal:
                     equation = pos
                     if motor == 'oh_dcm_xtal2_pitch':
-                        pos = self.calc_xtal2_pitch()
+                        pos = self.calc_xtal2_pitch(use_d=True)
                     else:
                         pos = eval(equation,{'en': self.energy})
                 if motor == 'oh_dcm_z':
