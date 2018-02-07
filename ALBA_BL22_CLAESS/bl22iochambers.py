@@ -125,6 +125,7 @@ class GasFillBase(object):
         v = []
         is_open_al_valve = False
         io0_energy = 0
+        self.macro.shc()
         for i in values:
             if i[0] == 0:
                 is_open_al_valve = True
@@ -145,7 +146,7 @@ class GasFillBase(object):
 
     def state(self):
         
-        msg_result = '  Ar: {0}%\n  He: {1}%\n  Kr: {2}%\n  Ne: {3}%\n  ' \
+        msg_result = '  Ar: {0}%\n  He: {1}%\n  Kr: {2}%\n  N2: {3}%\n  ' \
                      'Xe: {4}%'
         n2_attr_name = 'IO{0}N2'
         he_attr_name = 'IO{0}He'
@@ -164,6 +165,7 @@ class GasFillBase(object):
 
     def clean(self, io):
         self.macro.output('Starting the purge...')
+        self.macro.shc()
         self.device.clean(io)
         self.wait()
 
@@ -201,6 +203,18 @@ class getFill(Macro):
     def run(self):
         self.gas_filling = GasFillBase(self)
         self.gas_filling.state()
+
+
+class gasF(Macro):
+    """
+    Macro to fill the IO Chambers 0 and 1 with
+    the same energy
+    """
+
+    param_def = [["energy", Type.Integer, None, "energy value"]]
+
+    def run(self, energy):
+        self.gasFill([[0, energy], [1, energy]])
 
 
 class gasFill(Macro):
