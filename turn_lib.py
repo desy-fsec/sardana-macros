@@ -1,5 +1,7 @@
 from sardana.macroserver.macro import Macro, Type
 import taurus
+import time
+
 
 class turn(Macro):
 
@@ -96,3 +98,16 @@ class turnall(Macro):
           except:
              self.error('error %s' % motorname)
 
+class turn_motors_on(Macro):
+    '''
+           This macro is used to turn on all experimental hutch motors
+    '''
+
+    param_def = [
+                  
+                ]
+
+    def run(self):
+        self.info('turn_motors_on: Turning on all eh motors')
+        self.execMacro('turnall eh on')
+        time.sleep(2)
