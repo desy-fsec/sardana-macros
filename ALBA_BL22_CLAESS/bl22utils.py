@@ -242,11 +242,6 @@ class getScanID(Macro):
         return scanid
 
 
-
-
-
-
-
 class set_mode(Macro):
     """
     Macro to enable/disable the channel of mg_all measurement group
@@ -312,6 +307,26 @@ class set_mode(Macro):
         mg_manager = MGManager(self, mg, chns_names)
         mg_manager.enable_only_channels()
         mg_manager.status()
+
+
+class get_outfilename(Macro):
+    """
+    Macro to generate new output filename if the filename exists.
+    """
+    param_def = [['filename', Type.String, None, 'input filename']]
+    result_def = [['outFile', Type.String, None, 'output filename']]
+
+    def run(self, filename):
+        fname, ext = os.path.splitext(filename)
+        temp_filename = fname + '_{0}' + ext
+        count = 0
+        while True:
+            self.checkPoint()
+            new_filename = temp_filename.format(count)
+            if not os.path.exists(new_filename):
+                break
+            count += 1
+        return new_filename
 
 
 # Old version of set_mode macro
