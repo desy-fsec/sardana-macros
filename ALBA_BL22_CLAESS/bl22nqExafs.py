@@ -3,6 +3,7 @@ from sardana.macroserver.scan import CTScan, MoveableDesc
 from sardana.macroserver.macros.scan import getCallable, UNCONSTRAINED
 import taurus
 import PyTango
+import time
 from sardana.util.tree import BranchNode
 
 PMAC_REGISTERS = {'MotorDir': 4080, 'StartBuffer': 4081, 'RunProgram': 4082,
@@ -100,9 +101,7 @@ class qExafsc(Macro, Hookable):
         # TODO verify calculation of the start position on gscan
         # We need to move relative the bragg to solve the problem.
 
-        if self.config_pid:
-            self.setPID('new')
-
+   
         # Configure motor protection Sardana Bug
         if final_pos is None:
             self.macro.warning('CTScan is not prepared to protect '
@@ -129,7 +128,8 @@ class qExafsc(Macro, Hookable):
             self.ni_trigger.stop()
         self.ni_trigger['slave'] = slave
         self.ni_trigger['retriggerable'] = False
-
+        
+        
     def _prepare_plc0(self):
         self.debug('Configuring Pmac...')
 
@@ -139,12 +139,24 @@ class qExafsc(Macro, Hookable):
         bragg_offset = self.bragg['offset'].value
         bragg_pos = float(self.pmac.SendCtrlChar("P").split()[0])
         bragg_enc = float(self.pmac.GetMVariable(101))
-
+        
         # TODO: Use synchronization
-        th1 = self.energy.CalcAllPhysical([self.starts[0]])[0]
+        th1 = self.start_bragg
         offset_counts = bragg_pos - bragg_enc + (bragg_offset * bragg_spu)
 
         start_enc = (th1 * bragg_spu) - offset_counts
+        diff = abs(bragg_enc - start_enc)
+        
+        # check calculation
+        if not self.direction:
+            if bragg_enc < start_enc or diff < 80:
+                self.debug('wrong calculation %r %r' %(bragg_enc, start_enc))
+                self.mv([['oh_dcm_bragg', th1+0.002]])
+        else:
+            if bragg_enc > start_enc or diff < 80:
+                self.debug('wrong calcualtion %r %r' %(bragg_enc, start_enc))
+                self.mv([['oh_dcm_bragg', th1-0.002]])
+              
         if start_enc > overflow_pmac:
             start_enc = start_enc - 2 * overflow_pmac
         elif start_enc < -overflow_pmac:
@@ -153,13 +165,17 @@ class qExafsc(Macro, Hookable):
         self.pmac.SetPVariable([PMAC_REGISTERS['MotorDir'],
                                 long(self.direction)])
         self.pmac.SetPVariable([PMAC_REGISTERS['StartPos'], long(start_enc)])
-
+        
     def _post_configure_hook(self):
         self._gScan._index_offset = self.point_id
 
     def _pre_start_hook(self, final_pos=None):
         self._prepare_bragg(final_pos)
         self._prepare_plc0()
+        if self.config_pid:
+            self.setPID('new')
+        
+        
 
     def _post_move_hook(self):
         self.setPID('old')
@@ -197,6 +213,7 @@ class qExafsc(Macro, Hookable):
         self.bragg = taurus.Device(self.bragg_name)
         self.ni_trigger = taurus.Device(self.ni_trigger_name)
         self.energy = taurus.Device(self.energy_name)
+        self.ni_ch = taurus.Device('bl22/io/ibl2202-dev1-ctr0')
 
         self.direction = start_pos > ends_intervals_list[0][0]
 
@@ -269,17 +286,14 @@ class qExafsc(Macro, Hookable):
             step["waypoint_id"] = i
             self.starts = [starts_points[i]]
             self.finals = [waypoint]
-            step["positions"] = []
-            step["start_positions"] = []
 
-            for start, end, moveable_tree in zip(self.starts, self.finals,
-                                                 moveables_trees):
-                moveable_root = moveable_tree.root()
-                start_positions, end_positions = _calculate_positions(
-                    moveable_root, start, end)
-                # TODO: move 0.005 more
-                step["start_positions"] += start_positions
-                step["positions"] += end_positions
+            moveable_root = moveables_trees[0].root()
+            start_positions, end_positions = _calculate_positions(
+                    moveable_root, self.starts[0], self.finals[0])
+
+            self.start_bragg = start_positions[0]
+            step["start_positions"] = start_positions
+            step["positions"] = end_positions
 
             yield step
 
