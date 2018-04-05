@@ -849,7 +849,9 @@ class collect_end(Macro):
 
         # remove bsr 
         bsr_m = taurus.Device('bsr')
-        bsr_m.getAttribute('position').write(bl13constants.BSR_OUT_POSITION)
+        try: bsr_m.getAttribute('position').write(bl13constants.BSR_OUT_POSITION)
+        except: # When the yag is in, the motor is disabled
+            pass
         
         # RB: 20150924: no need to close cover, only when changing sample..
         # CLOSE DETECTOR COVER
