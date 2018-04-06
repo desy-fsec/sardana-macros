@@ -1,5 +1,7 @@
 from sardana.macroserver.macro import Macro, Type
 import taurus
+import time
+
 
 class turn(Macro):
 
@@ -58,10 +60,10 @@ class turnall(Macro):
        motorgroup = motorgroup.upper() 
        kappa = self.getMoveable("kappa")
        eh=[
-'analz','aperx','aperz','bpm6x','bpm6z','bpm5x','bpm5z','bstopx','bstopz',  'centx',  'centy',  'cryodist',  'dettabx',  'dettaby',  'dettabzb',  'dettabzf',  'diftabxb',  'diftabxf',  'diftabzb',  'diftabzf',  'fshuz',  'kappa',  'omega', 'omegaenc', 'omegax',  'omegay',  'omegaz',  'phi',  'zoommot', 's4hg',  's4vg', 's4ho', 's4vo', 'bsx', 'bsy', 'bsz', 'bsr', 'yagz'
+'analz','aperx','aperz','bpm6x','bpm6z','bpm5x','bpm5z','bstopx','bstopz',  'centx',  'centy',  'cryodist',  'dettabx',  'dettaby',  'dettabzb',  'dettabzf',  'diftabxb',  'diftabxf',  'diftabzb',  'diftabzf',  'fshuz',  'kappa',  'omega', 'omegaenc', 'omegax',  'omegay',  'omegaz',  'phi',  'zoommot', 's4hg',  's4vg', 's4ho', 's4vo', 'bsx', 'bsy', 'bsz', 'yagz'
               ]
        all = [
-'analz','aperx','aperz','bpm3x','bpm3z','bpm4x','bpm4z','bpm5x','bpm5z','bpm6x','bpm6z','bstopx','bstopz',  'centx',  'centy',  'cryodist',  'dettabx',  'dettaby',  'dettabzb',  'dettabzf',  'diftabxb',  'diftabxf',  'diftabzb',  'diftabzf',  'feh1',  'feh2',  'fev1',  'fev2',  'foilb1',  'foilb2',  'foilb3',  'foilb4',  'fshuz',  'fsm2z',  'hfmbenb',  'hfmbenf',  'hfmpit',  'hfmx',  'hfmz',  'kappa',  'lamopit',  'lamoroll',  'lamox',  'lamoz',  'omega', 'omegaenc', 'omegax',  'omegay',  'omegaz',  'phi',  'pitang',  'pitstroke',  's1d',  's1l',  's1r',  's1u', 's2d',  's2u', 's3l',  's3r',  's4hg',  's4ho',  's4vg',  's4vo', 'bsx', 'bsy', 'bsz', 'bsr', 'theta',  'ugap',  'vfmbenb',  'vfmbenf',  'vfmpit',  'vfmroll',  'vfmx',  'vfmz',  'zoommot', 'yagz'
+'analz','aperx','aperz','bpm3x','bpm3z','bpm4x','bpm4z','bpm5x','bpm5z','bpm6x','bpm6z','bstopx','bstopz',  'centx',  'centy',  'cryodist',  'dettabx',  'dettaby',  'dettabzb',  'dettabzf',  'diftabxb',  'diftabxf',  'diftabzb',  'diftabzf',  'feh1',  'feh2',  'fev1',  'fev2',  'foilb1',  'foilb2',  'foilb3',  'foilb4',  'fshuz',  'fsm2z',  'hfmbenb',  'hfmbenf',  'hfmpit',  'hfmx',  'hfmz',  'kappa',  'lamopit',  'lamoroll',  'lamox',  'lamoz',  'omega', 'omegaenc', 'omegax',  'omegay',  'omegaz',  'phi',  'pitang',  'pitstroke',  's1d',  's1l',  's1r',  's1u', 's2d',  's2u', 's3l',  's3r',  's4hg',  's4ho',  's4vg',  's4vo', 'bsx', 'bsy', 'bsz', 'theta',  'ugap',  'vfmbenb',  'vfmbenf',  'vfmpit',  'vfmroll',  'vfmx',  'vfmz',  'zoommot', 'yagz'
               ]
        oh = [
 'bpm3x','bpm3z','bpm4x','bpm4z','feh1',  'feh2',  'fev1',  'fev2',  'foilb1',  'foilb2',  'foilb3',  'foilb4', 'hfmbenb',  'hfmbenf',  'hfmpit',  'hfmx',  'hfmz',  'lamopit',  'lamoroll',  'lamox',  'lamoz','pitang',  'pitstroke',  's1d',  's1l',  's1r',  's1u', 's2d',  's2u', 's3l',  's3r',  's4hg',  's4ho',  's4vg',  's4vo',  'theta',  'ugap',  'vfmbenb',  'vfmbenf',  'vfmpit',  'vfmroll',  'vfmx',  'vfmz'  
@@ -96,3 +98,16 @@ class turnall(Macro):
           except:
              self.error('error %s' % motorname)
 
+class turn_motors_on(Macro):
+    '''
+           This macro is used to turn on all experimental hutch motors
+    '''
+
+    param_def = [
+                  
+                ]
+
+    def run(self):
+        self.info('turn_motors_on: Turning on all eh motors')
+        self.execMacro('turnall eh on')
+        time.sleep(2)

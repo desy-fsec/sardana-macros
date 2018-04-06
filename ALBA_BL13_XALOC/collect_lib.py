@@ -464,6 +464,10 @@ class collect_config(Macro):
         COLLECT_ENV['phi'] =  phi.getPosition()
         COLLECT_ENV['startangle'] = startangle
         COLLECT_ENV['angleincrement'] = angleincrement
+        COLLECT_ENV['helical_omegax'] = False
+        COLLECT_ENV['helical_centx'] = False
+        COLLECT_ENV['helical_centy'] = False
+
 
         # CHECK THAT OMEGA IS FINE BEFORE DATA COLLECTION
         #if testomega() != '1': 
@@ -574,9 +578,6 @@ class collect_config(Macro):
             COLLECT_ENV['finalpos'] = finalpos
             COLLECT_ENV['totalangleincrement'] = totalangleincrement
 
-            COLLECT_ENV['helical_omegax'] = False
-            COLLECT_ENV['helical_centx'] = False
-            COLLECT_ENV['helical_centy'] = False
             self.debug('COLLECT_CONFIG DEBUG: Characterization is %s' % collect_env['characterization'])
             if not collect_env.get('helical_end_point', False): self.debug('COLLECT_CONFIG: key helical_end_point does not exist')
             elif collect_env['characterization'] == False and len(collect_env['helical_end_point']) == 3: # There are three values for the motor end positions for helical collect
@@ -848,7 +849,9 @@ class collect_end(Macro):
 
         # remove bsr 
         bsr_m = taurus.Device('bsr')
-        bsr_m.getAttribute('position').write(bl13constants.BSR_OUT_POSITION)
+        try: bsr_m.getAttribute('position').write(bl13constants.BSR_OUT_POSITION)
+        except: # When the yag is in, the motor is disabled
+            pass
         
         # RB: 20150924: no need to close cover, only when changing sample..
         # CLOSE DETECTOR COVER

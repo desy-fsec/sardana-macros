@@ -497,6 +497,27 @@ class mbat(Macro):
               self.info('MBAT: Foil %s is %s' % (foil,state))
                
  
+class close_slowshu(Macro):
+
+    ''' close_slowshu: macro to close the slow shutter manually from the controlator widget '''
+
+    param_def = [
+                  
+                ]
+
+    def run(self):
+        eps = taurus.Device('bl13/ct/eps-plc-01')
+
+        self.info('CLOSE_SLOWSHU: Closing slow shutter')
+
+        limit = 1
+        while limit < 10:
+            try:
+                eps.write_attribute('slowshu', 0)
+                break
+            except:
+                self.error('CLOSE_SLOWSHU ERROR: Cannot actuate the slowshu')
+            limit = limit + 1
 
 
 

@@ -91,14 +91,14 @@ class YAG_align(Macro):
             self.info('YAG_ALIGN: doing complete alignment')
             # Get original values
             mbattrans = self.getMoveable("mbattrans")
-            zoom = taurus.Device('ioregister/eh_zoom_tangoior_ctrl/1')
+            zoomdev = taurus.Device('ioregister/eh_zoom_tangoior_ctrl/1')
             mbattrans_initvalue = mbattrans.getAttribute('Position').read().value
             zoom_initvalue = zoomdev.read_attribute('value').value
             # Do alignment
             self.execMacro('YAG_moveE -9 NO complete')
             # Return to original values
             self.execMacro('mv mbattrans %f' %round(mbattrans_initvalue))
-            zoom.write_attribute('value',zoom_initvalue)
+            zoomdev.write_attribute('value',zoom_initvalue)
             
             
         self.info('YAG_ALIGN: COMPLETED')
@@ -199,12 +199,9 @@ class YAG_prepare(Macro):
         self.execMacro('act ln2cover out')
         
         # move away the cryodist
-        self.info('YAG_prepare: moving cryodist to FAR position')
-        self.execMacro('act cryodist far')
-
-        # move yag in and sample out if it is present.
-        self.execMacro('act yag in')
-            
+        #self.info('YAG_prepare: moving cryodist to FAR position')
+        #self.execMacro('act cryodist far')
+   
         # REMOVE THE DETECTOR COVER 
         self.info('YAG_prepare: Placing the detector cover')
         if not eps['detcover'].value == 0: 
@@ -230,6 +227,9 @@ class YAG_prepare(Macro):
                        (eps['detcover'].value, eps['backlight'].value, eps['ln2cover'].value) )
             raise
 
+        # move yag in and sample out if it is present.
+        self.execMacro('act yag in')
+        
         #ATTENUATION
         self.info('Attenuation set to 5. Change it if needed')
         self.execMacro('mv mbattrans 5')
@@ -332,9 +332,11 @@ class YAG_autoalign(Macro):
         YAG_stably_aligned = False
         YAG_align_tries = 1
         # Do a dummy YAG_align and check value boundaries
+        self.execMacro('YAG_findbeam')
         (newXFC,newYFC,newXFWHM,newYFWHM) = diffractometer.readbeamvarsOAV()
         newXFC*=ScaleFactorX
         newYFC*=-ScaleFactorY
+        self.debug('YAG_autoalign DEBUG: shifts in diftabx is %8.3f and diftabz is %8.3f' %(newXFC,newYFC))
         if newXFC > bl13constants.OAV_xbeam_maxmisalign: strXmove = '%s' % newXFC
         else: strXmove=''
         if newYFC > bl13constants.OAV_ybeam_maxmisalign: strYmove = '%s' % newYFC
@@ -349,6 +351,7 @@ class YAG_autoalign(Macro):
                 self.execMacro('YAG_align', 'ALL')
                 YAG_align_tries+=1
             else: YAG_stably_aligned=True
+            self.execMacro('YAG_findbeam')
             (newXFC,newYFC,newXFWHM,newYFWHM) = diffractometer.readbeamvarsOAV()
             newXFC*=ScaleFactorX
             newYFC*=-ScaleFactorY
@@ -359,7 +362,7 @@ class YAG_autoalign(Macro):
 
         # Return beamline to original status
         try:
-            self.execMacro(('mv mbattrans %s',transmis))
+            self.execMacro('mv mbattrans %f' % (transmis))
             #falcon_dev.write_attribute('ColorMode', falcm)
         except Exception,e: 
             self.info('YAG_autoalign: Cant reset parameters, error: %s' % str(e) )
