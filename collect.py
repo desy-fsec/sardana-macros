@@ -192,14 +192,17 @@ buttons in the collect widget '''
         #lima_dev.stopAcq()
         #lima_dev.reset()
         lima_dev.abortAcq()
-        # close slowshu
-        # eps['slowshu'] = 0
+        #close slowshu
+        #eps['slowshu'] = 0
         # abort omega movement and reset velocity
         omega.Abort()
         omegax.Abort()
         centx.Abort()
         centy.Abort()
-        bsr.write_attribute('position', bl13constants.BSR_OUT_POSITION)
+        try: bsr.write_attribute('position', bl13constants.BSR_OUT_POSITION)
+        except: # When the yag is in, the motor is disabled
+            pass
+
         omega.write_attribute('velocity',60)
         omegax.write_attribute('velocity',1.0)
         centx.write_attribute('velocity',0.07978)
@@ -547,11 +550,15 @@ class collect_test_crystal(Macro):
         # stop detector & reset lima
         lima_dev.stopAcq()
         lima_dev.reset()
+
         # close slowshu
-        # eps['slowshu'] = 0
+        #eps['slowshu'] = 0
         # abort omega movement and reset velocity
         omega.Abort()
-        bsr.write_attribute('position', bl13constants.BSR_OUT_POSITION)
+        try: bsr.write_attribute('position', bl13constants.BSR_OUT_POSITION)
+        except: # When the yag is in, the motor is disabled
+            pass
+
         omega.write_attribute('velocity',60)
 
 
