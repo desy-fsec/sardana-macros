@@ -373,7 +373,7 @@ class act(Macro):
                        if cats_running and cats['do_PRO8_RI2'].value: 
                           self.error('ACT ERROR: cannot set the fluo det in because the robot is in RI2')
                           return
-                       #if m.fabs(kappa.getPosition()) > 0.01 and not kappa.getAttribute('StatusLim-').read().value: 
+                       #if m.fabs(kappa.getPosition()) > 0.01 and not kappa.getAttribute('StatusLimNeg').read().value: 
                        #   self.error('ACT ERROR: cannot set the fluo det in because kappa != 0')
                        #   return
                        if not bl13check.is_distfluo_in_allowed(): 
