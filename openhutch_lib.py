@@ -127,13 +127,13 @@ class openhutch(Macro):
        if epsf('read','ln2cover')[2] == 1:
            self.info('OPEN HUTCH: Remove bstopz')
            self.execMacro('turn bstopz on')
-           lim1 = bstopz.getAttribute('StatusLim-').read().value
+           lim1 = bstopz.getAttribute('StatusLimNeg').read().value
            try: 
               if not lim1:
                  self.info('OPEN HUTCH: Moving bstopz')
                  bstopz.write_attribute('position',BSTOPZ_OUT_POSITION)
               elif lim1:
-                 self.info('OPEN HUTCH: Bstopz is at the lim-')
+                 self.info('OPEN HUTCH: Bstopz is at the negative limit')
            except:
               self.error('OPEN HUTCH ERROR: Cannot move bstopz')
               return

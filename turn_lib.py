@@ -88,7 +88,7 @@ class turnall(Macro):
              motor = self.getMoveable(motorname)
              status_motor = motor.getAttribute('PowerOn').read().value 
              if not dicttrue[str(status_motor)] == status:
-                test = status == 'ON' and kappa.getAttribute('StatusLim-').read().value and motorname in ['kappa','phi']  
+                test = status == 'ON' and kappa.getAttribute('StatusLimNeg').read().value and motorname in ['kappa','phi']  
                 if test: 
                    self.warning('Cannot turn on the %s motor because the minikappa is not present' % motor) 
                 else:

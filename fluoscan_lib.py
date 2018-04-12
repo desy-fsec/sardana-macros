@@ -84,7 +84,7 @@ class fluoscan(Macro):
                    self.info('FLUOSCAN: Moving bstopz')
                    bstopz.getAttribute('position').write(BSTOPZ_OUT_POSITION)
                 elif lim1:
-                   self.info('FLUOSCAN: Bstopz is at the lim-')
+                   self.info('FLUOSCAN: Bstopz is at the negative limit')
             except:
                 self.error('FLUOSCAN ERROR: Cannot move bstopz')
                 return
@@ -102,9 +102,9 @@ class fluoscan(Macro):
             
         # CHECK THE POSITION OF KAPPA
         kappa = self.getMoveable("kappa")
-        # Use Lim- to check whether KAPPA motor is in place.
-        # Lim-==1 --> Not in place || Lim-==0 --> In place
-        lim1 = kappa.getAttribute('StatusLim-').read().value
+        # Use LimNeg to check whether KAPPA motor is in place.
+        # LimNeg==1 --> Not in place || LimNeg==0 --> In place
+        lim1 = kappa.getAttribute('StatusLimNeg').read().value
         if lim1:
            self.warning("FLUOSCAN WARNING: kappa not present")
         if not lim1:
