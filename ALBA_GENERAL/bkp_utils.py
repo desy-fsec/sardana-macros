@@ -89,6 +89,12 @@ class bkp_sardana(Macro):
         self.info('\t\t\tSaving Elements Properties')
         self.info('\t\t\tSaving Elements Attributes')
 
+        # List of valid object types retrieved as controller elements.
+        etypes = ["Pool", "Controller", "Motor", "CTExpChannel", 
+                  "ZeroDExpChannel", "OneDExpChannel", "TwoDExpChannel", 
+                  "ComChannel", "IORegister", "TriggerGate", "PseudoMotor", 
+                  "PseudoCounter", "MeasurementGroup", "Instrument"]
+
         for ctrl in ctrls.values():
             ctrl = ctrl.getObj()
 
@@ -110,8 +116,10 @@ class bkp_sardana(Macro):
 
                     # elements (motors, counter/timers, etc...)
                     data[type_k][ctrl_name]['Elements'][str(element)] = {}
-                    elm = self.getObj(element)
-
+                    try:
+                        elm = self.getObj(element, etypes)
+                    except Exception as e:
+                        self.error('Cannot get element %s\n%s' % (element, str(e)))
                     # Read element Properties
                     properties = elm.get_property(elm.get_property_list('*'))
                     data[type_k][ctrl_name]['Elements'][str(element)]['Properties'] = {}
