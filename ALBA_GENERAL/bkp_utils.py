@@ -3,6 +3,8 @@ import ConfigParser
 import time
 import fandango
 import PyTango
+import sardana
+import json
 
 class bkp_sardana(Macro):
     """
