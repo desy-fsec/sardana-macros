@@ -5,7 +5,10 @@ import taurus
 
 class repeat(Hookable, Macro):
     """This macro executes as many repetitions of it's body hook macros as specified by nr parameter.
-       If nr parameter has negative value, repetitions will be executed until you stop repeat macro."""
+       If nr parameter has negative value, repetitions will be executed until you stop repeat macro.
+
+       ..deprecated:: repeat macro was added to the standard macro
+       catalogue of sardana with pull-request #745"""
 
     #hints = { 'allowsHooks': ('body', 'break', 'continue') }
     hints = { 'allowsHooks': ('body',) }
