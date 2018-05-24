@@ -503,6 +503,7 @@ class mar_scan(Macro, BaseScan):
             self.warning('-------> Elapsed time (End Meas group) / (since End 2D integrating) : %.4f sec / %.4f sec' %(time.time() - t0,time.time()-t1) )
             if self.marSave:
                 self.writeImage()
+                #self.execMacro("marcopylast")
             if self.getEnv("MarProcess") : self.execMacro("_runovedf")
             #self.warning('-------> Elapsed time (Total) : %.4f sec' %(time.time() - t0) )
         finally:
@@ -637,6 +638,7 @@ class mar_ct(Macro, BaseExp, SoftShutterController):
             self.warning('-------> Elapsed time (End Meas group) / (since End 2D integrating) : %.4f sec / %.4f sec' %(time.time() - t0,time.time()-t1) )
             if self.marSave:
                 self.writeImage()
+               # self.execMacro("marcopylast")
 	    if self.getEnv("MarProcess") == 1 : self.execMacro("_runovedf")
 	    if self.getEnv("MarProcess") == 2 : self.execMacro("_runffcake")
             self.warning('-------> Elapsed time (Total) : %.4f sec' %(time.time() - t0) )
