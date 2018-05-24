@@ -5,8 +5,6 @@ import PyTango
 import time
 import json
 import fnmatch
-import pprint
-import StringIO
 import os
 import subprocess
 from sardana.macroserver.macro import (
@@ -643,7 +641,7 @@ class nxsresetdesc(Macro):
 
     def run(self):
         set_selector(self)
-        self.selector.resetPreselectedComponents()
+        reset_descriptive_components(self)
         update_description(self)
         update_configuration(self)
 
@@ -997,20 +995,6 @@ def printList(mcr, name, decode=True, label=None, command=False, out=None):
         out.appendRow([title, Splitter.join(data) if data else Nothing])
 
 
-def printConfString(mcr, name, label=None):
-    """ Print the given server variable from Configuration """
-
-    if not hasattr(mcr, "selector"):
-        set_selector(mcr)
-    conf = json.loads(mcr.selector.profileConfiguration)
-    data = conf[name]
-    title = name if label is None else label
-    if not out:
-        mcr.output("%s:  %s" % (title, data))
-    else:
-        out.appendRow([title, data])
-
-
 def getString(mcr, name, command=False):
     if not hasattr(mcr, "selector"):
         set_selector(mcr)
@@ -1107,6 +1091,17 @@ def update_description(mcr):
     """ Update selection of description components """
     try:
         mcr.selector.preselectComponents()
+    except PyTango.CommunicationFailed as e:
+        if e[-1].reason == "API_DeviceTimedOut":
+            wait_for_device(mcr.selector)
+        else:
+            raise
+
+
+def reset_descriptive_components(mcr):
+    """ Reset selection of description components """
+    try:
+        mcr.selector.resetPreselectedComponents()
     except PyTango.CommunicationFailed as e:
         if e[-1].reason == "API_DeviceTimedOut":
             wait_for_device(mcr.selector)

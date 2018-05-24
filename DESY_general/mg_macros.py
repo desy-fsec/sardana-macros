@@ -51,8 +51,13 @@ class MgConf:
             self.hsh[ u'label'] = mntgrpName
             self.index = 0
 
-
     def findMasterTimer( self):
+        if platform.linux_distribution()[1] == '8.10':
+            self.findMasterTimerD8()
+        elif platform.linux_distribution()[1] == '9.3':
+            self.findMasterTimerD8()
+
+    def findMasterTimerD8( self):
         for ctrl in self.hsh[ u'controllers']:
             Channels = self.hsh[ u'controllers'][ctrl][ u'units'][ u'0'][ u'channels']
             for chan in Channels:
@@ -65,6 +70,14 @@ class MgConf:
                     return masterTimer
         raise ( 'MgUtils.findMasterTimer', "No timer found")
 
+    def findMasterTimerD9( self):
+
+        temp = self.hsh[u'timer']
+        if temp.find( '0000') >= 0:
+            lst = temp.split("/")
+            temp = "/".join(lst[1:])
+            masterTimer = self.db.get_alias( str(temp))
+        return masterTimer
 
     def findDeviceController( self, device):
         """
@@ -136,6 +149,12 @@ class MgConf:
         self.mg.Configuration = json.dumps( self.hsh)
 
     def addTimer( self, device):
+        if platform.linux_distribution()[1] == '8.10':
+            self.addTimerD8( device)
+        elif platform.linux_distribution()[1] == '9.3':
+            self.addTimerD9( device)
+
+    def addTimerD8( self, device):
         """ 
         add a timer to the Mg
         device: exp_t01
@@ -180,10 +199,61 @@ class MgConf:
             dct[ u'shape'] = []
             dct[ u'source'] = dct['full_name'] + "/value"
             ctrlChannels[fullDeviceName] = dct
+
+    def addTimerD9( self, device):
+        """ 
+        add a timer to the Mg
+        device: exp_t01
+        """
+        ctrl = self.findDeviceController( device)
+        if not self.hsh[ u'controllers'].has_key( ctrl):
+            self.masterTimer = device
+            self.hsh[ u'monitor'] = self.findFullDeviceName( device)
+            self.hsh[ u'timer'] = self.findFullDeviceName( device)
+            self.hsh[ u'controllers'][ ctrl] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'synchronizer'] = "software"
+            self.hsh[ u'controllers'][ ctrl][ u'channels'] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'id'] = 0
+            self.hsh[ u'controllers'][ ctrl][ u'monitor'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'timer'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'trigger_type'] = 0
+
+        ctrlChannels = self.hsh[ u'controllers'][ctrl][ u'channels']
+        fullDeviceName = self.findFullDeviceName( device)
+        if not fullDeviceName in ctrlChannels.keys():
+            print("adding index", self.index, device)
+            dct = {}
+            dct[ u'_controller_name'] = unicode(ctrl)
+            dct[ u'_unit_id'] = u'0'
+            dct[ u'conditioning'] = u''
+            dct[ u'data_type'] = u'float64'
+            dct[ u'data_units'] = u'No unit'
+            dct[ u'enabled'] = True
+            dct[ u'full_name'] = fullDeviceName
+            dct[ u'index'] = self.index
+            self.index += 1
+            dct[ u'instrument'] = None
+            dct[ u'label'] = unicode(device)
+            dct[ u'name'] = unicode(device)
+            dct[ u'ndim'] = 0
+            dct[u'nexus_path'] = u''
+            dct[ u'normalization'] = 0
+            dct[ u'output'] = True
+            dct[ u'plot_axes'] = []
+            dct[ u'plot_type'] = 0
+            dct[ u'shape'] = []
+            dct[ u'source'] = dct['full_name'] + "/value"
+            ctrlChannels[fullDeviceName] = dct
+
+    def addExtraTimer( self, device):
+        if platform.linux_distribution()[1] == '8.10':
+            self.addExtraTimerD8( device)
+        elif platform.linux_distribution()[1] == '9.3':
+            self.addExtraTimerD9( device)
     #
     # add an extra timer to the measurement group
     #
-    def addExtraTimer( self, device):
+    def addExtraTimerD8( self, device):
         """ device: exp_t01"""
         ctrl = self.findDeviceController( device)
         if not self.hsh[ u'controllers'].has_key( ctrl):
@@ -221,10 +291,57 @@ class MgConf:
             dct[ u'shape'] = []
             dct[ u'source'] = dct['full_name'] + "/value"
             ctrlChannels[fullDeviceName] = dct
+
+    #
+    # add an extra timer to the measurement group
+    #
+    def addExtraTimerD9( self, device):
+        """ device: exp_t01"""
+        ctrl = self.findDeviceController( device)
+        if not self.hsh[ u'controllers'].has_key( ctrl):
+            self.hsh[ u'controllers'][ ctrl] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'synchronizer'] = "software"
+            self.hsh[ u'controllers'][ ctrl][ u'channels'] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'id'] = 0
+            self.hsh[ u'controllers'][ ctrl][ u'monitor'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'timer'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'trigger_type'] = 0
+
+        ctrlChannels = self.hsh[ u'controllers'][ctrl][ u'channels']
+        fullDeviceName = self.findFullDeviceName( device)
+        if not fullDeviceName in ctrlChannels.keys():
+            dct = {}
+            dct[ u'_controller_name'] = unicode(ctrl)
+            dct[ u'_unit_id'] = u'0'
+            dct[ u'conditioning'] = u''
+            dct[ u'data_type'] = u'float64'
+            dct[ u'data_units'] = u'No unit'
+            dct[ u'enabled'] = True
+            dct[ u'full_name'] = fullDeviceName
+            dct[ u'index'] = self.index
+            self.index += 1
+            dct[ u'instrument'] = None
+            dct[ u'label'] = unicode(device)
+            dct[ u'name'] = unicode(device)
+            dct[ u'ndim'] = 0
+            dct[u'nexus_path'] = u''
+            dct[ u'normalization'] = 0
+            dct[ u'output'] = True
+            dct[ u'plot_axes'] = []
+            dct[ u'plot_type'] = 0
+            dct[ u'shape'] = []
+            dct[ u'source'] = dct['full_name'] + "/value"
+            ctrlChannels[fullDeviceName] = dct
+
+    def addCounter( self, device, flagDisplay):
+        if platform.linux_distribution()[1] == '8.10':
+            self.addCounterD8( device, flagDisplay)
+        elif platform.linux_distribution()[1] == '9.3':
+            self.addCounterD9( device, flagDisplay)
     #
     # add a counter to the measurement group
     #
-    def addCounter( self, device, flagDisplay):
+    def addCounterD8( self, device, flagDisplay):
 
         if device.find( 'sca_') == 0:
             return self.addSCA( device, flagDisplay)
@@ -271,9 +388,63 @@ class MgConf:
             dct[u'source'] = dct['full_name'] + "/value"
             ctrlChannels[fullDeviceName] = dct
     #
+    # add a counter to the measurement group
+    #
+    def addCounterD9( self, device, flagDisplay):
+
+        if device.find( 'sca_') == 0:
+            return self.addSCA( device, flagDisplay)
+            
+        ctrl = self.findDeviceController( device)
+        if not self.hsh[ u'controllers'].has_key( ctrl):
+            print("MgUtils.addCounter adding controller ", ctrl)
+            self.hsh[ u'controllers'][ ctrl] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'synchronizer'] =  "software"
+            self.hsh[ u'controllers'][ ctrl][ u'channels'] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'id'] = 0
+            self.hsh[ u'controllers'][ ctrl][ u'monitor'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'timer'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'trigger_type'] = 0
+
+        ctrlChannels = self.hsh[u'controllers'][ctrl][u'channels']
+        fullDeviceName = self.findFullDeviceName( device)
+        if not fullDeviceName in ctrlChannels.keys():
+            print("adding index", self.index, device)
+            dct = {}
+            dct[ u'_controller_name'] = unicode(ctrl)
+            dct[ u'_unit_id'] = u'0'
+            dct[u'conditioning'] = u''
+            dct[u'data_type'] = u'float64'
+            dct[u'data_units'] = u'No unit'
+            dct[u'enabled'] = True
+            dct[u'full_name'] = fullDeviceName
+            dct[u'index'] = self.index
+            self.index += 1
+            dct[u'instrument'] = u''
+            dct[u'label'] = unicode( device)
+            dct[u'name'] = unicode( device)
+            dct[u'ndim'] = 0
+            dct[u'nexus_path'] = u''
+            dct[u'normalization'] = 0
+            dct[u'output'] = True
+            dct[u'plot_axes'] = [u'<mov>']
+            if flagDisplay:
+                dct[u'plot_type'] = 1
+            else:
+                dct[u'plot_type'] = 0
+            dct[u'shape'] = []
+            dct[u'source'] = dct['full_name'] + "/value"
+            ctrlChannels[fullDeviceName] = dct
+
+    def addMCA( self, device):
+        if platform.linux_distribution()[1] == '8.10':
+            self.addMCAD8( device)
+        elif platform.linux_distribution()[1] == '9.3':
+            self.addMCAD9( device)
+    #
     # add a MCA to the measurement group
     #
-    def addMCA( self, device):
+    def addMCAD8( self, device):
         ctrl = self.findDeviceController( device)
         if not self.hsh[ u'controllers'].has_key( ctrl):
             print("MgUtils.addMCA adding controller ", ctrl)
@@ -316,7 +487,55 @@ class MgConf:
     #
     # add a MCA to the measurement group
     #
+    def addMCAD9( self, device):
+        ctrl = self.findDeviceController( device)
+        if not self.hsh[ u'controllers'].has_key( ctrl):
+            print("MgUtils.addMCA adding controller ", ctrl)
+            self.hsh[ u'controllers'][ ctrl] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'synchronizer'] = "software"
+            self.hsh[ u'controllers'][ ctrl][ u'channels'] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'id'] = 0
+            self.hsh[ u'controllers'][ ctrl][ u'monitor'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'timer'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'trigger_type'] = 0
+
+        ctrlChannels = self.hsh[u'controllers'][ctrl][u'channels']
+        fullDeviceName = self.findFullDeviceName( device)
+        if not fullDeviceName in ctrlChannels.keys():
+            print("adding index", self.index, device)
+            proxy = DeviceProxy( str(fullDeviceName))
+            dct = {}
+            dct[ u'_controller_name'] = unicode(ctrl)
+            dct[ u'_unit_id'] = u'0'
+            dct[u'conditioning'] = u''
+            dct[u'data_type'] = u'float64'
+            dct[u'data_units'] = u'No unit'
+            dct[u'enabled'] = True
+            dct[u'full_name'] = fullDeviceName
+            dct[u'index'] = self.index
+            self.index += 1
+            dct[u'instrument'] = None
+            dct[u'label'] = unicode( device)
+            dct[u'name'] = unicode( device)
+            dct[u'ndim'] = 1
+            dct[u'nexus_path'] = u''
+            dct[u'normalization'] = 0
+            dct[u'output'] = True
+            dct[u'plot_axes'] = []
+            dct[u'plot_type'] = 0
+            dct[u'shape'] = [proxy.DataLength]
+            dct[u'source'] = fullDeviceName + "/Value"
+            ctrlChannels[ fullDeviceName] = dct
+
     def addPilatus( self, device):
+        if platform.linux_distribution()[1] == '8.10':
+            self.addPilatusD8( device)
+        elif platform.linux_distribution()[1] == '9.3':
+            self.addPilatusD9( device)
+    #
+    # add a MCA to the measurement group
+    #
+    def addPilatusD8( self, device):
         ctrl = self.findDeviceController( device)
         if not self.hsh[ u'controllers'].has_key( ctrl):
             print("MgUtils.addPilatus adding controller ", ctrl)
@@ -330,6 +549,45 @@ class MgConf:
             self.hsh[ u'controllers'][ ctrl][ u'units'][u'0'][ u'trigger_type'] = 0
 
         ctrlChannels = self.hsh[u'controllers'][ctrl][u'units'][u'0'][u'channels']
+        fullDeviceName = self.findFullDeviceName( device)
+        if not fullDeviceName in ctrlChannels.keys():
+            print("adding index", self.index, device)
+            proxy = DeviceProxy( str(fullDeviceName))
+            dct = {}
+            dct[ u'_controller_name'] = unicode(ctrl)
+            dct[ u'_unit_id'] = u'0'
+            dct[u'conditioning'] = u''
+            dct[u'enabled'] = True
+            dct[u'full_name'] = fullDeviceName
+            dct[u'index'] = self.index
+            self.index += 1
+            dct[u'instrument'] = u''
+            dct[u'label'] = unicode( device)
+            dct[u'name'] = unicode( device)
+            dct[u'ndim'] = 2
+            dct[u'nexus_path'] = u''
+            dct[u'normalization'] = 0
+            dct[u'output'] = True
+            dct[u'plot_axes'] = []
+            dct[u'plot_type'] = 0
+            dct[u'source'] = fullDeviceName + "/Value"
+            ctrlChannels[ fullDeviceName] = dct
+    #
+    # add a Pilatus to the measurement group
+    #
+    def addPilatusD9( self, device):
+        ctrl = self.findDeviceController( device)
+        if not self.hsh[ u'controllers'].has_key( ctrl):
+            print("MgUtils.addPilatus adding controller ", ctrl)
+            self.hsh[ u'controllers'][ ctrl] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'synchronizer'] = "software"
+            self.hsh[ u'controllers'][ ctrl][ u'channels'] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'id'] = 0
+            self.hsh[ u'controllers'][ ctrl][ u'monitor'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'timer'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'trigger_type'] = 0
+
+        ctrlChannels = self.hsh[u'controllers'][ctrl][u'channels']
         fullDeviceName = self.findFullDeviceName( device)
         if not fullDeviceName in ctrlChannels.keys():
             print("adding index", self.index, device)
@@ -493,7 +751,14 @@ class MgConf:
         raise Exception( 'MgUtils.makeController', "failed to make controller for %s" % device)
 
 
+
     def addSCA( self, device, flagDisplay):
+        if platform.linux_distribution()[1] == '8.10':
+            self.addSCAD8( device, flagDisplay)
+        elif platform.linux_distribution()[1] == '9.3':
+            self.addSCAD9( device, flagDisplay)
+
+    def addSCAD8( self, device, flagDisplay):
         """
         add a SCA to the measurement group
           input: device, e.g. sca_exp_mca01_100_200
@@ -543,6 +808,54 @@ class MgConf:
             ctrlChannels[self.findFullDeviceName( device)] = dct
         return True
 
+    def addSCAD9( self, device, flagDisplay):
+        """
+        add a SCA to the measurement group
+          input: device, e.g. sca_exp_mca01_100_200
+        """
+        if device.find('sca_') != 0:
+            print("MgUtils.addSCA: '%s' does not begin with 'sca_'," % device)
+            return False
+
+        #
+        # there is one element per controller
+        #
+        fullCtrlName = self._addSca( device)
+        if not self.hsh[ u'controllers'].has_key( fullCtrlName):
+            print("MgUtils.addSca adding controller ", fullCtrlName)
+            self.hsh[ u'controllers'][ fullCtrlName] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'synchronizer'] = "software"
+            self.hsh[ u'controllers'][ ctrl][ u'channels'] = {}
+            self.hsh[ u'controllers'][ ctrl][ u'id'] = 0
+            self.hsh[ u'controllers'][ ctrl][ u'monitor'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'timer'] = self.findFullDeviceName(device)
+            self.hsh[ u'controllers'][ ctrl][ u'trigger_type'] = 0
+
+        ctrlChannels = self.hsh[u'controllers'][fullCtrlName][u'channels']
+        if not self.findFullDeviceName( device) in ctrlChannels.keys():
+            print("adding index", self.index, device)
+            dct = {}
+            dct[ u'_controller_name'] = unicode(fullCtrlName)
+            dct[ u'_unit_id'] = u'0'
+            dct[u'conditioning'] = u''
+            dct[u'enabled'] = True
+            dct[u'full_name'] = self.findFullDeviceName( device)
+            dct[u'index'] = self.index
+            self.index += 1
+            dct[u'instrument'] = None
+            dct[u'label'] = unicode( device)
+            dct[u'name'] = unicode( device)
+            dct[u'ndim'] = 0
+            dct[u'normalization'] = 0
+            dct[u'output'] = True
+            dct[u'plot_axes'] = [u'<mov>']
+            if flagDisplay:
+                dct[u'plot_type'] = 1
+            else:
+                dct[u'plot_type'] = 0
+            dct[u'source'] = dct['full_name'] + "/value"
+            ctrlChannels[self.findFullDeviceName( device)] = dct
+        return True
 
 class create_delete_mgOBSOLETE(Macro):
     """Change the active measurement group"""

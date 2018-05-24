@@ -166,3 +166,41 @@ class findMaxRange(Macro):
                 pass
             if has_been_configured:
                 self.conf_channels(False)
+
+
+class em_range(Macro):
+    """
+    Macro to change the electrometer range.
+    """
+    param_def = [['chns',
+                  [['ch', Type.CTExpChannel, None, 'electrometer chn'],
+                   ['range',  Type.String, None, 'Amplifier range'],
+                   {'min': 1}],
+                  None, 'List of [channels,range]'],]
+
+    def run(self, chns):
+        for ch, rg in chns:
+            old_range = ch.read_attribute("Range").value
+            ch.write_attribute("Range", rg)
+            new_range = ch.read_attribute("Range").value
+            self.output('%s changed range from %s to %s' % (ch, old_range,
+                                                            new_range))
+
+
+class em_inversion(Macro):
+    """
+        Macro to change the electrometer range.
+    """
+    param_def = [['chns',
+                  [['ch', Type.CTExpChannel, None, 'electrometer chn'],
+                   ['enabled', Type.Boolean, None, 'Inversion enabled'],
+                   {'min': 1}],
+                  None, 'List of [channels, inversion]'], ]
+
+    def run(self, chns):
+        for ch, enabled in chns:
+            old_state = ch.read_attribute('Inversion').value
+            ch.write_attribute('Inversion', enabled)
+            new_state = ch.read_attribute('Inversion').value
+            self.output('%s changed inversion from %s to %s' % (ch, old_state,
+                                                                new_state))

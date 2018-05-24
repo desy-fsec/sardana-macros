@@ -10,13 +10,14 @@ DEV_STATE_ON = PyTango.DevState.ON
 IPAP_TIMEOUT = 1
 NR_STEPS = 1000
 
+
 class smaract_sdc_homing(Macro):
     """
     Category: Configuration
 
-    Macro to do a homing of the smaract controller. It executes a find
-    reference command in the smaract device server and set the register of the
-    icepap controller to synchronize them.
+    Macro used to home a Smaract SDC controller with an Icepap Motor controller
+    It executes a find reference command in the smaract device server and set
+    the register of the icepap controller to synchronize them.
 
     The macro uses three environment variables: Direction (forward/backward),
     NrSteps (number of steps to touch the limit) and MaxError (maximum error
@@ -79,10 +80,11 @@ class smaract_sdc_homing(Macro):
         self.runMacro(set_pos)
 
 
-# util functions
-def isSmaractMCSMotor(macro, motor):
+# utils functions
+def is_mcs_motor(macro, motor):
     """
-    Checks if pool motor belongs to the SmaractMCSController
+    Checks if the given motor belongs to the SmaractMCSController class.
+
     @param macro: macro object requesting the query.
     @param motor: motor object belonging to the controller.
     @return: Boolean indicating if the search was successful.
@@ -90,12 +92,27 @@ def isSmaractMCSMotor(macro, motor):
     controllers = macro.getControllers()
     ctrl_name = motor.controller
     controller_obj = controllers[ctrl_name]
-    return isSmaractMCSController(macro, controller_obj)
+    return _is_mcs_controller(macro, controller_obj)
 
 
-def isSmaractMCSController(macro, controller):
+def is_mcs_tango_motor(macro, motor):
     """
-    Checks if pool controller is of type SmaractMCSController
+    Checks if the given motor belongs to the SmaractMCSTangoController class.
+
+    @param macro: macro object requesting the query.
+    @param motor: motor object belonging to the controller.
+    @return: Boolean indicating if the search was successful.
+    """
+    controllers = macro.getControllers()
+    ctrl_name = motor.controller
+    controller_obj = controllers[ctrl_name]
+    return _is_mcs_tango_controller(macro, controller_obj)
+
+
+def _is_mcs_controller(macro, controller):
+    """
+    Checks if the controller is of type SmaractMCSController.
+
     @param macro: macro object requesting the query.
     @param controller: object to be evaluated.
     @return: Boolean indicating if the search was successful.
@@ -108,12 +125,33 @@ def isSmaractMCSController(macro, controller):
     else:
         controller_obj = controller
     controller_class_name = controller_obj.getClassName()
-    if controller_class_name != "SmaractMCSController":
+    if controller_class_name != "SmaractMCSCtrl":
         return False
     return True
 
 
-class smaract_mcs_homing(Macro):
+def _is_mcs_tango_controller(macro, controller):
+    """
+    Checks if the controller is of type SmaractMCSTangoController.
+
+    @param macro: macro object requesting the query.
+    @param controller: object to be evaluated.
+    @return: Boolean indicating if the search was successful.
+    """
+
+    if isinstance(controller, str):
+        controller_name = controller
+        controllers = macro.getControllers()
+        controller_obj = controllers[controller_name]
+    else:
+        controller_obj = controller
+    controller_class_name = controller_obj.getClassName()
+    if controller_class_name != "SmaractMCSTangoCtrl":
+        return False
+    return True
+
+
+class smaract_mcs_tango_homing(Macro):
     """
     Category: Configuration
 
@@ -144,7 +182,7 @@ class smaract_mcs_homing(Macro):
             raise Exception(msg)
 
         # Check if motor is an axis of a smaract MCS controller
-        if not isSmaractMCSMotor(self, motor):
+        if not is_mcs_motor(self, motor):
             raise Exception('This is not a valid MCS Smaract motor controller.')
 
         self.debug('motor; %s' % repr(motor))
@@ -161,5 +199,96 @@ class smaract_mcs_homing(Macro):
 
         if ans == "READY":
             self.info(ans)
+        else:
+            self.error(ans)
+
+
+class smaract_mcs_homing(Macro):
+    """
+    Category: Configuration
+
+    This macro does a homing procedure on the SmaractMCSCtrl controller. It
+    executes a find reference command according to the direction strategy
+    provided.
+
+    Since the command is synchronous, we capture the possible Tango Timeout at
+    the macro level and wait the motor to finish. Tha maximum extra timeout
+    has been set to 30 seconds,
+
+    This are the possible direction strategy modes:
+
+    FORWARD = 0
+    BACKWARD = 1
+    FORWARD_BACKWARD = 2
+    BACKWARD_FORWARD = 3
+    FORWARD_ABORT_ON_END = 4
+    BACKWARD_ABORT_ON_END = 5
+    FORWARD_BACKWARD_ABORT_ON_END = 6
+    BACKWARD_FORWARD_ABORT_ON_END = 7
+
+    """
+
+    param_def = [['motor',
+                  Type.Motor,
+                  None,
+                  'smaract motor'],
+                 ['direction',
+                  Type.String,
+                  None,
+                  'search direction']
+                 ]
+
+    def run(self, motor, direction):
+
+        direction = direction.lower()
+        if direction == 'forward':
+            self.direction = 0
+        elif direction == 'backward':
+            self.direction = 1
+        elif direction == 'forward_backward':
+            self.direction = 2
+        elif direction == 'backward_forward':
+            self.direction = 3
+        elif direction == 'forward_abort_on_end':
+            self.direction = 4
+        elif direction == 'backward_abort_on_end':
+            self.direction = 5
+        elif direction == 'forward_backward_abort_on_end':
+            self.direction = 6
+        elif direction == 'backward_forward_abort_on_end':
+            self.direction = 7
+        else:
+            msg = 'Invalid direction. Check macro help for possible values'
+            raise Exception(msg)
+
+        # Check if motor is an axis of a smaract MCS controller
+        if not is_mcs_motor(self, motor):
+            raise Exception('This is not a valid MCS Smaract motor controller.')
+
+        self.debug('motor; %s' % repr(motor))
+        # Get axis number:
+        self.debug('axis %s' % motor.axis)
+        # Get the pool and controller objects
+        pool = motor.getPoolObj()
+        ctrl_name = motor.getControllerName()
+        self.debug('Pool: %s, Controller: %s' % (repr(pool), ctrl_name))
+        # Sent a homing command to controller from pool:
+        # The HM_CMD are defined in the SmaractMCSController
+        hm_cmd = 'homing %s %s' % (motor.axis, self.direction)
+        clock = 0
+        try:
+            ans = pool.SendToController([ctrl_name, hm_cmd])
+        except PyTango.DevFailed:
+            self.warning("Default Tango timeout exceeded")
+            self.warning("Waiting axis %s to stop homing" % motor.axis)
+            while motor.axis.state() != PyTango.DevState.MOVING and clock < 30:
+                time.sleep(1)
+                clock += 1
+
+        # This string is expected from controller command return
+        if ans == "[DONE]" and clock < 30:
+            self.info(ans)
+        elif clock >= 30:
+            self.error("Extra time out exceeded. Motor did not stop.")
         else:
             self.error(ans)

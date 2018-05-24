@@ -1,11 +1,12 @@
 """
     Macros for data acquisition with LimaCCDs DS
 """
-import taurus
-import PyTango
-import os, errno
-import time
+import errno
 import functools
+import os
+import time
+
+import taurus
 
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
 
@@ -53,7 +54,8 @@ class lima_saving(Macro):
                  ['Format', Type.String, 'EDF', 'File format'],
                  ['Autosave' , Type.Boolean, True, 
                   'Flag to save all frames automatically'],
-                 ['NextNumber', Type.Integer, 0, 'Number for the first image']
+                 ['NextNumber', Type.Integer, None, 'Number for the first '
+                                                   'image']
                  ]
 
     @catch_error
@@ -82,8 +84,9 @@ class lima_saving(Macro):
         lima.write_attribute('saving_prefix', prefix)
         self.debug('Writing saving_format to %s' % fileformat)
         lima.write_attribute('saving_format', fileformat)
-        self.debug('Writing image next number to %s' % next)
-        lima.write_attribute('saving_next_number', next)
+        if next:
+            self.debug('Writing image next number to %s' % next)
+            lima.write_attribute('saving_next_number', next)
 
 
 
