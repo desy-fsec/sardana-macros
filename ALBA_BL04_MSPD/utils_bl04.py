@@ -193,7 +193,7 @@ class mntGrpEnableChannel(Macro):
     param_def = [
             ['MeasurementGroup',Type.MeasurementGroup, None, "Measurement Group to work"],
             ['ChannelState',
-            ParamRepeat(['channel', Type.CTExpChannel, None, 'Channel to change '
+            ParamRepeat(['channel', Type.ExpChannel, None, 'Channel to change '
                                                        'state'],
                         ['state',  Type.Boolean, True, 'State, enable:True, '
                                                        'disable:False'],
@@ -219,9 +219,11 @@ class mntGrpEnableChannel(Macro):
                     self.debug('Skipped %r Not found in the mntGrp %r'%(ch,str(mntGrp)))
                     not_found.append(ch)	
         if enable:  
-            mntGrp.enableChannels(enable)
+            self.execMacro('meas_enable_ch', mntGrp, enable)
+            #mntGrp.enableChannels(enable)
         if disable:
-            mntGrp.disableChannels(disable)
+            self.execMacro('meas_disable_ch', mntGrp, disable)
+            #mntGrp.disableChannels(disable)
         self.debug("MntGrp Used: %r"%mntGrp)
         self.debug("Enabling: %r" %enable)
         self.debug("Disabling: %r" %disable)
@@ -322,7 +324,7 @@ class checkNIProcess(Macro):
         # Should
         if current_days >= self.WARNING_DAYS:
             self.warning('The Ni cards should be restarted')
-            self.warning("Execute 'restartNi' macro to restart them")
+            self.warning("Execute 'restartNI' macro to restart them")
             return
         self.info('The Ni are correctly configured')
 
