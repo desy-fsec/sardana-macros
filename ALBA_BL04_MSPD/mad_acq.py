@@ -145,6 +145,20 @@ class _madscan(Macro, SoftShutterController):
 
     def run(self, startPos, finalPos, speed, integTime):
         #works only in positive direction
+
+        moveable = self.getMoveable(self.motName)
+        spu = moveable.step_per_unit
+
+        #speed in seconds
+        speed_in_seconds = speed/60.
+        steps_per_sec = speed_in_seconds*spu
+        #round
+        steps_per_seconds_round = round(steps_per_sec)
+        sar_vel_in_sec = steps_per_seconds_round / spu
+        real_speed = sar_vel_in_sec * 60
+        speed = real_speed
+        self.debug("Real Speed: %f" % real_speed) 
+
         scanTime = ((finalPos - startPos) / speed) * 60
         scanTime = round(scanTime, 5)
         self.debug("Scan time: %f" % scanTime) 
@@ -156,7 +170,6 @@ class _madscan(Macro, SoftShutterController):
         oldMntGrp = self.getEnv("ActiveMntGrp")
         self.setEnv("ActiveMntGrp", self.mntGrp)
         try:
-            moveable = self.getMoveable(self.motName)
             mot = taurus.Device(self.motName)
 
             self.debug('%r %r %r %r %r 0'%(moveable, startPos, finalPos, nrOfTriggers, integTime))
@@ -173,8 +186,12 @@ class _madscan(Macro, SoftShutterController):
             command = "madscan "+str(startPos)+" "+str(finalPos)+" "+str(speed)\
                       + " " + str(integTime)
             ascanct_macro._gScan._env['title'] = command
-             
-            self.runMacro(ascanct_macro)
+            # zreszela 20170302
+            try:
+                self.runMacro(ascanct_macro)
+            except Exception as e:
+                self.warning("ascanct did not finished correctly, probably due to wrong positioning of pd_oc", exc_info=1)
+                self.debug(e)
         finally:
 
             self.debug("Leaving of _madscan")
