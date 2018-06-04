@@ -9,11 +9,10 @@ import os
 import time
 import sys
 
-class xbpm_align_beam(Macro):
+class xbpm_align_beam_z(Macro):
     ''' align the beam using xbpm5 and xbpm6.'''
-    param_def = [[ 'fmotorname', Type.String, 'bpm6z', 'xbpm motor to be scanned: bpm5x, bpm5z, bpm6x or bpm6z' ]]
 
-    def run(self, fmotorname):
+    def run(self):
         ''' This macro should be used to scan through the one of the xbpm motors in the experimental hutch (bpm6x, bpm6z, bpm5x, bpm5z) while
         recording the readout on the diamond windows of the respective xbpms. A gaussion fit is fitted through the profile in order to find the 
         center position on the xbpms. The shift at sample position wrt to a reference position is then calculated, which gives the required 
@@ -30,13 +29,18 @@ class xbpm_align_beam(Macro):
         # 
         
         # Motor list to be moved
-        scanmotor = taurus.Device(fmotorname)
-        scanmotor_pos = scanmotor.position 
+        bpm5z_mot = taurus.Device('bpm5z')
+        bpm5z_mot_pos = bpm5z_mot.position 
+        bpm6z_mot = taurus.Device('bpm6z')
+        bpm6z_mot_pos = bpm6z_mot.position 
 
+        # Setup SCAN parameters
         # for bpm6z: p0 = [1E-8,-0.027,0.01] # Initial values for scale, center and st. dev.
-        if fmotorname == 'bpm6z':
-            motorparlib = {'refpos': 0.01222, 'scanwidth': 0.2, 'npoints': 20 }
-            dist_xbpm_sample = 20 # TODO: check distance between xbpm6 and sample position
+        motorparlib5 = {'refpos': -0.4, 'scanwidth': 4.5, 'startpos' : -1, 'fieldnumber_verdown' : 2, 'fieldnumber_verup' : 4, 'dist2samp' : 1200}  # TODO: check distance between xbpm6 and sample position
+        # 20180522: for bpm5z: baseline 8.395e-08, peak height 1.208e-06, mu -0.3895, sigma 0.09345, FWHM 0.2201
+        motorparlib6 = {'refpos': 0.12, 'scanwidth': 0.2, 'startpos' : 0, 'fieldnumber_verdown' :  9, 'fieldnumber_verup' : 11, 'dist2samp' : 200} # TODO: check distance between xbpm6 and sample position
+        scan_npoints = 20
+        scan_intgintv = 0.1
 
         # Check if the beamline is in conditions to do the scan
         #### NOTE: the slowshu should be close, the fast shutter open!
@@ -51,7 +55,7 @@ class xbpm_align_beam(Macro):
         
         # Check if the electrometer ranges are ok
         
-        scanf = '%s_scan.dat' % fmotorname
+        scanf = 'xbpm_align_beam_z_scan.dat' 
         scand = '/beamlines/bl13/commissioning/tmp'
         self.debug('Setting scanfile to:%s/%s' % (scand, scanf) )
         self.setEnv( 'ScanFile', scanf)
@@ -61,7 +65,7 @@ class xbpm_align_beam(Macro):
         if os.path.isfile(os.path.join(scand,scanf)): os.remove(os.path.join(scand,scanf))
 
         # call xbpmz_scan_ver
-        datalib = self.xbpmz_scan_ver(scanmotor,motorparlib['scanwidth'],motorparlib['npoints'],0.1,scand,scanf)
+        datalib = self.do_xbpmz_scan_ver(bpm5z_mot.alias(),motorparlib5['scanwidth'],bpm6z_mot.alias(),motorparlib6['scanwidth'],scan_npoints,scan_intgintv,scand,scanf)
         
         # Return motor positions
         # Wait for motors to stop
@@ -71,32 +75,47 @@ class xbpm_align_beam(Macro):
         #except:
         #    self.debug('Cant wait for motors')
         
-        # return motors to original positions
-        scanmotor.getAttribute('position').write(scanmotor_pos)
-
         # Reset to previous scanfile and ActiveMntGrp parameters
         self.setEnv( 'ScanFile', env_scanfile)
         self.setEnv( 'ScanDir', env_scandir)
         self.setEnv( 'ScanID', env_scanid)
         
         #### Analyze the data
-        baseline, slope, pkhght, center, sigma, FWHM = self.analyze_xbpm_scan(datalib)
+        #First bpm5
+        baseline5, slope5, pkhght5, center5, sigma5, FWHM5 = self.analyze_xbpm_scan(datalib, 0, motorparlib5['fieldnumber_verdown'], motorparlib5['fieldnumber_verup'])
+        #First bpm6
+        baseline6, slope6, pkhght6, center6, sigma6, FWHM6 = self.analyze_xbpm_scan(datalib, 1, motorparlib6['fieldnumber_verdown'], motorparlib6['fieldnumber_verup'])
         
         # Check if the data make sense
-        dataok = True
-        if math.fabs(pkhght) < 10 * math.fabs(baseline): dataok = False # at 12% transmission, peak height is about 30x baseline
-        if FWHM > 0.8 or FWHM < 0.01: dataok = False
-        if not dataok:
+        dataok5 = True
+        if math.fabs(pkhght5) < 10 * math.fabs(baseline5): dataok5 = False # at 12% transmission, peak height is about 30x baseline
+        if FWHM5 > 0.8 or FWHM5 < 0.01: dataok5 = False
+        if not dataok5:
             self.warning('xbpm_align_beam: Unrealistic beam fit parameters. No alignment done')
+
+        # Check if the data make sense
+        dataok6 = True
+        if math.fabs(pkhght6) < 10 * math.fabs(baseline6): dataok6 = False # at 12% transmission, peak height is about 30x baseline
+        if FWHM6 > 0.8 or FWHM6 < 0.01: dataok6 = False
+        if not dataok6:
+            self.warning('xbpm_align_beam: Unrealistic beam fit parameters. No alignment done')
+
+        # return motors to original positions
+        bpm5z_mot.getAttribute('position').write(bpm5z_mot_pos)
+        bpm6z_mot.getAttribute('position').write(bpm6z_mot_pos)
         
         ###TODO: this should be done in a different macro. The idea is to run two scans in paralel, one for bpm5x/z in door_sats and one for bpm6x/z in door_exp
         # Calculate the beam shift at sample position
-        self.info('Vertical offset of beam wrt reference position  at %s: %g' % (scanmotor,(center-motorparlib['refpos'])))    
+        beamshift5 = (center5-motorparlib5['refpos'])
+        self.info('Vertical offset of beam wrt reference position of xbpm5: %g' % (beamshift5))
+        beamshift6 = (center6-motorparlib6['refpos'])
+        self.info('Vertical offset of beam wrt reference position of xbpm6: %g' % (beamshift6))
         
-        # Warn if an excessive shift is observed
-        if math.fabs(center-motorparlib['refpos']) > 0.002:
-            pass
-            #email xaloc
+        # Calculate the beam position at sample using both xbpm positions and warn if an excessive shift is observed
+        beamshiftsamp = (1+motorparlib6['dist2samp']/(motorparlib5['dist2samp']-motorparlib6['dist2samp'])) *(beamshift6-beamshift5) + beamshift5
+        if math.fabs(beamshiftsamp) > 0.002:   
+            print 'xbpmz_scan_ver: excessive beam shift in vertical direction: %4f)' % (beamshiftsamp)
+            return beamshiftsamp
 
         #angle_diftabz_beam = excursion_angle - diftabpit
         #shift_diftabz = self.calculate_sample_shift(math.fabs(center-motorparlib['refpos']), angle_diftabz_beam, dist_xbpm_sample)
@@ -104,12 +123,15 @@ class xbpm_align_beam(Macro):
         
         return
 
-    #def calculate_sample_shift(shift_at_bpm, angle_diftabz_beam, dist_xbpm_sample):
-    #    return dist_xbpm_sample * math.tan(angle_diftabz_beam) + shift_at_bpm
-
+    def on_abort(self):
+        self.debug('xbpm_align_beam_z: return motors to original positions')
+        bpm5z_mot.getAttribute('position').write(bpm5z_mot_pos)
+        bpm6z_mot.getAttribute('position').write(bpm6z_mot_pos)
+        
+    
     def checkEMRanges(self, emdevicename, requiredrange):
         try: em_dev = taurus.Device(emdevicename)
-        except: raise Exception('xbpm_align_beam: device name not correct in checkEMRanges')
+        except: raise Exception('xbpm_align_beam_z: device name not correct in checkEMRanges')
         self.debug('xbpm_align_beam: required range %s' %requiredrange)
         try:
             for chanrange in ['range_ch1', 'range_ch2', 'range_ch3', 'range_ch4']:
@@ -120,29 +142,25 @@ class xbpm_align_beam(Macro):
             e = sys.exc_info()
             raise Exception(e)
     
-    def xbpmz_scan_ver(self,motor,rel_movz,npoints,intg_intv, scand, scanf):
+    def do_xbpmz_scan_ver(self, motor1,rel_movz1, motor2, rel_movz2, npoints, intg_intv, scand, scanf):
         '''Do a scan using motor bpm6z. Assumes that the bpm6x motor is in the right position to have the beam fully on ib6ru and ib6rd. 
            bpm6z should be in starting position before calling this macro. The function returns an array of bpm6z motor positions and currents measured on ib6ru and ib6rd'''
         
-        # Save the current scanfile and ActiveMntGrp parameters
+        # Save the current scanfile and ActiveMntGrp parameters, and set the required group
         env_actmntgrp = self.getEnv( 'ActiveMntGrp' )
+        self.debug('Setting ActiveMntGrp to mg_bpm5_bpm6')
+        self.setEnv( 'ActiveMntGrp', 'mg_bpm5_bpm6')
         
-        # Set the scanfile and ActiveMntGrp parameters
-        #scand = '/tmp'
-        self.debug('motorname is %s' % motor.alias() )
-        self.debug('bpm6 in %s: %d' % (motor.alias() , ('bpm6' in motor) ) )
-        if 'bpm5' in motor.alias():
-            self.debug('Setting ActiveMntGrp to mg_bpm5')
-            self.setEnv( 'ActiveMntGrp', 'mg_bpm5')
-            self.checkEMRanges('bl13/di/emet-08-bpm05', '1uA')
-        if 'bpm6' in motor.alias():
-            self.debug('Setting ActiveMntGrp to mg_bpm6')
-            self.setEnv( 'ActiveMntGrp', 'mg_bpm6')
-            self.checkEMRanges('bl13/di/emet-07-bpm06', '1uA')
-        self.debug('%s' % self.getEnv( 'ActiveMntGrp' ) )
+        # check the electrometer parameters
+        self.debug('Checking electrometer settings for xbpm5')
+        self.checkEMRanges('bl13/di/emet-08-bpm05', '100uA')
+        self.debug('Checking electrometer settings for xbpm6')
+        self.checkEMRanges('bl13/di/emet-07-bpm06', '1uA')
+        self.debug('xbpm_lib: ActiveMntGrp set to %s' % self.getEnv( 'ActiveMntGrp' ) )
         
         # Do the scan
-        self.execMacro('dscan %s 0 %f %d %f' % (motor,rel_movz,npoints,intg_intv))
+        #self.execMacro('dscan %s 0 %f %d %f' % (motor,rel_movz,npoints,intg_intv))
+        self.execMacro('d2scan %s 0 %f %s 0 %f %d %f' % (motor1,rel_movz1, motor2, rel_movz2, npoints,intg_intv))
         
         # Read the scan results
         datalib = {}
@@ -159,7 +177,7 @@ class xbpm_align_beam(Macro):
         
         return datalib
         
-    def analyze_xbpm_scan(self, datalib):
+    def analyze_xbpm_scan(self, datalib, motorfield, bpm_field_up, bpm_field_down):
         # Extract the array from the library
         motorpos = np.array([])
         upperq = np.array([])
@@ -168,9 +186,9 @@ class xbpm_align_beam(Macro):
             point = datalib[key]
             #self.debug('%s' % point[4])
             #self.debug('%.4g'% float(point[4]))
-            motorpos = np.append(motorpos,float(point[0]))
-            upperq = np.append(upperq,float(point[2]))
-            lowerq = np.append(lowerq,float(point[4]))
+            bpm5pos = np.append(motorpos,float(point[motorfield]))
+            upperq = np.append(upperq,float(point[bpm_field_up])) # 
+            lowerq = np.append(lowerq,float(point[bpm_field_down]))
         #for x in lowerq: self.debug('lowerq %f' % x)
         # Take gradients, invert one quadrant, average and fit gaussian
         upperq_grad = np.gradient(upperq)
