@@ -3,8 +3,8 @@ from sardana.macroserver.macro import Macro, Type
 from sardana import State
 
 # TODO:
-TRAJECTORY_CTRL = 'rh_clear_tj_ctrl'
-TRAJECTORY_MOTOR = 'clear_bragg'
+TRAJECTORY_CTRL = 'cbragg_traj_ctrl'
+TRAJECTORY_MOTOR = 'cbragg'
 
 
 class clearSync(Macro):
