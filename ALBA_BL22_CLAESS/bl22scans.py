@@ -225,7 +225,10 @@ class BL22qExafs(object):
                 adlink.getAttribute("TriggerInfinite").write(0)
             self.macro.ni_config_counter('step')
 
-        self.macro.restorePmac()
+        try:
+            self.macro.restorePmac()
+        except Exception as e:
+            self.macro.error("Exception on restorePmac in cleanUp: %r"%e)
 
         self.macro.info("qExafs cleanup is done")
         self.flg_cleanup = True
