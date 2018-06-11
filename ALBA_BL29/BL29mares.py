@@ -8,7 +8,6 @@ import PyTango
 
 import time
 import os
-import xmlrpclib
 
 from sardana.macroserver.macro import Macro, Type
 
