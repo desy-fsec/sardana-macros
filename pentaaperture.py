@@ -3,7 +3,7 @@ from bl13constants import (pentaaperpos_X, pentaaperpos_Z,
                            pentaaper_postolerance_X, pentaaper_postolerance_Z)
 from sardana.macroserver.macro import Macro, Type, ParamRepeat
 
-PSEUDO='aperture'
+#PSEUDO='aperture'
 
 
 class aperture_update_configuration(Macro):
@@ -33,7 +33,8 @@ class aperture_update_configuration(Macro):
     def prepare(self):
         # Initialize connection to device
         try:
-            self.aperture = DeviceProxy(PSEUDO)
+#            self.aperture = DeviceProxy(PSEUDO)
+            self.aperture = DeviceProxy('aperture')
         except:
             raise Exception('Cannot connect to %s device.' % PSEUDO)
 
