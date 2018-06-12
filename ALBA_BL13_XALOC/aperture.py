@@ -16,7 +16,7 @@ from bl13constants import APERZ_OUT_POSITION
 
 
 
-class aperture(Macro):
+class maperture(Macro):
 
     '''aperture: macro to select the aperture of choice from the pentaperture
     mode: 5: 5um aperture, 10: 10um aperture, 20: 20um aperture, 30: 30um aperture, 50: 50um aperture)'''
