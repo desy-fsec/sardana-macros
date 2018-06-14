@@ -150,5 +150,9 @@ class clearAutoSync(Macro):
                 motor_name = self.getMotor(values[0])
                 pos = float(values[-1])
                 self.clearMoveTo(pos, [motor_name])
+        self.output('Set cbragg velocity & acceleration')
+        max_vel = motor.read_attribute('maxvelocity').value - 0.0001
+        motor.write_attribute('velocity', max_vel)
 
+        motor.write_attribute('acceleration', 1.6)
         self.output('Done')
