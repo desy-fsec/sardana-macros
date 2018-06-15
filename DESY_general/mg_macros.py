@@ -1,6 +1,10 @@
 #!/usr/bin/env python
+"""
+Change active mg
 
-"""Change active mg"""
+28.5.2018: handles Debian-8 and Debian-9
+
+"""
 
 from __future__ import print_function
 
@@ -10,10 +14,8 @@ import os
 import PyTango
 from sardana.macroserver.macro import *
 import time
-
 from PyTango import *
 import json
-
 import HasyUtils
 
 class MgConf:
@@ -22,14 +24,12 @@ class MgConf:
         #
         # the pool for the Mg
         #
-
         try:
             self.poolMg = DeviceProxy( poolName)
         except: 
             Except.print_exception( e)
             print("failed to get proxy to ", poolName)
             sys.exit(255)
-
         #
         # find the MG
         #
@@ -52,10 +52,10 @@ class MgConf:
             self.index = 0
 
     def findMasterTimer( self):
-        if platform.linux_distribution()[1] == '8.10':
+        if not HasyUtils.versionSardanaNewMg():
             self.findMasterTimerD8()
-        elif platform.linux_distribution()[1] == '9.3':
-            self.findMasterTimerD8()
+        else:
+            self.findMasterTimerD9()
 
     def findMasterTimerD8( self):
         for ctrl in self.hsh[ u'controllers']:
@@ -149,9 +149,9 @@ class MgConf:
         self.mg.Configuration = json.dumps( self.hsh)
 
     def addTimer( self, device):
-        if platform.linux_distribution()[1] == '8.10':
+        if not HasyUtils.versionSardanaNewMg():
             self.addTimerD8( device)
-        elif platform.linux_distribution()[1] == '9.3':
+        else:
             self.addTimerD9( device)
 
     def addTimerD8( self, device):
@@ -246,9 +246,9 @@ class MgConf:
             ctrlChannels[fullDeviceName] = dct
 
     def addExtraTimer( self, device):
-        if platform.linux_distribution()[1] == '8.10':
+        if not HasyUtils.versionSardanaNewMg():
             self.addExtraTimerD8( device)
-        elif platform.linux_distribution()[1] == '9.3':
+        else:
             self.addExtraTimerD9( device)
     #
     # add an extra timer to the measurement group
@@ -334,9 +334,9 @@ class MgConf:
             ctrlChannels[fullDeviceName] = dct
 
     def addCounter( self, device, flagDisplay):
-        if platform.linux_distribution()[1] == '8.10':
+        if not HasyUtils.versionSardanaNewMg():
             self.addCounterD8( device, flagDisplay)
-        elif platform.linux_distribution()[1] == '9.3':
+        else:
             self.addCounterD9( device, flagDisplay)
     #
     # add a counter to the measurement group
@@ -437,9 +437,9 @@ class MgConf:
             ctrlChannels[fullDeviceName] = dct
 
     def addMCA( self, device):
-        if platform.linux_distribution()[1] == '8.10':
+        if not HasyUtils.versionSardanaNewMg():
             self.addMCAD8( device)
-        elif platform.linux_distribution()[1] == '9.3':
+        else:
             self.addMCAD9( device)
     #
     # add a MCA to the measurement group
@@ -528,9 +528,9 @@ class MgConf:
             ctrlChannels[ fullDeviceName] = dct
 
     def addPilatus( self, device):
-        if platform.linux_distribution()[1] == '8.10':
+        if not HasyUtils.versionSardanaNewMg():
             self.addPilatusD8( device)
-        elif platform.linux_distribution()[1] == '9.3':
+        else:
             self.addPilatusD9( device)
     #
     # add a MCA to the measurement group
@@ -753,9 +753,9 @@ class MgConf:
 
 
     def addSCA( self, device, flagDisplay):
-        if platform.linux_distribution()[1] == '8.10':
+        if not HasyUtils.versionSardanaNewMg():
             self.addSCAD8( device, flagDisplay)
-        elif platform.linux_distribution()[1] == '9.3':
+        else:
             self.addSCAD9( device, flagDisplay)
 
     def addSCAD8( self, device, flagDisplay):
@@ -999,6 +999,7 @@ class change_mg(Macro):
             pools[0].CreateMeasurementGroup( [ mg_name, lst[0]])
 
         pools = self.getPools()
+
         for tmp_pool in pools:
             for mg in tmp_pool.MeasurementGroupList:
                 hsh = json.loads(mg)
@@ -1016,8 +1017,10 @@ class change_mg(Macro):
             if key not in opt_dict:
                 raise Exception("change_mg: need a timer or '-a True'")
 
-        mgConf = MgConf( pool.name(), mg_name, flagClear)
-
+        if type( pool.name) == str: # +++ 28.5.2018: new sardana
+            mgConf = MgConf( pool.name, mg_name, flagClear)
+        else:
+            mgConf = MgConf( pool.name(), mg_name, flagClear)
                 
         if key in opt_dict:
             for elem in opt_dict[key].split(','):
@@ -1098,3 +1101,6 @@ class setmg(Macro):
                 i=i+1
             self.output("")
             self.output("Active measurement group: %s" % (actmg))
+
+
+
