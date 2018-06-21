@@ -1,8 +1,10 @@
 import time
+import subprocess
+import json
 from sardana.macroserver.macro import Macro, Type
 from sardana import State
+from bl22clearmotor import ClearSpectrometer
 
-# TODO:
 TRAJECTORY_CTRL = 'cbragg_traj_ctrl'
 TRAJECTORY_MOTOR = 'cbragg'
 
@@ -156,3 +158,58 @@ class clearAutoSync(Macro):
 
         motor.write_attribute('acceleration', 1.6)
         self.output('Done')
+
+
+class clearSetCeout(Macro):
+    """
+    Macro to align the energy out pseudo-motor (ceout). It generates a new
+    trajectory table according to the current position of the physicals motor:
+    caxr, cay, cabu, cabd, cdxr, cdy, cdz, cslxr.
+    """
+
+    param_def = [['energy', Type.Float, None, 'Ceout position in eV'],
+                 ['points', Type.Integer, 500, 'Trajectory table points']]
+
+    def get_offsets(self):
+        motor_offsets = {}
+        for motor in self.motors:
+            motor_offsets[motor.name] = motor.read_attribute('offset').value
+        return motor_offsets
+
+    def run(self, energy):
+
+        # Read ceout crystal order
+        ceout = self.getPseudoMotor('ceout')
+        order = ceout.read_attribute('n').value
+        motors_names = ['caxr', 'cabu', 'cabd', 'cay', 'cdxr', 'cdy', 'cdz',
+                        'cslxr']
+        motors = []
+        for motor_name in motors_names:
+            motors.append(self.getMotor(motor_name))
+
+        # TODO read the Crystal IOR
+        clear = ClearSpectrometer(n=order)
+        news_positions = clear.energy2pos(energy)
+
+        # TODO implement protection
+        self.info('Setting new offsets....')
+        for motor in motors:
+            new_pos = news_positions['{0}_pos'.format(motor.name)]
+            self.execMacro('set_user_pos', motor, new_pos)
+
+        # Generate the new trajectory file
+        self.info('Generating new trajectory file....')
+        clear.motors_offsets = self.get_offsets()
+        cbragg = self.getMotor(TRAJECTORY_MOTOR)
+        cbragg_ctrl = self.getController(TRAJECTORY_CTRL)
+        cbragg_pos_cfg = cbragg.get_attribute_config('position')
+        traj_file = cbragg_ctrl.get_property('datafile')['datafile']
+        clear.save_trajectory(cbragg_pos_cfg.min_value,
+                              cbragg_pos_cfg.max_value,
+                              traj_file)
+
+        # Load new file
+        self.execMacro('clearLoadTable', traj_file)
+
+        self.output('Loaded new trajectory table. You MUST execute '
+                    'clearStatus')
