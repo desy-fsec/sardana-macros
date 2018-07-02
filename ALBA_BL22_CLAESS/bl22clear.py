@@ -60,6 +60,7 @@ class clearMoveTo(Macro):
                   None, 'Motor list']]
 
     def run(self, position, motors):
+        self.clearReconfig()
         try:
             pool = self.getPools()[0]
             motors_axis = []
@@ -116,15 +117,25 @@ class clearLoadTable(Macro):
         ans = pool.SendToController([TRAJECTORY_CTRL, cmd])
         if ans != 'Done':
             raise RuntimeError('The command did not work')
+        self.clearReconfig()
 
-        bragg_motor = self.getMotor(TRAJECTORY_MOTOR)
-        max_vel = bragg_motor.read_attribute('MaxVelocity').value
-        self.output('Set bragg velocity to {0}'.format(max_vel))
-
-        bragg_motor.write_attribute('velocity', max_vel)
         self.output('Done')
 
 
+class clearReconfig(Macro):
+    """
+    Macro to restore the velocity and acceleration of the cbragg motor
+    """
+    def run(self):
+        self.info('Restore cbragg configuration')
+        try:
+            dev = self.getMotor(TRAJECTORY_MOTOR)
+            max_vel = dev.read_attribute('maxvelocity').value - 0.0001
+            dev.write_attribute('velocity', max_vel)
+            dev.write_attribute('acceleration', 1.6)
+        except Exception:
+            self.warning('Can not restore the {0} '
+                         'configuration'.format(TRAJECTORY_MOTOR))
 class clearAutoSync(Macro):
     """
     Macro to auto synchronize the motors to the trajectory and to move them
