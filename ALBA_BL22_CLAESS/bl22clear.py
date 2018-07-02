@@ -97,8 +97,8 @@ class clearStatus(Macro):
 
     def run(self):
         motor = self.getMotor(TRAJECTORY_MOTOR)
-        status = motor.status()
-        self.output(status)
+        motor.state()
+        self.output(motor.statusdetails)
 
 
 class clearLoadTable(Macro):
@@ -136,38 +136,57 @@ class clearReconfig(Macro):
         except Exception:
             self.warning('Can not restore the {0} '
                          'configuration'.format(TRAJECTORY_MOTOR))
+
+
 class clearAutoSync(Macro):
     """
-    Macro to auto synchronize the motors to the trajectory and to move them
-    to the same caxr position.
+    Macro to auto synchronize the motors to the trajectory by using the caxr
+    position. The macro works only when the different between the positions
+    are not greater than 2 degrees, excepts cabu, cabd and cslxr which do
+    not have collision problems.
     """
 
     def run(self):
         motor = self.getMotor(TRAJECTORY_MOTOR)
-        status = motor.status()
-        if 'clearSync' in status:
-            self.output('Auto synchronization...')
-            lines = status.split(':')[1].split('\n')[1:-1]
+        motor.state()
+        status = motor.statusdetails
 
-            for line in lines:
-                values = line.split()
-                motor_name = self.getMotor(values[0])
-                near_pos = float(values[-1])
-                self.clearSync(near_pos, [motor_name])
-        status = motor.status()
-        if 'clearMoveTo' in status:
-            self.output('Auto move...')
-            lines = status.split(':')[1].split('\n')[1:-1]
-            for line in lines:
-                values = line.split()
-                motor_name = self.getMotor(values[0])
-                pos = float(values[-1])
-                self.clearMoveTo(pos, [motor_name])
-        self.output('Set cbragg velocity & acceleration')
-        max_vel = motor.read_attribute('maxvelocity').value - 0.0001
-        motor.write_attribute('velocity', max_vel)
+        if 'clearSync' not in status:
+            raise RuntimeError('This macro is only to synchronize the '
+                               'motors. Use clearStatus to check the '
+                               'clear current state.')
 
-        motor.write_attribute('acceleration', 1.6)
+        self.output('Auto synchronization...')
+        lines = status.split(':')[1].split('\n')[1:-1]
+        motors_names = []
+        motors_pos = []
+        motors_obj = []
+        master_pos = motor.masterpos
+        for line in lines:
+            values = line.split()
+            motor_name = values[0]
+            motors_names.append(motor_name)
+            motors_obj.append(self.getMotor(motor_name))
+            pos = float(values[-1])
+            motors_pos.append(pos)
+        error = 'There is(are) motor(s) with very distant positions:\n {0}' \
+                'You must synchronize the motors by hand'
+        motor_error = []
+        for i, motor_pos in enumerate(motors_pos):
+            if motors_names[i] in ['cabu', 'cabd', 'cslxr']:
+                continue
+            diff = abs(abs(motor_pos) - abs(master_pos))
+            if diff > 2.0:
+                msg = '{0} near to {1} and should be in ' \
+                      '{2}\n'.format(motors_names[i], motors_pos[i],
+                                     master_pos)
+                motor_error.append(msg)
+        if len(motor_error) > 0:
+            self.error(error.format(' '.join(motor_error)))
+            return
+
+        self.clearSync(master_pos, motors_obj)
+        self.clearReconfig()
         self.output('Done')
 
 
