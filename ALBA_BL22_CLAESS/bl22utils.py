@@ -181,11 +181,13 @@ class reconfig(Macro):
             dev.write_attribute('acceleration', 0.2)
 
         self.info('Restore cbragg configuration')
-        dev = PyTango.DeviceProxy('cbragg')
-        max_vel = dev.read_attribute('maxvelocity').value - 0.0001
-        dev.write_attribute('velocity', max_vel)
-        dev.write_attribute('acceleration', 1.6)
-
+        try:
+            dev = PyTango.DeviceProxy('cbragg')
+            max_vel = dev.read_attribute('maxvelocity').value - 0.0001
+            dev.write_attribute('velocity', max_vel)
+            dev.write_attribute('acceleration', 1.6)
+        except Exception:
+            self.warning('Can not restore the cbragg configuration')
         self.info('Set the electrometer polarity')
         host_e0 = self.getEnv('ElemI0Host')
         host_e1 = self.getEnv('ElemI1I2Host')
