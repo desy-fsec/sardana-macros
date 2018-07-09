@@ -268,3 +268,28 @@ class clearSetCeout(Macro):
 
         self.clearStatus()
 
+
+class clearRestoreTable(Macro):
+    """
+    Macro to restore the a trajectory backup table. It restore the table and
+    the motor offset.
+    """
+
+    param_def = [['bkp_file', Type.String, None, 'Backup filenme']]
+
+    def run(self, bkp_file):
+        cbragg_ctrl = self.getController(TRAJECTORY_CTRL)
+        traj_file = cbragg_ctrl.get_property('datafile')['datafile'][0]
+        self.info('Remove current trajectory file.')
+        shutil.copy(bkp_file, traj_file)
+        with open(traj_file, 'r') as f:
+            traj = pickle.load(f)
+
+        motor_offsets = traj['offset']
+        for name, offset in motor_offsets.items():
+            motor = self.getMotor(name)
+            current_offset = motor.read_attribute('offset').value
+            motor.write_attribute('offset', offset)
+            self.output('Change {0} offset from {1} to '
+                        '{2}'.format(name, current_offset, offset))
+        self.clearLoadTable(traj_file)
