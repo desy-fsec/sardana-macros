@@ -9,6 +9,25 @@ import os
 import time
 import sys
 
+class repeated_xbpm_align(Macro):
+    ''' align the beam using xbpm5 and xbpm6.'''
+
+    def run(self):
+        starttime = time.time()
+        nscans = 45#12
+        cscan = 0 
+        while cscan < nscans:
+            try:
+                self.info ('%f' % (time.time()-starttime) )
+                self.execMacro('xbpm_align_beam_z')
+                self.execMacro('YAG_align')
+            except:
+                self.info('could not execute the macros')
+            time.sleep(3600)
+            cscan = cscan + 1
+       
+            
+
 class xbpm_align_beam_z(Macro):
     ''' align the beam using xbpm5 and xbpm6.'''
 
@@ -36,10 +55,11 @@ class xbpm_align_beam_z(Macro):
 
         # Setup SCAN parameters
         # for bpm6z: p0 = [1E-8,-0.027,0.01] # Initial values for scale, center and st. dev.
-        motorparlib5 = {'refpos': -0.4, 'scanwidth': 4.5, 'startpos' : -1, 'fieldnumber_verdown' : 2, 'fieldnumber_verup' : 4, 'dist2samp' : 1200}  # TODO: check distance between xbpm6 and sample position
+        # bpm5x should be set to 2, then the field numbers 3 and 5 correspond to ib5lu (3) and ib5ld(5)
+        motorparlib5 = {'refpos': -0.2118, 'scanwidth': 1.3, 'startpos' : -0.8, 'fieldnumber_verdown' : 3, 'fieldnumber_verup' : 4, 'dist2samp' : 1331.4}  # TODO: check distance between xbpm6 and sample position
         # 20180522: for bpm5z: baseline 8.395e-08, peak height 1.208e-06, mu -0.3895, sigma 0.09345, FWHM 0.2201
-        motorparlib6 = {'refpos': 0.12, 'scanwidth': 0.2, 'startpos' : 0, 'fieldnumber_verdown' :  9, 'fieldnumber_verup' : 11, 'dist2samp' : 200} # TODO: check distance between xbpm6 and sample position
-        scan_npoints = 20
+        motorparlib6 = {'refpos': 0.1317, 'scanwidth': 0.2, 'startpos' : 0.3, 'fieldnumber_verdown' :  12, 'fieldnumber_verup' : 10, 'dist2samp' : 226.6} # TODO: check distance between xbpm6 and sample position
+        scan_npoints = 30
         scan_intgintv = 0.1
 
         # Check if the beamline is in conditions to do the scan
@@ -67,6 +87,7 @@ class xbpm_align_beam_z(Macro):
         # call xbpmz_scan_ver
         datalib = self.do_xbpmz_scan_ver(bpm5z_mot.alias(),motorparlib5['scanwidth'],bpm6z_mot.alias(),motorparlib6['scanwidth'],scan_npoints,scan_intgintv,scand,scanf)
         
+        #self.execMacro('act slowshu in')
         # Return motor positions
         # Wait for motors to stop
         #try: 
@@ -106,22 +127,28 @@ class xbpm_align_beam_z(Macro):
         
         ###TODO: this should be done in a different macro. The idea is to run two scans in paralel, one for bpm5x/z in door_sats and one for bpm6x/z in door_exp
         # Calculate the beam shift at sample position
+        self.debug('Gaussian peak determined on Mar7 (elog 999)    : bpm6z = -0.028')
+        self.debug('Gaussian peak determined on Apr17 (elog 999)   : bpm6z =  0.122')
+        self.debug('Gaussian peak determined on Apr24 at 12.662 keV: bpm6z =  0.131')
+        self.debug('Gaussian peak determined on 20180619 at 12.662 keV: bpm6z =  0.1315, bpm5z -0.212')
         beamshift5 = (center5-motorparlib5['refpos'])
-        self.info('Vertical offset of beam wrt reference position of xbpm5: %g' % (beamshift5))
+        #self.info('Vertical offset of beam wrt reference position of xbpm5: %g' % (beamshift5))
         beamshift6 = (center6-motorparlib6['refpos'])
-        self.info('Vertical offset of beam wrt reference position of xbpm6: %g' % (beamshift6))
+        #self.info('Vertical offset of beam wrt reference position of xbpm6: %g' % (beamshift6))
         
         # Calculate the beam position at sample using both xbpm positions and warn if an excessive shift is observed
-        beamshiftsamp = (1+motorparlib6['dist2samp']/(motorparlib5['dist2samp']-motorparlib6['dist2samp'])) *(beamshift6-beamshift5) + beamshift5
+        offset = motorparlib6['dist2samp'] - center6 * (center5-center6) / (motorparlib5['dist2samp']-motorparlib6['dist2samp'])
+        refoffset = motorparlib6['dist2samp'] - motorparlib6['refpos'] * (motorparlib5['refpos']-motorparlib6['refpos']) / (motorparlib5['dist2samp']-motorparlib6['dist2samp'])
+        self.info('The drift using the offsets of the beam calculated at the sample: %.4g' % (offset-refoffset) )
+        beamshiftsamp = (motorparlib5['dist2samp']/ (motorparlib5['dist2samp']-motorparlib6['dist2samp']) ) * (beamshift6-beamshift5) + beamshift5
+        fwhmsamp =  FWHM6 * motorparlib6['dist2samp'] * ((FWHM5-FWHM6) / (motorparlib5['dist2samp']-motorparlib6['dist2samp']) )
+        self.info('The calculated shift in beam position at the sample is: %.4g, the vertical FWHM at sample is %.4g' % (beamshiftsamp,fwhmsamp) )
         if math.fabs(beamshiftsamp) > 0.002:   
-            print 'xbpmz_scan_ver: excessive beam shift in vertical direction: %4f)' % (beamshiftsamp)
-            return beamshiftsamp
-
-        #angle_diftabz_beam = excursion_angle - diftabpit
-        #shift_diftabz = self.calculate_sample_shift(math.fabs(center-motorparlib['refpos']), angle_diftabz_beam, dist_xbpm_sample)
+            self.info('xbpmz_scan_ver: excessive beam shift in vertical direction: %4g)' % (beamshiftsamp) )
+            #self.info('To fix this, type: mvr diftabz %4g' % (beamshiftsamp))
+                    
         
-        
-        return
+        return beamshiftsamp, (offset-refoffset)
 
     def on_abort(self):
         self.debug('xbpm_align_beam_z: return motors to original positions')
@@ -137,7 +164,7 @@ class xbpm_align_beam_z(Macro):
             for chanrange in ['range_ch1', 'range_ch2', 'range_ch3', 'range_ch4']:
                 self.debug('xbpm_align_beam: %s channel range is %s' %(emdevicename+chanrange,em_dev.getAttribute(chanrange).read().value))
                 if not em_dev.getAttribute(chanrange).read().value == requiredrange:
-                    raise Exception('xbpm_align_beam: required channel range not correct')
+                    raise Exception('%s xbpm_align_beam: required channel range not correct' % emdevicename)
         except: 
             e = sys.exc_info()
             raise Exception(e)
@@ -186,27 +213,27 @@ class xbpm_align_beam_z(Macro):
             point = datalib[key]
             #self.debug('%s' % point[4])
             #self.debug('%.4g'% float(point[4]))
-            bpm5pos = np.append(motorpos,float(point[motorfield]))
+            motorpos = np.append(motorpos,float(point[motorfield]))
             upperq = np.append(upperq,float(point[bpm_field_up])) # 
             lowerq = np.append(lowerq,float(point[bpm_field_down]))
+            self.debug('up %.4g down %.4g' % (float(point[bpm_field_up]), float(point[bpm_field_down])) )
         #for x in lowerq: self.debug('lowerq %f' % x)
         # Take gradients, invert one quadrant, average and fit gaussian
         upperq_grad = np.gradient(upperq)
         lowerq_grad = np.gradient(lowerq)
-        av_grad = (upperq_grad-lowerq_grad)/2 # Sign of gradients will be opposite
+        av_grad = (-upperq_grad+lowerq_grad)/2 # sign of the gradients is opposite for both quadrants and sign of signal is similar
         np.set_printoptions(threshold=np.nan)
-        self.info(repr(motorpos))
-        self.info(repr(av_grad))
+        self.debug('analyze_xbpm_scan motorpositions')
+        self.debug(repr(motorpos[1:-1]))
+        self.debug('analyze_xbpm_scan function gradients')
+        self.debug(repr(av_grad[1:-1]))
         #for x in lowerq_grad: self.debug('%f' % x)
         #for x in av_grad: self.debug('%.4g' % x)
         import fitlib
         gf = fitlib.GaussianFit()
-        baseline, slope, pkhght, center, sigma, FWHM = gf.fit(motorpos,av_grad)
-        self.debug('Gaussian peak determined on Mar7 (elog 999)    : bpm6z = -0.028')
-        self.debug('Gaussian peak determined on Apr17 (elog 999)   : bpm6z =  0.122')
-        self.debug('Gaussian peak determined on Apr24 at 12.662 keV: bpm6z =  0.131')
+        baseline, slope, pkhght, center, sigma, FWHM = gf.fit(motorpos[1:-1],av_grad[1:-1])
         
-        self.info('baseline %.4g, peak height %.4g, mu %.4g, sigma %.4g, FWHM %.4g' % (baseline,pkhght,center,sigma,FWHM))
+        self.debug('baseline %.4g, peak height %.4g, mu %.4g, sigma %.4g, FWHM %.4g' % (baseline,pkhght,center,sigma,FWHM))
         return baseline, slope, pkhght, center, sigma, FWHM
         
     def anymotormoving(self, taurusmotorlist):
