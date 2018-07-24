@@ -223,9 +223,11 @@ class YAG_prepare(Macro):
                 self.info('YAG_prepare: OK: Det cover is IN; backlight and ln2cover are OUT; cryodist is FAR') 
                 break
             time.sleep(0.2)
+            
+        if eps['detcover'].value != 0 or eps['backlight'].value != 1 or eps['ln2cover'].value != 1:
             self.error('ERROR removing elements. Det cover: %i, backlight: %i, ln2cover: %i' % 
                        (eps['detcover'].value, eps['backlight'].value, eps['ln2cover'].value) )
-            raise
+            raise Exception('YAG_prepare: ERROR removing elements')
 
         # move yag in and sample out if it is present.
         self.execMacro('act yag in')
