@@ -261,15 +261,6 @@ class xbpm_align_beam(Macro):
         diftabz position
         '''
         
-        # Prepare the beamline for scan:
-        # Check the electrometer values
-        # Scan motor to start value
-        # slowshu closed.
-        # Transmission to 100%
-        # Detcover closed
-        # fast shu open
-        # 
-        
         # Motor list to be moved
         scanmotor = taurus.Device(fmotorname)
         scanmotor_pos = scanmotor.position 
