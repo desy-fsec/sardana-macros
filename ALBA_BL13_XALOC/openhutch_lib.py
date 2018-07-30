@@ -25,7 +25,6 @@ class openhutch(Macro):
        blight_dev = taurus.Device('tango://blight')
        bstopz = self.getMoveable("bstopz")
        aperz = self.getMoveable("aperz")
-       omega = self.getMoveable("omega")
        yagz = self.getMoveable("yagz")
        #omegaz = self.getMoveable("omegaz")
 
@@ -37,29 +36,13 @@ class openhutch(Macro):
        
        # REMOVE fluodet
        self.execMacro('act distfluo out')
-       # set move_omega to False until distfluo is out
-       move_omega = False 
-       limit = 1
        while epsf('read','distfluo')[2] != 1:
           self.info("OPEN HUTCH: waiting for the distfluo to be removed")
           limit = limit + 1
           if limit > 2:
              self.error("OPEN HUTCH ERROR: There is an error with the distfluo translation table")
-             move_omega = False 
              break
           time.sleep(1)
-
-       if epsf('read','distfluo')[2] == 1: move_omega = True
-
-
-       # MOVE OMEGA BACK TO 0 if distfluo is not in (to avoid collisions bet. mk3 and fluodet) 
-       if move_omega:
-          omega.write_attribute('velocity',OMEGA_VELOCITYFAST)
-          time.sleep(0.3)
-          omega.write_attribute('position',0)
-
-       # reset omegaz 
-       #omegaz.write_attribute('position',0)
 
        # MOVE DETECTOR TO SAFE POSITION 
        self.info('OPEN HUTCH: Check the position of the detector')
@@ -133,7 +116,7 @@ class openhutch(Macro):
                  self.info('OPEN HUTCH: Moving bstopz')
                  bstopz.write_attribute('position',BSTOPZ_OUT_POSITION)
               elif lim1:
-                 self.info('OPEN HUTCH: Bstopz is at the negative limit')
+                 self.info('OPEN HUTCH: Bstopz is at the lim-')
            except:
               self.error('OPEN HUTCH ERROR: Cannot move bstopz')
               return
