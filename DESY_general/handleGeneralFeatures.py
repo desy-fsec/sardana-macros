@@ -208,6 +208,11 @@ class gh_disable(Macro):
                    "post-acq": "gh_post_acq", 
                    "post-step": "gh_post_step", 
                    "post-scan": "gh_post_scan"}
+        
+        try:
+            gh_macros_dict = self.getEnv("_GeneralHooks")
+        except:
+            return
 
         if hook_pos == 'all':
             self.unsetEnv("_GeneralHooks")

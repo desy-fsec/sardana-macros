@@ -1,57 +1,52 @@
 from sardana.macroserver.macro import Macro, Type
-import taurus
 import time
 from epsf import *
-
 from bl13constants import pentaaperpos_X as px
 from bl13constants import pentaaperpos_Z as pz
 from bl13constants import APERZ_OUT_POSITION
-#from bl13constants import offset_x as offsetx
-#from bl13constants import offset_z as offsetz
+
+from PyTango import DeviceProxy
+from bl13constants import (pentaaperpos_X, pentaaperpos_Z,
+                           pentaaper_postolerance_X, pentaaper_postolerance_Z)
+from sardana.macroserver.macro import Macro
 
 
-
-
-       #self.info('%s'%aperx.status())
-
-
-
-class maperture(Macro):
-
-    '''aperture: macro to select the aperture of choice from the pentaperture
-    mode: 5: 5um aperture, 10: 10um aperture, 20: 20um aperture, 30: 30um aperture, 50: 50um aperture)'''
-
-    param_def = [ 
+class move_aperture(Macro):
+    """
+    Select the aperture from the pentaperture controller (2 motors)
+    Possible values:
+        out: remove aperture from beam trajectory
+        5: 5um aperture
+        10: 10um aperture
+        20: 20um aperture
+        30: 30um aperture
+        50: 50um aperture
+    """
+    param_def = [
         [ 'mode', Type.String, '20', 'Options: out, 5, 10, 20, 30, 50']
         ]
 
     def run(self,mode):
 
-       eps = taurus.Device('bl13/ct/eps-plc-01')
        mode = mode.lower()
-       
-       
+
        aperz_status=str(taurus.Device('motor/eh_ipap_ctrl/12').state())
        aperx_status=str(taurus.Device('motor/eh_ipap_ctrl/11').state())
-       #self.info('The status of aperz is %s'%aperz_status)
-       #self.info('The status of aperx is %s'%aperx_status)
        if aperx_status=='ALARM' or aperz_status=='ALARM':
-            self.info('Motors in alarm, stopping')
-            #return
+            self.error('Motors in alarm, stopping')
+            return
 
-       #offset_z = -0.60475
-       #offset_x = -0.074418
-       
-        # REMOVE LN2 COVER
+       # REMOVE LN2 COVER
        if epsf('read','ln2cover')[2] != 1:
            self.info('APERTURE: Remove the LN2 cover')
            self.execMacro('act ln2cover out')
            limit = 1
-           while epsf('read','ln2cover')[2] != 1: #or eps['ln2cover'].quality != PyTango._PyTango.AttrQuality.ATTR_VALID:
-               self.info("APERTURE WARNING: waiting for the LN2 cover to be removed")
+           while epsf('read','ln2cover')[2] != 1:
+               self.info("APERTURE WARNING: waiting for the LN2 cover to be"
+                         "removed")
                limit = limit + 1
                if limit > 50:
-                   self.error("APERTURE ERROR: There is an error with the LN2 cover")
+                   self.error("APERTURE ERROR: Error with the LN2 cover")
                    return
                time.sleep(.5)
        self.execMacro('turn aperx on')
@@ -59,7 +54,9 @@ class maperture(Macro):
        self.execMacro('turn aperz on')
        aperz = self.getMoveable('aperz')
        for iter in range(20):
-          if aperx.getAttribute('PowerOn').read().value and aperz.getAttribute('PowerOn').read().value: break
+          if (aperx.getAttribute('PowerOn').read().value and
+              aperz.getAttribute('PowerOn').read().value):
+              break
           time.sleep(.2)
        if not aperx.getAttribute('PowerOn').read().value:
            self.info('aperx motor could not be Powered On')
@@ -122,33 +119,67 @@ class maperture(Macro):
            self.execMacro('mv aperx %f' %px[1])
            return           
 
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-    
+
+class aperture_update_configuration(Macro):
+    """
+    Category: Configuration
+
+    Macro intended to send tha calibration (dynamic attribute) to the
+    penta aperture pseudo motor (aperture). The calibration is constructed
+    by importing the list of values and tolerances of each pseudomotor from
+    a python module (bl13constants). The calibration is validated against
+    the existent labels (available pseudo positions) of the pseudomotor.
+    It is MANDATORY to restart the pool to apply the changes after applying
+    the new calibration.
+    """
+
+    def motor_fuzzy_positions_list(self, pos, tol):
+        flist = []
+        for value, res in zip(pos, tol):
+            min = value - res
+            max = value + res
+            p = [min, value, max]
+            flist.append(p)
+        return flist
+
+    #param_def = [[]]
+
+    def prepare(self):
+        self.aperture = DeviceProxy('aperture')
+        # Read values from file and check consistency with existent labels
+        xpos = pentaaperpos_X
+        xtol = pentaaper_postolerance_X
+        zpos = pentaaperpos_Z
+        ztol = pentaaper_postolerance_Z
+        npos = self.aperture.nlabels
+
+        lxpos = len(xpos)
+        lxtol = len(xtol)
+        lzpos = len(zpos)
+        lztol = len(ztol)
+
+        size = [lxpos, lxtol, lzpos, lztol]
+        self.debug('x_pos (%s) = %s' % (lxpos, xpos))
+        self.debug('x_tol (%s) = %s' % (lxtol, xtol))
+        self.debug('z_pos (%s) = %s' % (lzpos, zpos))
+        self.debug('z_tol (%s) = %s' % (lztol, ztol))
+
+        # If the values are consistent, build the calibration
+        if all(npos == x for x in size):
+            self.calib = []
+            self.calib.append(self.motor_fuzzy_positions_list(xpos, xtol))
+            self.calib.append(self.motor_fuzzy_positions_list(zpos, ztol))
+            self.debug('Calibration:')
+            self.debug(repr(self.calib))
+        else:
+            raise Exception('Invalid data to build a calibration.')
+
+    def run(self):
+        self.info('Sending calibration to aperture.')
+        try:
+            self.info(str(self.calib))
+            self.aperture.write_attribute('calibration', str(self.calib))
+            msg = '[done]'
+            self.info(msg)
+        except:
+            raise Exception('Calibration cannot be sent to aperture.')
