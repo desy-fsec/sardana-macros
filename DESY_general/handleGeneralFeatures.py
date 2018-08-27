@@ -209,6 +209,11 @@ class gh_disable(Macro):
                    "post-step": "gh_post_step", 
                    "post-scan": "gh_post_scan"}
 
+        try:
+            gh_macros_list = self.getEnv("_GeneralHooks")
+        except:
+            return
+        
         if hook_pos == 'all':
             self.unsetEnv("_GeneralHooks")
             self.info("Undefine all general hooks")
@@ -216,11 +221,6 @@ class gh_disable(Macro):
 
         if hook_pos not in hookDct.keys():
             self.error("gh_disable (D9): hook_pos %s not in dictionary" % hook_pos)
-            return
-
-        try:
-            gh_macros_list = self.getEnv("_GeneralHooks")
-        except:
             return
 
         #
