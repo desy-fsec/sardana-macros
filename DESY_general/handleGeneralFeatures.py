@@ -102,12 +102,11 @@ class gh_enable(Macro):
                    "post-step": "gh_post_step", 
                    "post-scan": "gh_post_scan"}
 
+        #
+        # 'gh_enable' without args: reset everything
+        #
         if hook_pos == 'default':
-            try:
-                macros_list = self.getEnv("_GeneralHooks")
-            except:
-                macros_list = []
-
+            macros_list = []
             for hook in hookDct.keys():
                 hook_tuple = (hookDct[ hook], [hook])
                 macros_list.append(hook_tuple)
@@ -118,20 +117,15 @@ class gh_enable(Macro):
             self.setEnv("_GeneralHooks", macros_list)
             return 
 
+        #
+        # hook_pos can be pre-scan
+        #
         if hook_pos not in hookDct.keys():
             self.error("gh_enable( D9): hook %s not in dictionary" % hook_pos)
             return 
             
-        try:
-            macros_list = self.getEnv("_GeneralHooks")
-        except:
-            macros_list = []
-
-        hook_tuple = ( macro_name, [hook_pos])
-        macros_list.append(hook_tuple)
-        self.debug( "gh_enable: %s" % repr( hook_tuple))
-        self.debug( "gh_enable: %s" % repr( macros_list))
-        self.setEnv("_GeneralHooks", macros_list)
+        self.execMacro( 'defgh', macro_name, [hook_pos])
+        return 
 
     def gh_enableD8(self, macro_name, hook_pos):
         '''
