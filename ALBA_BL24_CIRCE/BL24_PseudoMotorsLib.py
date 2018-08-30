@@ -23,6 +23,7 @@ class EnergyCffFixed(PseudoMotorController):
                         },
                     }
 
+    # template for updating
     #ctrl_extra_attributes = {
         #'Offset': {Type: float, Access: DataAccess.ReadWrite},
         #'Acceleration': {Type: float, Access: DataAccess.ReadWrite},
