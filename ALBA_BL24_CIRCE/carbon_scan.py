@@ -5,6 +5,8 @@ import time
 import math
 import numpy as np
 import os
+import PyTango # FB13OCT2017
+
 
 class CarbonExperiment(object):
     """
@@ -24,11 +26,8 @@ class CarbonExperiment(object):
                     'CP': math.pi/4.0,
                     'CN': -math.pi/4.0
                     }
-    # --- Integration time ---
+    # --- Integration time ---not valid for image ROI, where integration time is set in Uview
     INT_TIME = 0.2
-
-    # --- Measurement group ---
-    MEASUREMENT_GROUP = 'brfma_kb_izeroa'
 
     # --- Motor names ---
     ID_NAME = 'ideu62_motor_energy'
@@ -38,14 +37,14 @@ class CarbonExperiment(object):
     # --- First mesh parameters ---
     # finding the Energy at which flux is minimum
     # (while optimzing at each step the ID)
-    ENERGY_MESH_RANGE_REL = [-1, 1]# [-5, 5]
-    ENERGY_MESH_DELTA = 0.2 # 0.1
-    ID_MESH_RANGE = [295, 310] #[290, 320]
-    ID_MESH_DELTA = 1 #1
+    ENERGY_MESH_RANGE_REL = [-4, 4] # Range of photon energy to look for transmission minimum around our initial guess
+    ENERGY_MESH_DELTA = 0.25 #0.2 # 0.1 Step size of photon energy to look for transmission minimum around our initial guess
+    ID_MESH_RANGE = [290, 310] #something reasonable for a minimum transmission around 285eV
+    ID_MESH_DELTA = 1 
 
     # --- Second mesh parameters ---
-    ID_SCAN_RANGE = [410, 290]#[410, 290]
-    ID_DELTA = 5
+    ID_SCAN_RANGE = [430, 290] # Range of ID_energy to look for intensity similar to the reference one, in all the calibration scan range
+    ID_DELTA = 5 # ID_energy steps in first coarse scan
     # --------------------------------------------------------
 
     def _init(self, simulation, plzn):
@@ -53,7 +52,7 @@ class CarbonExperiment(object):
         self.ref_drain_current = 0
         self.prev_mg = None
         self.calib_path = None
-
+        
         if simulation:
             self.set_simulation_mode()
             self.load_calib(plzn, True)
@@ -61,14 +60,24 @@ class CarbonExperiment(object):
             self.load_calib(plzn)
 
         self.create_bkp()
-
-        self.set_measurement_group()
+    
+        self.MEASUREMENT_GROUP = self.getEnv('ActiveMntGrp')
 
         name_list = [self.ID_NAME, self.ENERGY_NAME, self.POLARIZATION_NAME]
         for name in name_list:
             obj = self.getObj(name)
             if not obj:
                 raise RuntimeError('object %s not defined' % self.ID_NAME)
+
+
+
+        self.imageCounter = 0 # FB13OCT2017
+        INTEGRATION_PREVIEW_DS = "bl24/ct/integrationpreview" # FB13OCT2017
+        self.integrationPreview = PyTango.DeviceProxy(INTEGRATION_PREVIEW_DS) # FB13OCT2017
+        self.execMacro("peemSetFolder CarbonCalib")# To check
+        self.execMacro("peemSetAverageImages %d" %0) # FB 13NOV2017 after Nichael suggestion
+
+
 
     def set_simulation_mode(self):
         """
@@ -227,22 +236,28 @@ class CarbonExperiment(object):
         current = 1000+ abs(mono_energy-carbon_energy)*10 - (id_energy-300)*10
         return current
 
-    def set_measurement_group(self):
-        try:
-            self.output('* Setting active mesurement group: %s' % self.MEASUREMENT_GROUP)
-            self.prev_mg = self.getEnv('ActiveMntGrp')
-            self.setEnv('ActiveMntGrp', self.MEASUREMENT_GROUP)
-        except Exception as e:
-            msg = 'Error while switching measurement group from %s to %s' % (self.prev_mg, self.MEASUREMENT_GROUP) 
-            raise ValueError('%s\n%s' % (msg, e))
+    # FB13OCT2017: 
+    def takeImage(self, dir_name='CarbonCalib' ):
+       
+        fileName = "%03d_img" %(self.imageCounter)
+        
+        #self.execMacro("peemSetAverageImages %d" %0)
+        self.execMacro("peemGetImage %s" %fileName)
+        #self.execMacro("peemSetAverageImages %d" %1)
 
-    def restore_measurement_group(self):
+        # Get ethe name of the last image
+        env = self.getEnv('PeemFolderForImages')
+        counter = self.getEnv('PeemFolderCounter')
+        self.lastImage = "%s/%03d_%s/%s.dat" %(env, counter-1, dir_name ,fileName )# to check
+         
+
+        self.imageCounter = self.imageCounter + 1
+        
         try:
-            self.output('* Restoring active mesurement group: %s' % self.prev_mg)
-            self.setEnv('ActiveMntGrp', self.prev_mg)
+            self.integrationPreview.AddImage([self.lastImage])
         except Exception as e:
-            msg = 'Error while switching measurement group from %s to %s' % (self.MEASUREMENT_GROUP, self.prev_mg)   
-            raise ValueError('%s\n%s' % (msg, e))
+            self.error("There's not an image with that name !!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            self.error(e)
 
 
     def create_calib_table(self, start_energy, end_energy, delta_energy,
@@ -273,6 +288,8 @@ class CarbonExperiment(object):
 #
 #        self.create_bkp()
 
+
+       
         try:
             #########################
             # --- FIRST MESH SCAN ---
@@ -281,6 +298,12 @@ class CarbonExperiment(object):
             if not simulation:
                 self.output('* Setting current channel: %s' % channel)
                 self.chn = self.getDevice(channel)
+                # FB13OCT2017: in case we use the roi for calibrating
+                if channel == "roi1_integration":
+                    #self.integrationPreview = PyTango.DeviceProxy(INTEGRATION_PREVIEW_DS)
+                    self.integrationPreview.ResetImages()
+                    #self.execMacro("peemSetFolder img")# To check
+                    #self.imageCounter = 0
             else:
                 self.warning('* Real channel values bypassed!')
 
@@ -325,6 +348,9 @@ class CarbonExperiment(object):
                 for idx_i, i in enumerate(id_range):
                     self.execMacro('mv %s %f' %(self.ID_NAME, i))
 
+                    # FB13OCT2017
+                    self.takeImage()
+
                     # --- ct measurement
                     
                     if not simulation:
@@ -340,12 +366,12 @@ class CarbonExperiment(object):
                               (e, i, value))
                 m = max(self.current_values)
                 self.max_drain_current.append(m)
-                self.output('>> Maximum drain current is %g' % m)
+                self.output('>> Maximum intensity level is %g' % m)
                 del self.current_values[:]
 
-            # --- reporting reference drain current
+            # --- reporting reference intensity level
             self.ref_drain_current = min(self.max_drain_current)
-            self.output('\n* New reference drain current: %g' %
+            self.output('\n* New reference intensity level: %g' %
                       self.ref_drain_current)
 
             # --- reporting new energy reference
@@ -374,9 +400,9 @@ class CarbonExperiment(object):
             id_range, step_id = self._get_range(self.ID_SCAN_RANGE[0],
                                                 self.ID_SCAN_RANGE[1],
                                                 self.ID_DELTA)
-            # --- start custom mesh
+            # --- start custom meshof photon energy to look for transmission minimum around our initial guess
 
-            self.warning('Target drain current (reference): %g' %
+            self.warning('Target intensity level (reference): %g' %
                       self.ref_drain_current)
             for idx_e, e in enumerate(energy_range):
                 self.execMacro('mv %s %f' %(self.ENERGY_NAME, e))
@@ -403,6 +429,8 @@ class CarbonExperiment(object):
 
                     
                     self.execMacro('mv %s %f' %(self.ID_NAME, i))
+                    # FB07NOV2017
+                    self.takeImage()
                     # --- ct measurement
                     if not simulation:
                         self.mnt_grp = self.getObj(self.MEASUREMENT_GROUP,
@@ -451,9 +479,6 @@ class CarbonExperiment(object):
         except Exception as e:
             self.error(e)
 
-        finally:
-            # Revert here any beamline variable to its initial value.
-            self.restore_measurement_group()
 
     def refinementLucia(self,refined_id_energy, refined_values): ## Lucia's way
         # Lineal fit to find the best id_current that matches the ref_drain_current
@@ -475,10 +500,13 @@ class CarbonExperiment(object):
         refined_values = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 
         central_id_energy = float(self.id_energy_values[-1])
-        for index in range(21):
+        for index in range(21):                     #so, +-5eV around ID_energy value found in coarse scan, in 0.5eV steps
             id_energy = central_id_energy + 0.5*(index-10)
             self.execMacro('mv %s %f' %(self.ID_NAME, id_energy))
             refined_id_energy[index] = id_energy
+            
+            # FB07NOV2017
+            self.takeImage()
 
             if not simulation:
                 self.mnt_grp = self.getObj(self.MEASUREMENT_GROUP,
@@ -537,7 +565,7 @@ class CalibrateCarbonScan(CarbonExperiment, Macro):
                  ['deltaenergy', Type.Float, None, 'Increment energy'],
                  ['refenergy', Type.Float, None, 'Reference energy'],
                  ['plzn', Type.String, '', 'Polarization: LH, LV, CP, CN'],
-                 ['channel', Type.String, '', 'Drain current channel'],
+                 ['channel', Type.String, '', 'intensity level channel'],
                  ['simulation', Type.Boolean, '', 'Simulation mode for testing']
                  ]
 
@@ -547,14 +575,9 @@ class CalibrateCarbonScan(CarbonExperiment, Macro):
         self.output('###    Carbon Calibration Macro    ###')
         self.output('######################################')
 
-#        self.set_measurement_group()
-
     def run(self, *args, **kargs):
         self.create_calib_table(*args, **kargs)
 
-    def on_abort(self, *args, **kargs):
-        # Revert here any beamline variable to its initial value.
-        self.restore_measurement_group()
 
 class CarbonScan(CarbonExperiment, Macro, Hookable):
     """
@@ -581,8 +604,6 @@ class CarbonScan(CarbonExperiment, Macro, Hookable):
         if simulation:
             self.set_simulation_mode()
 
-        self.set_measurement_group()
-        
         env = kargs.get('env', {})
 
         self.start_pos = args[0]
@@ -595,6 +616,16 @@ class CarbonScan(CarbonExperiment, Macro, Hookable):
 
         self.motors = [self.getMoveable(self.ENERGY_NAME), self.getMoveable(self.ID_NAME)]
         self._gScan = SScan(self, self._generator, self.motors, env)
+
+
+        #self.execMacro("peemSetFolder img")# FB13OCT2017
+        #self.imageCounter = 0# FB13OCT2017
+              
+        self.imageCounter = 0 # FB13OCT2017
+        INTEGRATION_PREVIEW_DS = "bl24/ct/integrationpreview" # FB13OCT2017
+        self.integrationPreview = PyTango.DeviceProxy(INTEGRATION_PREVIEW_DS) # FB13OCT2017
+        self.execMacro("peemSetFolder CarbonXAS")# To check
+
 
     def _generator(self):
         #### Only if the macro need any hook(s) ###
@@ -625,7 +656,9 @@ class CarbonScan(CarbonExperiment, Macro, Hookable):
 
     def myPostMoveHook(self):
         self.output("... ... ... myPostMoveHook ... ... ...")
-        self.execMacro("peemGetSingleImage 0")
+        #self.execMacro("peemGetSingleImage 0")
+        # FB07NOV2017
+        self.takeImage(dir_name='CarbonXAS')
 
 
     def run(self, *args):
@@ -635,13 +668,11 @@ class CarbonScan(CarbonExperiment, Macro, Hookable):
                 self.hooks = [(self.myPostMoveHook, ['post-move'])]
             self.output('[DONE]')
         finally:
-            self.restore_measurement_group()
+            pass
     
     @property
     def data(self):
         return self._gScan.data
 
-    def on_abort(self, *args, **kargs):
-        # Revert here any beamline variable to its initial value.
-        self.restore_measurement_group()
+    
 
