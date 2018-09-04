@@ -171,7 +171,15 @@ class clearAutoSync(Macro):
                                'clear current state.')
 
         self.output('Auto synchronization...')
-        lines = status.split(':')[1].split('\n')[1:-1]
+        if 'PowerOn(False)' in status:
+            self.clearStatus()
+            raise RuntimeError('You should turn on first the motors, '
+                               'and after you can run clearAutoSync.')
+        motor_to_sync = status.split('clearSync macro):')
+        if len(motor_to_sync) != 2:
+            self.info('There are not motors to synchronize')
+            return
+        lines = motor_to_sync[1].split('\n')[1:-1]
         motors_names = []
         motors_pos = []
         motors_obj = []
@@ -265,8 +273,7 @@ class clearSetCeout(Macro):
 
         # Load new file
         self.clearLoadTable(traj_file)
-
-        self.clearStatus()
+        self.clearAutoSync()
 
 
 class clearRestoreTable(Macro):
@@ -295,3 +302,4 @@ class clearRestoreTable(Macro):
                 self.output('Change {0} offset from {1} to '
                             '{2}'.format(name, current_offset, offset))
         self.clearLoadTable(traj_file)
+        self.clearAutoSync()
