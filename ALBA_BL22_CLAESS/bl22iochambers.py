@@ -48,7 +48,7 @@ class HVset(Macro):
                   None, 'List of IO chambers']]
 
     I0_DsName = 'bl22/ct/nhq_x0xx_01'
-    I1I2_DSName = 'bl22/ct/nhq_x0xx_02'
+Fix    I1I2_DsName = 'bl22/ct/nhq_x0xx_02'
     AttrNames = {'i0': 'voltageA', 'i1': 'voltageA', 'i2': 'voltageB'}
 
     TOLERANCE = 10  # value in volts
@@ -59,7 +59,7 @@ class HVset(Macro):
         wait_time = 0
         factor = 10
         i0 = PyTango.DeviceProxy(self.I0_DsName)
-        i12 = PyTango.DeviceProxy(self.I1I2_DSName)
+        i12 = PyTango.DeviceProxy(self.I1I2_DsName)
         i0.write_attribute('rampSpeedA', self.RAMPSPEED)
         i12.write_attribute('rampSpeedA', self.RAMPSPEED)
         i12.write_attribute('rampSpeedB', self.RAMPSPEED)
@@ -73,7 +73,7 @@ class HVset(Macro):
             if io == 'i0':
                 ds_name = self.I0_DsName
             else:
-                ds_name = self.I1I2_DSName
+                ds_name = self.I1I2_DsName
             attr_name = ds_name + '/' + self.AttrNames[io]
             attr = PyTango.AttributeProxy(attr_name)
             attr.write(value)
