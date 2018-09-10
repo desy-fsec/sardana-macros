@@ -58,6 +58,12 @@ class HVset(Macro):
         attrs = []
         wait_time = 0
         factor = 10
+        i0 = PyTango.DeviceProxy(self.I0_DsName)
+        i12 = PyTango.DeviceProxy(self.I1I2_DSName)
+        i0.write_attribute('rampSpeedA', self.RAMPSPEED)
+        i12.write_attribute('rampSpeedA', self.RAMPSPEED)
+        i12.write_attribute('rampSpeedB', self.RAMPSPEED)
+
         for io, value in chambers:
             io = io.lower()
             if io not in self.AttrNames.keys():
