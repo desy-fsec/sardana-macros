@@ -83,7 +83,12 @@ Fix    I1I2_DsName = 'bl22/ct/nhq_x0xx_02'
                 wait_time = t
         wait_time += 5
         self.info('Waiting to set value: %f ....' % wait_time)
-        time.sleep(wait_time)
+        t0 = time.time()
+        while True:
+            if time.time()-t0 > wait_time:
+                break
+            time.sleep(0.01)
+            self.checkPoint()
         msg = ''
         while len(attrs):
             rm = []
