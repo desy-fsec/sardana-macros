@@ -75,7 +75,16 @@ class MgConf:
         temp = self.hsh[u'timer']
         if temp.find( '0000') >= 0:
             lst = temp.split("/")
-            temp = "/".join(lst[1:])
+            #
+            # tango://haso113u.desy.de:10000/expchan/dgg2_d1_01/1
+            #
+            if lst[0].lower() == 'tango:': 
+                temp = "/".join(lst[3:])
+            else:
+                temp = "/".join(lst[1:])
+            #
+            # expchan/dgg2_d1_01/1
+            #
             masterTimer = self.db.get_alias( str(temp))
         return masterTimer
 
@@ -223,25 +232,18 @@ class MgConf:
         if not fullDeviceName in ctrlChannels.keys():
             print("adding index", self.index, device)
             dct = {}
-            dct[ u'_controller_name'] = unicode(ctrl)
-            dct[ u'_unit_id'] = u'0'
             dct[ u'conditioning'] = u''
-            dct[ u'data_type'] = u'float64'
-            dct[ u'data_units'] = u'No unit'
             dct[ u'enabled'] = True
             dct[ u'full_name'] = fullDeviceName
             dct[ u'index'] = self.index
             self.index += 1
-            dct[ u'instrument'] = None
             dct[ u'label'] = unicode(device)
             dct[ u'name'] = unicode(device)
             dct[ u'ndim'] = 0
-            dct[u'nexus_path'] = u''
             dct[ u'normalization'] = 0
             dct[ u'output'] = True
             dct[ u'plot_axes'] = []
             dct[ u'plot_type'] = 0
-            dct[ u'shape'] = []
             dct[ u'source'] = dct['full_name'] + "/value"
             ctrlChannels[fullDeviceName] = dct
 
@@ -311,25 +313,18 @@ class MgConf:
         fullDeviceName = self.findFullDeviceName( device)
         if not fullDeviceName in ctrlChannels.keys():
             dct = {}
-            dct[ u'_controller_name'] = unicode(ctrl)
-            dct[ u'_unit_id'] = u'0'
             dct[ u'conditioning'] = u''
-            dct[ u'data_type'] = u'float64'
-            dct[ u'data_units'] = u'No unit'
             dct[ u'enabled'] = True
             dct[ u'full_name'] = fullDeviceName
             dct[ u'index'] = self.index
             self.index += 1
-            dct[ u'instrument'] = None
             dct[ u'label'] = unicode(device)
             dct[ u'name'] = unicode(device)
             dct[ u'ndim'] = 0
-            dct[u'nexus_path'] = u''
             dct[ u'normalization'] = 0
             dct[ u'output'] = True
             dct[ u'plot_axes'] = []
             dct[ u'plot_type'] = 0
-            dct[ u'shape'] = []
             dct[ u'source'] = dct['full_name'] + "/value"
             ctrlChannels[fullDeviceName] = dct
 
@@ -411,20 +406,14 @@ class MgConf:
         if not fullDeviceName in ctrlChannels.keys():
             print("adding index", self.index, device)
             dct = {}
-            dct[ u'_controller_name'] = unicode(ctrl)
-            dct[ u'_unit_id'] = u'0'
             dct[u'conditioning'] = u''
-            dct[u'data_type'] = u'float64'
-            dct[u'data_units'] = u'No unit'
             dct[u'enabled'] = True
             dct[u'full_name'] = fullDeviceName
             dct[u'index'] = self.index
             self.index += 1
-            dct[u'instrument'] = u''
             dct[u'label'] = unicode( device)
             dct[u'name'] = unicode( device)
             dct[u'ndim'] = 0
-            dct[u'nexus_path'] = u''
             dct[u'normalization'] = 0
             dct[u'output'] = True
             dct[u'plot_axes'] = [u'<mov>']
@@ -432,7 +421,6 @@ class MgConf:
                 dct[u'plot_type'] = 1
             else:
                 dct[u'plot_type'] = 0
-            dct[u'shape'] = []
             dct[u'source'] = dct['full_name'] + "/value"
             ctrlChannels[fullDeviceName] = dct
 
@@ -505,25 +493,18 @@ class MgConf:
             print("adding index", self.index, device)
             proxy = DeviceProxy( str(fullDeviceName))
             dct = {}
-            dct[ u'_controller_name'] = unicode(ctrl)
-            dct[ u'_unit_id'] = u'0'
             dct[u'conditioning'] = u''
-            dct[u'data_type'] = u'float64'
-            dct[u'data_units'] = u'No unit'
             dct[u'enabled'] = True
             dct[u'full_name'] = fullDeviceName
             dct[u'index'] = self.index
             self.index += 1
-            dct[u'instrument'] = None
             dct[u'label'] = unicode( device)
             dct[u'name'] = unicode( device)
             dct[u'ndim'] = 1
-            dct[u'nexus_path'] = u''
             dct[u'normalization'] = 0
             dct[u'output'] = True
-            dct[u'plot_axes'] = []
+            dct[u'plot_axes'] = [u'<mov>']
             dct[u'plot_type'] = 0
-            dct[u'shape'] = [proxy.DataLength]
             dct[u'source'] = fullDeviceName + "/Value"
             ctrlChannels[ fullDeviceName] = dct
 
@@ -593,21 +574,17 @@ class MgConf:
             print("adding index", self.index, device)
             proxy = DeviceProxy( str(fullDeviceName))
             dct = {}
-            dct[ u'_controller_name'] = unicode(ctrl)
-            dct[ u'_unit_id'] = u'0'
             dct[u'conditioning'] = u''
             dct[u'enabled'] = True
             dct[u'full_name'] = fullDeviceName
             dct[u'index'] = self.index
             self.index += 1
-            dct[u'instrument'] = u''
             dct[u'label'] = unicode( device)
             dct[u'name'] = unicode( device)
             dct[u'ndim'] = 2
-            dct[u'nexus_path'] = u''
             dct[u'normalization'] = 0
             dct[u'output'] = True
-            dct[u'plot_axes'] = []
+            dct[u'plot_axes'] = [u'<mov>']
             dct[u'plot_type'] = 0
             dct[u'source'] = fullDeviceName + "/Value"
             ctrlChannels[ fullDeviceName] = dct
@@ -835,14 +812,11 @@ class MgConf:
         if not self.findFullDeviceName( device) in ctrlChannels.keys():
             print("adding index", self.index, device)
             dct = {}
-            dct[ u'_controller_name'] = unicode(fullCtrlName)
-            dct[ u'_unit_id'] = u'0'
             dct[u'conditioning'] = u''
             dct[u'enabled'] = True
             dct[u'full_name'] = self.findFullDeviceName( device)
             dct[u'index'] = self.index
             self.index += 1
-            dct[u'instrument'] = None
             dct[u'label'] = unicode( device)
             dct[u'name'] = unicode( device)
             dct[u'ndim'] = 0
