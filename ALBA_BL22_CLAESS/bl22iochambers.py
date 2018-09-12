@@ -48,7 +48,7 @@ class HVset(Macro):
                   None, 'List of IO chambers']]
 
     I0_DsName = 'bl22/ct/nhq_x0xx_01'
-Fix    I1I2_DsName = 'bl22/ct/nhq_x0xx_02'
+    I1I2_DsName = 'bl22/ct/nhq_x0xx_02'
     AttrNames = {'i0': 'voltageA', 'i1': 'voltageA', 'i2': 'voltageB'}
 
     TOLERANCE = 10  # value in volts
