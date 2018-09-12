@@ -48,7 +48,7 @@ class HVset(Macro):
                   None, 'List of IO chambers']]
 
     I0_DsName = 'bl22/ct/nhq_x0xx_01'
-    I1I2_DSName = 'bl22/ct/nhq_x0xx_02'
+Fix    I1I2_DsName = 'bl22/ct/nhq_x0xx_02'
     AttrNames = {'i0': 'voltageA', 'i1': 'voltageA', 'i2': 'voltageB'}
 
     TOLERANCE = 10  # value in volts
@@ -58,6 +58,12 @@ class HVset(Macro):
         attrs = []
         wait_time = 0
         factor = 10
+        i0 = PyTango.DeviceProxy(self.I0_DsName)
+        i12 = PyTango.DeviceProxy(self.I1I2_DsName)
+        i0.write_attribute('rampSpeedA', self.RAMPSPEED)
+        i12.write_attribute('rampSpeedA', self.RAMPSPEED)
+        i12.write_attribute('rampSpeedB', self.RAMPSPEED)
+
         for io, value in chambers:
             io = io.lower()
             if io not in self.AttrNames.keys():
@@ -67,7 +73,7 @@ class HVset(Macro):
             if io == 'i0':
                 ds_name = self.I0_DsName
             else:
-                ds_name = self.I1I2_DSName
+                ds_name = self.I1I2_DsName
             attr_name = ds_name + '/' + self.AttrNames[io]
             attr = PyTango.AttributeProxy(attr_name)
             attr.write(value)
@@ -77,7 +83,12 @@ class HVset(Macro):
                 wait_time = t
         wait_time += 5
         self.info('Waiting to set value: %f ....' % wait_time)
-        time.sleep(wait_time)
+        t0 = time.time()
+        while True:
+            if time.time()-t0 > wait_time:
+                break
+            time.sleep(0.01)
+            self.checkPoint()
         msg = ''
         while len(attrs):
             rm = []
