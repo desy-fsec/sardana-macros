@@ -11,6 +11,7 @@ class adlink_bl24_config(Macro):
                 ['nTriggers', Type.Integer, None, 'nTriggers']]
 
     def run(self, itime, nTriggers):
+        self.output('adlink_bl24_config')
         name = 'bl24/ct/adc-ibl2402-01'
         adlink = PyTango.DeviceProxy(name)
         if adlink.State() != PyTango.DevState.STANDBY:

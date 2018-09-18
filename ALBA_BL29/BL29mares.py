@@ -6,11 +6,8 @@ Specific Alba BL29 MARES (RSXS end station) utility macros
 
 import PyTango
 
-import threading
 import time
 import os
-import xmlrpclib
-import socket
 
 from sardana.macroserver.macro import Macro, Type
 
@@ -380,7 +377,7 @@ class mares_shutter(Macro):
             dev_name = self.getEnv('device')
             self.dev = PyTango.DeviceProxy(dev_name)
             self.dev.state()
-        except Exception, e:
+        except Exception as e:
             msg = 'Check that environment is setup and Adlink AO device is up'
             self.debug('%s: %s' % (msg, str(e)))
             raise Exception(msg)
@@ -496,14 +493,15 @@ class mares_shutter(Macro):
 
 class mares_ccd(Macro):
     """
-    Macro for image acquisition and parameters getting/setting of XCAM CCD.
+    Macro for image acquisition, hardware reset and parameters getting/setting
+    of XCAM CCD.
     Note that this macro will never switch ON/OFF the CCD chip, so you should
     make sure that it is ON before acquiring an image
     Examples of usage:
-        - mares_ccd seq_trigger_mode sw:
-            sets trigger to software (free run)
-        - mares_ccd seq_trigger_mode hw_trig:
-            sets trigger to external trigger signal
+        - mares_ccd TriggerMode sw:
+            sets trigger mode to software (free run)
+        - mares_ccd TriggerMode hw_trig:
+            sets trigger mode to external trigger signal
         - mares_ccd acquire 2.001:
             acquire an image with 2.001 sec of integration and store it in a
             file named scan_dir/scan_file+scan_id.img (where scan_dir,
@@ -511,8 +509,9 @@ class mares_ccd(Macro):
         - mares_ccd acquire 2.001 /tmp/test.img:
             acquire an image with 2.001 sec of integration and store it in a
             file named \"/tmp/test.img\"
-        - mares_ccd seq_adc_delay:
-            print and return the value of seq_adc_delay
+        - mares_ccd init:
+        - mares_ccd ADCDelay:
+            print and return the value of sequencer ADC delay
     """
 
     # Before using this macro you have to correctly setup many components:
@@ -565,53 +564,49 @@ class mares_ccd(Macro):
     power = False  # power status (False: off or unknown, True: on or ignore)
 
     env_vars = [
-        'device',  # AO device name
-        'shutter_opened_voltage',
-        'shutter_closed_voltage',
-        'ccd_trig_voltage',
-        'ccd_idle_voltage',
-        'ccd_server',
-        'windows_path',  # list with windows drive, linux_path, windows_path
-        'config_file',  # config file location used by xcam grab program
-        'shutter_ratio'
+        'DeviceAO',   # AO device name
+        'DeviceCCD',  # CCD device name
+        'ShutterOpenedVoltage',
+        'ShutterClosedVoltage',
+        'CCDTrigVoltage',
+        'CCDIdleVoltage',
+        'WindowsPath',  # list with windows drive, linux_path, windows_path
+        'ShutterRatio',
+        'ShutterDelay',
+        'TriggerDelay',
+        'FileFormat',  # format to save image (e.g. "fits" or "tiff")
     ]
 
-    # parameters
-    env_parameters = {
-        'shutter_ratio':  None,  # % of time the shutter will be opened
-    }
-    special_parameters = {
-        'power': None,  # power status (False: off/unknown, True: on/ignore)
-    }
     # { parameter name: {parameter number: tanslation}, ... }
-    sequencer_parameters = {
-        'seq_adc_delay':        {0:  None},
-        'seq_int_minus_delay':  {1:  None},
-        'seq_plus_delay':       {2:  None},
-        'seq_int_time':         {3:  None},
-        'seq_serial_t':         {4:  None},
-        'seq_parallel_t':       {5:  None},
-        'seq_clk_rst_delay':    {6:  None},
-        'seq_bin_rows':         {9:  None},
-        'seq_numcols':          {10: None},
-        'seq_numrows':          {11: None},
-        'seq_frame_time':       {15: None},
-        'seq_frame_units':      {64: {'0.1': 0, '0.01': 1}},
-        'seq_trigger_mode':     {65: {'hw_trig': 0,
-                                      'hw_gate': 1,
-                                      'sw': 3,
-                                      'sw_delay': 4}},
-    }
-    parameters = env_parameters.copy()
-    parameters.update(special_parameters)
-    parameters.update(sequencer_parameters)
+    parameters = [
+        # device parameters
+        'AcquisitionTime',
+        'Power',
+        'Movie',
+        # sequencer parameters
+        'ADCDelay',
+        'IntMinusDelay',
+        'PlusDelay',
+        'IntTime',
+        'SerialT',
+        'ParallelT',
+        'ClkRstDelay',
+        'Binning',
+        'Columns',
+        'Rows',
+        'FrameTime',
+        'FrameUnits',
+        'TriggerMode',
+    ]
+
+    parameters.extend(env_vars)
 
     param_def = [
-        ['parameter', Type.String,  '', '\"acquire\" or param to get/set:'
-            '\n\t\t- %s%s'
-            % ('\n\t\t- '.join(sorted(parameters.keys())), '\n')],
-        ['value', Type.String,  '', 'integration time in sec (if acquiring)'
-            ', parameter value (if setting) or empty (if getting). '
+        ['parameter', Type.String,  '', '\"acquire\", \"init\" or param to '
+            'get/set:'
+            ' \n\t\t- %s%s' % ('\n\t\t- '.join(parameters), '\n')],
+        ['value', Type.String,  '', 'optional integration time in sec (if '
+            'acquiring), parameter value (if setting) or empty (if getting). '
             'When setting values some parameters admit only certain values:\n'
             '\t\t- seq_frame_units: 0.1, 0.01\n'
             '\t\t- seq_trigger_mode: hw_trig, hw_gate, sw, sw_delay\n'],
@@ -622,33 +617,31 @@ class mares_ccd(Macro):
 
     interactive = True
 
-    class worker(threading.Thread):
-
-        def __init__(self, parent, server, args):
-            threading.Thread.__init__(self)
-            self.parent = parent
-            self.server = server
-            self.results = []
-            self.args = args
-
-        def run(self):
-            self.parent.debug('Worker thread args: %s' % self.args)
-            proxy = xmlrpclib.ServerProxy(self.server)
-            self.results = proxy.execute(self.args)
-            self.parent.debug('Worker thread results: %s' % self.results)
-
     def prepare(self, parameter, value, fname):
         # check Adlink AO card and environment params
         try:
             for var_name in self.env_vars:
                 setattr(self, var_name, self.getEnv(var_name))
-            dev_name = self.getEnv('device')
-            self.dev = PyTango.DeviceProxy(dev_name)
-            self.dev.state()
-        except Exception, e:
-            self.debug(str(e))
-            msg = ('Check that environment is setup %s and Adlink AO device is'
-                   ' up' % str(self.env_vars))
+            device_ao_name = self.getEnv('DeviceAO')
+            device_ccd_name = self.getEnv('DeviceCCD')
+            self.dev_ao = PyTango.DeviceProxy(device_ao_name)
+            self.dev_ao.state()
+            self.dev_ccd = PyTango.DeviceProxy(device_ccd_name)
+#            self.dev_ccd.set_timeout_millis(10000)
+            self.dev_ccd.state()
+        except Exception as e:
+            msg = ('Check that environment is setup %s and tango devices for '
+                   'Adlink AO and XCAM CCD are OK' % str(self.env_vars))
+            self.debug('%s: %s' % (msg, str(e)))
+            raise Exception(msg)
+
+        # check if CCD device is OK
+        if ((parameter.lower() == 'Init') and 
+                (self.dev_ccd.state() in [PyTango.DevState.FAULT])):
+            msg = ('CCD device is FAULT: please check and/or try \"init\"'
+                   'If it does not work a hardware reset of XCAM CCD '
+                   'hardware may be needed')
+            self.debug('%s' % msg)
             raise Exception(msg)
 
         # build file name if necessary, check that location is writable (we
@@ -668,8 +661,8 @@ class mares_ccd(Macro):
                              if os.path.isfile(os.path.join(scan_dir, f))]
                     sequentials = []
                     for f in files:
-                        if f.startswith(scan_file):
-                            f = f.strip(scan_file)
+                        if f.startswith(scan_file):  # remove base file name
+                            f = f[len(scan_file):]
                             s = ''.join(x for x in f if x.isdigit())
                             if len(s) > 0:
                                 sequentials.append(int(s))
@@ -678,20 +671,21 @@ class mares_ccd(Macro):
                     else:
                         self.fname_seq = 1
                     self.fname_base = fname_base
-                fname = '%s%03d.raw' % (self.fname_base, self.fname_seq)
+                fmt = getattr(self, 'FileFormat') 
+                fname = '%s_%03d.%s' % (self.fname_base, self.fname_seq, fmt)
                 self.fname = fname
             # check if file exists and if it is writable
             if os.path.isfile(fname) or not os.access(scan_dir, os.W_OK):
-                msg = ('File %s already exists or it is not writable!' % fname)
+                msg = ('File %s already exists or is not writable!' % fname)
                 self.debug(msg)
                 raise Exception(msg)
             # convert to windows format (server running on a windows machine)
             try:
-                self.debug('%s: %s' % (self.windows_path,
-                                       type(self.windows_path)))
-                drive, linux_path, windows_path = self.windows_path
-            except Exception, e:
-                msg = 'Invalid windows_path property'
+                self.debug('%s: %s' % (self.WindowsPath,
+                                       type(self.WindowsPath)))
+                drive, linux_path, windows_path = self.WindowsPath
+            except Exception as e:
+                msg = 'Invalid WindowsPath property'
                 self.debug('%s:\n%s' % (msg, str(e)))
                 raise Exception(msg)
             self.fname_unix = fname
@@ -702,27 +696,21 @@ class mares_ccd(Macro):
             self.fname = fname
             self.debug(self.fname)
 
-            # build and test proxy to CCD server
-            try:
-                proxy = xmlrpclib.ServerProxy(self.ccd_server)
-                socket.setdefaulttimeout(10)
-                proxy.system.listMethods()  # do a test call
-            except Exception, e:
-                socket.setdefaulttimeout(None)  # set global socket to defaults
-                msg = 'Unable to connect to CCD server'
-                self.debug('%s:\n%s' % (msg, str(e)))
-                raise Exception(msg)
-
-    def run(self, parameter, value, fname):
+    def run(self, parameter, value=None, fname=None):
         if parameter.lower() == 'acquire':
-            value = float(value)
+            if value == '':
+                value = None
+            else:
+                value = float(value)
             self.acquire_image(value)
-        elif parameter.lower() in self.parameters.keys():
+        elif parameter.lower() == 'init':
+            self.dev_ccd.command_inout('Init')
+        elif parameter.lower() in [p.lower() for p in self.parameters]:
             self.parameter(parameter, value)
             msg = '%s: %s' % (parameter, str(self.parameter(parameter)))
             self.output(msg)
         elif parameter == '':
-            for param in sorted(self.parameters.keys()):
+            for param in self.parameters:
                 msg = '%s: %s' % (param, str(self.parameter(param)))
                 self.output(msg)
         else:
@@ -734,250 +722,155 @@ class mares_ccd(Macro):
         """get or set parameter"""
         # check parameter name
         param = param.lower()
-        if param not in self.parameters.keys():
+        if param not in [p.lower() for p in self.parameters]:
             msg = 'Invalid parameter %s' % param
             self.debug(msg)
             raise Exception(msg)
 
         # param in environment parameter (should have already been read)
-        if param in self.env_parameters.keys():
+        if param in [key.lower() for key in self.env_vars]:
+            # get key value
+            keys = [key.lower() for key in self.env_vars]
+            idx = keys.index(param)
+            key = self.env_vars[idx]
             if value == '':
-                value = getattr(self, param)
+                value = getattr(self, key)
             else:
-                env_param = '%s.%s' % (self.__class__.__name__, param)
+                env_param = '%s.%s' % (self.__class__.__name__, key)
                 self.setEnv(env_param, value)
-                setattr(self, param, value)
+                setattr(self, key, value)
             return value
 
-        # special parameter
-        if param == 'power':
-            if value == '':
-                value = getattr(self.__class__, param)
-            else:
-                proxy = xmlrpclib.ServerProxy(self.ccd_server)
-                rc, output = proxy.execute(['xcamparam',
-                                            param, str(int(value))])
-                if rc != 0:
-                    msg = 'Error setting %s! Details:\n%s' % (param, output)
-                    self.error(msg)
-                    raise Exception(msg)
-                setattr(self.__class__, param, bool(value))
-            return value
-
-        # read configuration from file
-        try:
-            param_code = str(self.parameters[param].keys()[0])
-            if not os.path.exists(self.config_file):
-                mode = 'w+'
-            else:
-                mode = 'r'
-            with open(self.config_file, mode) as f:
-                config = f.readlines()
-        except Exception, e:
-            msg = 'Invalid configuration file %s' % self.config_file
-            self.debug('%s:\n%s' % (msg, str(e)))
-            raise Exception(msg)
-
-        # get parameter
+        # parameter is an attribute of XCAM CCD device server
         if value == '':
-            found = False
-            for line in config:
-                if line.startswith(param_code):
-                    try:
-                        value = int(line.split()[1])
-                        # translate value to user units if necessary
-                        param_code = int(param_code)
-                        if self.parameters[param][param_code] is not None:
-                            vals = self.parameters[param][param_code].values()
-                            i = vals.index(value)
-                            key = self.parameters[param][param_code].keys()[i]
-                            value = key
-                        found = True
-                    except Exception, e:
-                        raise
-                        msg = ('Error getting value from %s:\n%s'
-                               % (line, str(e)))
-                        self.debug(msg)
-                    break
-            if not found:
-                msg = ('Param %s not found in config file %s'
-                       % (param, self.config_file))
-                self.error(msg)
-                value = None
+            try:
+                value = self.dev_ccd.read_attribute(param).value
+            except Exception as e:
+                msg = 'Unable to get %s value (check XCAM CCD device)' % param
+                self.error('%s: %s' % (msg, str(e)))
+                raise Exception(msg)
         # set parameter
         else:
-            # translate value if necessary
-            if self.parameters[param].values()[0] is not None:  # param valid
-                try:
-                    value = self.parameters[param].values()[0][value.lower()]
-                    valid = True
-                except:
-                    valid = False  # invalid parameter
-                if not valid:
-                    msg = 'Invalid parameter value: %s' % value
-                    self.debug(msg)
-                    raise Exception(msg)
-            # set parameter in config file
             try:
-                text = '%s\t%s\n' % (param_code, value)
-                for idx, line in enumerate(config):
-                    if line.startswith(param_code):
-                        config[idx] = text
-                        break
+                type_ = self.dev_ccd.get_attribute_config(param).data_type
+                ints = [
+                    PyTango.DevShort, PyTango.DevUShort, PyTango.DevBoolean]
+                if type_ in ints:
+                    value = int(value)
+                elif type_ == PyTango.DevDouble:
+                    value = float(value)
+                elif type_ == PyTango.DevString:
+                    pass  # nothing to do
                 else:
-                    config.append(text)  # this parameter was not yet in file
-                with open(self.config_file, 'w') as f:
-                    f.writelines(config)
-            except Exception, e:
-                msg = 'Invalid configuration file %s' % self.config_file
-                self.debug('%s:\n%s' % (msg, str(e)))
+                    msg = 'Unexpected type for value %s' % str(value)
+                    raise Exception(msg)
+                self.dev_ccd.write_attribute(param, value)
+            except Exception as e:
+                msg = 'Error while writing %s' % param
+                self.debug('%s: %s' % (msg, str(e)))
                 raise Exception(msg)
         return value
 
-    def acquire_image(self, integration):
+    def acquire_image(self, integration=None):
         try:
-            # get frame units and set frame_time accordingly
-            try:
-                frame_units = self.parameter('seq_frame_units')
-                units = float(frame_units)
-            except Exception, e:
-                msg = 'Unable to retrieve frame units'
-                self.debug('%s: %s' % (msg, str(e)))
-                raise Exception(msg)
-            frames = int(integration / units)
-            self.parameter('seq_frame_time', frames)
+            # get acquisition CCD acquisition time CCD if necessary
+            frame_time = self.dev_ccd.read_attribute('FrameTime').value
+            frame_units = float(
+                self.dev_ccd.read_attribute('FrameUnits').value)
+            if integration is None:
+                integration = frame_time * frame_units
+            # 1.2 != 0.1 * 12 (this are floating point limitations): use str
+            if str(integration) != str(frame_time * frame_units):
+                frame_time = int(integration / frame_units)
+                self.dev_ccd.write_attribute('FrameTime', frame_time)
 
-            # get trigger mode
-            trig_mode = self.parameter('seq_trigger_mode')
-            trig_modes = (
-                self.parameters['seq_trigger_mode'].values()[0].keys())
-            if trig_mode not in trig_modes:
-                msg = 'Unknown trigger mode: %s' % str(trig_mode)
-                raise Exception(msg)
+            timeout = integration + 20
+
+            # get trigger mode and setup AO if necessary
+            trig_mode = self.dev_ccd.read_attribute('TriggerMode').value
             if trig_mode.startswith('hw'):  # grab with external trigger
                 hw_trig = True
             else:
                 hw_trig = False
 
-            # check if power is on or ignored
-            if not getattr(self.__class__, 'power'):
+            # check if power is known and on: ask user what to do if not
+            on = self.dev_ccd.read_attribute('Power')
+#            if on.quality != PyTango.AttrQuality.ATTR_VALID or not on.value:
+####remove me!!!
+            if False:
+####remove me!!!
                 answer = ''
                 while not answer.lower() in ('y', 'n'):
                     self.warning('Power is OFF or in UNKNOWN state.')
                     answer = self.input(
-                                'Do you want to switch ON? (y/[n]): ',
-                                timeout=30,
-                                default_value='n')
+                        'Do you want to switch it ON? (y/[n]): ',
+                        timeout=60,
+                        default_value='n')
                     if answer == 'y':  # switch on ccd
-                        proxy = xmlrpclib.ServerProxy(self.ccd_server)
-                        rc, output = proxy.execute(['xcamparam', 'power', '1'])
-                        if rc != 0:
-                            msg = 'Error setting ON! Details:\n%s' % output
-                            self.error(msg)
-                            raise Exception(msg)
-                    self.warning('Power status will be IGNORED from now on')
-                setattr(self.__class__, 'power', True)
+                        self.dev_ccd.write_attribute('Power', True)
                 self.output('OK. Press enter for prompt')
 
-            # grab image
-            self.info('Grabbing image into %s ...' % self.fname)
-            grab_thread = None
-            # grab with external trigger: since the call to the proxy will not
-            # return (it is waiting for the trigger) and we have to start the
-            # adlink AO to provide that trigger we need to make the call to
-            # the proxy in a thread
-            if hw_trig:
-                # setup Adlink AO hardware
-                self.info('Configuring AO device ...')
-                self.setup_ao(units, frames)
-                # start threaded grab
-                grab_thread = self.worker(self, self.ccd_server,
-                                          ['xcamgrab', self.fname])
-                grab_thread.daemon = False
-                self.debug('Thread: %s' % str(grab_thread))
-                # before grabbing check that lock file is not present
-                lock_dir = os.path.dirname(self.config_file)
-                lock_file = lock_dir + '/lock.lck'
-                if os.path.exists(lock_file):  # probably previous grab hanged
-                    os.remove(lock_file)
-                # start grabbing
-                grab_thread.start()
-                start = time.time()
-                self.debug('Waiting for lock file %s' % lock_file)
-                timeout = False
-                while not os.path.exists(lock_file) and not timeout:
-                    os.listdir(lock_dir)  # necessary for refreshing: why?
-                    time.sleep(0.1)
-                    timeout = ((time.time() - start) > 10)
-                if timeout:
-                    msg = 'Timeout while waiting for lock file. Please check!'
-                    self.debug(msg)
-                    raise Exception(msg)
-                # wait a while while grabbing really starts
-                sleep_time = 0
-                time.sleep(sleep_time)
-            # grab with software free run: simply call proxy and wait
-            else:
-                proxy = xmlrpclib.ServerProxy(self.ccd_server)
-                rc, output = proxy.execute(['xcamgrab', self.fname])
-                if rc != 0:
-                    msg = 'Error grabbing image! Details:\n%s' % output
-                    self.error(msg)
-                    raise Exception(msg)
-                else:
-                    self.fname_seq += 1
+            # set ccd timeout
+            self.dev_ccd.write_attribute('Timeout', timeout)
 
-            # start AO and wait until it finishes (only if external trigger)
-            if hw_trig:
-                if grab_thread is not None and grab_thread.is_alive():
-                    # trigger
-                    msg = 'Triggering and waiting for image to be taken ...'
-                    self.info(msg)
-                    self.dev.command_inout('Start')
-                    state = self.dev.state()
-                    start = time.time()
-                    timeout = False
-                    while (state == PyTango.DevState.RUNNING) and not timeout:
-                        time.sleep(0.1)
-                        state = self.dev.state()
-                        timeout = ((time.time() - start) > (integration + 1))
-                    if timeout:
-                        msg = 'Timeout while waiting for triggers'
-                        self.debug(msg)
-                        raise Exception(msg)
-                    # wait for image file to exist
-                    while not os.path.exists(self.fname_unix) and not timeout:
-                        os.listdir(os.path.dirname(self.fname_unix))  # why?
-                        time.sleep(0.1)
-                        timeout = ((time.time() - start) > integration + 5)
-                    if timeout:
-                        msg = ('Timeout waiting for %s. Please check!' %
-                               self.fname_unix)
-                        self.debug(msg)
-                        raise Exception(msg)
-                    grab_thread.join(10)  # give it 30 seconds to finish
-                    if grab_thread.is_alive():  # thread did not finish
-                        msg = 'Grab thread did not finish when expected'
-                        grab_thread.kill()
-                        raise Exception(msg)
+            # start image grabbing and wait for device to start moving
+            self.info('Grabbing image into %s ...' % self.fname)
+            self.dev_ccd.command_inout('Start')
+            start = time.time()
+            while self.dev_ccd.state() != PyTango.DevState.MOVING:
+                if time.time() - start < timeout:
+                    time.sleep(0.1)
                 else:
-                    msg = 'Grab thread finished before expected. Please check'
-                    if (grab_thread is not None and
-                            len(grab_thread.results) > 1):
-                        msg += ':\n%s' % str(grab_thread.results[1])
+                    msg = 'Timeout while waiting for CCD device to start'
                     raise Exception(msg)
+
+            # if external trigger is required set it up and trigger it
+            if hw_trig:
+#                time.sleep(1) # TODO remove me!!!! Is this really necessary
+                self.info('Configuring AO device')
+                self.setup_ao(frame_units, frame_time)
+                msg = 'Triggering AO device'
+                self.info(msg)
+                self.dev_ao.command_inout('Start')
+
+            # wait for image to be taken
+            msg = 'Waiting for image to be taken ...'
+            self.info(msg)
+            start = time.time()
+            while self.dev_ccd.state() == PyTango.DevState.MOVING:
+                if time.time() - start < timeout:
+                    time.sleep(0.1)
+                else:
+                    msg = 'Timeout while waiting for image to be taken'
+                    raise Exception(msg)
+
+            # check that grabbing finished correctly
+            if self.dev_ccd.state() == PyTango.DevState.FAULT:
+                msg = 'Error while grabbing image. Check CCD device state'
+                raise Exception(msg)
+
+            # save image
+            msg = 'Saving image ...'
+            self.info(msg)
+            self.dev_ccd.set_timeout_millis(10000)  # sometimes NFS gets crazy
+            self.dev_ccd.command_inout('Save', self.fname)
+            msg = 'Image saved'
+            self.info(msg)
+
         except:
             raise
-        # always turn off device
+
+        # always turn off AO device
         finally:
             try:
                 msg = 'Stopping AO device'
-                if self.dev.state() != PyTango.DevState.STANDBY:
-                    self.dev.command_inout('Stop')
-            except Exception, e:
+                if self.dev_ao.state() != PyTango.DevState.STANDBY:
+                    self.info(msg)
+                    self.dev_ao.command_inout('Stop')
+            except Exception as e:
                 msg = ('Error stopping AO device. Please check, since shutter'
                        ' may be open')
-                self.debug('%s. Details:\n%s' % (msg, str(e)))
+                self.error('%s. Details:\n%s' % (msg, str(e)))
 
     def setup_ao(self, frame_unit, frames):
         """
@@ -994,39 +887,70 @@ class mares_ccd(Macro):
         channels
         """
         # check that Adlink AO state is as expected
-        state = self.dev.state()
+        state = self.dev_ao.state()
         if state != PyTango.DevState.STANDBY:
             msg = ('Adlink AO device is in %s state: it should be in %s. '
                    'Result may be wrong!'
                    % (str(state), str(PyTango.DevState.STANDBY)))
-            self.error(msg)
-            self.dev.command_inout('Stop')
+            self.debug(msg)
+            self.dev_ao.command_inout('Stop')
+
+        # check that shutter_ratio <= 1
+        if self.ShutterRatio > 1:
+            msg = 'shutter_ratio must be <= 1'
+            raise Exception(msg)
 
         # set sample rate
         sample_rate = int(1 / frame_unit)
         self.debug('Setting AO sample rate to %d' % sample_rate)
-        self.dev.write_attribute(self.AO_SAMPLE_RATE, sample_rate)
+        self.dev_ao.write_attribute(self.AO_SAMPLE_RATE, sample_rate)
 
-        # calculate how many points are necessary for the waveform (1 last
-        # point is necessary to set 0 again: otherwise last value is hold)
-        points = frames + 1
+        # calculate how many points are necessary for the waveform taking into
+        # account the possible trigger and/or shutter delays (at least 1 last
+        # inactive point is necessary to set 0 again: otherwise last value is
+        # hold by the hardware)
+        shutter_delay_points = int(self.ShutterDelay / frame_unit)
+        trigger_delay_points = int(self.TriggerDelay / frame_unit)
+        max_delay = max(shutter_delay_points, trigger_delay_points)
+        points = frames + max_delay + 1
         self.debug('Number of points %d' % points)
         # set number of samples: it must be done before writing the waveforms
         # or these will be cropped to number of samples
         self.debug('Setting AO number of points to %d' % points)
-        self.dev.write_attribute(self.AO_NUMBER_SAMPLES, points)
+        self.dev_ao.write_attribute(self.AO_NUMBER_SAMPLES, points)
 
         # compute and write shutter waveform
-        active = int(points * self.shutter_ratio)  # shutter opened only ratio
-        opened = [self.shutter_opened_voltage for i in range(active)]
-        closed = [self.shutter_closed_voltage for i in range(points-active)]
+        delay_points = shutter_delay_points
+        delayed = [self.ShutterClosedVoltage for i in range(delay_points)]
+        active_points = int(frames * self.ShutterRatio)
+        active = [self.ShutterOpenedVoltage for i in range(active_points)]
+        final_points = points - active_points - delay_points
+        if final_points < 1:
+            msg = 'Check your timings. Shutter is not consistent!'
+            self.debug(msg)
+            raise Exception(msg)
+        final = [self.ShutterClosedVoltage for i in range(final_points)]
+        waveform = delayed + active + final
         self.debug('AO shutter ch %s %d elements: %s' % (self.AO_SHUTTER_CH,
-                   len(opened+closed), str(opened+closed)))
-        self.dev.write_attribute(self.AO_SHUTTER_CH, opened + closed)
+                   len(waveform), str(waveform)))
+        self.dev_ao.write_attribute(self.AO_SHUTTER_CH, waveform)
 
         # compute and write trigger waveform
-        waveform = [self.ccd_trig_voltage for i in range(points-1)]
-        waveform.append(self.ccd_idle_voltage)
+        delay_points = trigger_delay_points
+        delayed = [self.CCDIdleVoltage for i in range(delay_points)]
+        active_points = frames
+        active = [self.CCDTrigVoltage for i in range(active_points)]
+        final_points = points - active_points - delay_points
+        if final_points < 1:
+            msg = 'Check your timings. Trigger is not consistent!'
+            self.debug(msg)
+            raise Exception(msg)
+        final = [self.CCDIdleVoltage for i in range(final_points)]
+        waveform = delayed + active + final
+        if len(waveform) != points:
+            msg = 'Check your timings. Trigger is not consistent!'
+            self.debug(msg)
+            raise Exception(msg)
         self.debug('AO shutter ch %s %d elements: %s' % (self.AO_CCD_CH,
                    len(waveform), str(waveform)))
-        self.dev.write_attribute(self.AO_CCD_CH, waveform)
+        self.dev_ao.write_attribute(self.AO_CCD_CH, waveform)

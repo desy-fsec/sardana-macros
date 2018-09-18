@@ -3,7 +3,7 @@
 use strict;
 my $status = 1;
 
-my @nodes = `cat /afs/desy.de/group/hasylab/Tango/HostLists/SardanaHosts.lis`; 
+my @nodes = `cat /afs/desy.de/group/hasylab/Tango/HostLists/TangoHosts.lis`; 
 
 foreach my $node (@nodes)
 {    

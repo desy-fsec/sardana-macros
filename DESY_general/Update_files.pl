@@ -8,6 +8,8 @@ my %f = undef;
 my $status = 1;
 my ($node, $flag_new) = @ARGV;  
 
+print " --- scripts/Update_files.pl: updating $node \n"; 
+
 my $dir_local = "."; 
 my $dir_remote = "/usr/share/pyshared/sardana/sardana-macros/DESY_general"; 
 

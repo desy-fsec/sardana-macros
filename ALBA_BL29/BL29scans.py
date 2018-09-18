@@ -308,11 +308,10 @@ class escanct(Macro):
             # we can find out the ID mode (parallel/antiparallel) by checking
             # if ID pseudomotor ideu71_polarization_plus is 0 (parallel mode)
             polarization = PyTango.DeviceProxy(self.ID_DB+self.id_polarization)
-            if (polarization.read_attribute('Position').value == 0):
+            if (polarization.read_attribute('Position').value <= 0.3):
                 self.antiparallel = False
             else:
                 self.antiparallel = True
-            self.antiparallel = False  # temporal force requested by user
             self.id_energy_name = self.id_energy_names[int(self.antiparallel)]
             self.id_phase_name = self.id_phase_names[int(self.antiparallel)]
 

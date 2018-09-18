@@ -7,25 +7,25 @@ class IDOffsetCorrection(object):
     GRX_IOR_NAME = 'grx_ior'
     GRX_LABELS = ['FLU', 'DUM', 'HEG', 'MEG', 'LEG']
 
-    MOTORS = {'C': ['ideu62_motor_energy', 'ideu62_motor_polarization', ],
-              'L': ['ideu62_energy_plus', 'ideu62_polarization_plus']}
+    MOTORS = {'PARALLEL': ['ideu62_motor_energy', 'ideu62_motor_polarization', ],
+              'ANTIPARALLEL': ['ideu62_energy_plus', 'ideu62_polarization_plus']}
 
     # The equation dictionary is organized by:
     # {Harmnic:{grating:{ Polarization: Formula}}}
-    EQUATIONS = {1: {'LEG': {'LH': '(-1.13327 + 1.04863 * en) - en',
-                             'LV': '(-3.44044 + 1.05578 * en) - en',
-                             'C+': '(-3.50083  + 1.04102 * en) - en',
-                             'C-': '(-2.85084 + 1.04661 * en) - en'},
-                     'MEG': {'LH': '(-18.94173 + 1.06952 * en) - en',
-                             'LV': '(-2.93174 + 1.05511 * en) - en',
-                             'C+': '(-7.52251 + 1.04976 * en) - en',
-                             'C-': '(-2.78891 + 1.04861 * en) - en', },
+    EQUATIONS = {1: {'LEG': {'LH': '(-1.1496 + 1.04084 * en) - en',
+                             'LV': '(-5.97893 + 1.05419 * en) - en',
+                             'C+': '(-5.62584 + 1.04316 * en) - en',
+                             'C-': '(-3.68579 + 1.04635 * en) - en'},
+                     'MEG': {'LH': '(-4.78795 + 1.04615 * en) - en',
+                             'LV': '(-0.7086 + 1.04623 * en) - en',
+                             'C+': '(-8.48997 + 1.0473 * en) - en',
+                             'C-': '(-2.00496 + 1.044 * en) - en', },
                      },
 
-                 3: {'MEG': {'LH': '(1.1687 + 1.02153 * en) - en',
-                             'LV': '(-10.86851 + 1.03518 * en) - en'},
-                     'HEG': {'LH': '(1.37209 + 1.02218 * en) - en',
-                             'LV': '(-11.2187 + 1.03655 * en) - en'},
+                 3: {'MEG': {'LH': '(1.29863 + 1.02141 * en) - en',
+                             'LV': '(-11.19874 + 1.03549 * en) - en'},
+                     'HEG': {'LH': '(1.30712 + 1.02224 * en) - en',
+                             'LV': '(-11.27598 + 1.03661 * en) - en'},
 
                      }, }
 
@@ -50,7 +50,7 @@ class IDOffsetCorrection(object):
         grx_value = self.getDevice(self.GRX_IOR_NAME)['value'].value
         grx = self.GRX_LABELS[grx_value]
         self.info(grx)
-        motors = self.MOTORS[pol[0]]
+        motors = self.MOTORS['PARALLEL']
         motor = PyTango.DeviceProxy('alba03:10000/'+motors[0])
         harmonic=motor.read_attribute('edHarmonic').value
         

@@ -177,9 +177,10 @@ class reconfig(Macro):
         for tripod in ['tripod_j1', 'tripod_j2', 'tripod_j3']:
             self.info('Restore %s velocity' % tripod)
             dev = PyTango.DeviceProxy(tripod)
-            dev.write_attribute('velocity', 0.71489859 )
-            dev.write_attribute('acceleration',0.2)
-        
+            dev.write_attribute('velocity', 0.71489859)
+            dev.write_attribute('acceleration', 0.2)
+
+        self.clearReconfig()
         self.info('Set the electrometer polarity')
         host_e0 = self.getEnv('ElemI0Host')
         host_e1 = self.getEnv('ElemI1I2Host')
