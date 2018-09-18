@@ -124,11 +124,11 @@ class _madscan(Macro, SoftShutterController):
         self.setEnv("ascanct.ScanRecorder", self.MadScanRecorder)
         self.setEnv("ScanDir", self.MadScanDir)
         
-        # Deleted these info because the recorder write the same.
-
-        #self.info("Operation will be saved in %s/%s" %(self.MadScanDir, self.MadScanFile))
-        #now = time.strftime("%c")
-        #self.info("Scan #%i started at %s"%(self.MadScanID+1,now))
+        # Check if the trigger by position is activated
+        try:
+            self.extTrigger = self.getEnv("_TriggerByPosition")
+        except:
+            self.extTrigger = False
 
     def preConfigure(self):
         self.debug("preConfigure entering...")
@@ -142,6 +142,8 @@ class _madscan(Macro, SoftShutterController):
         self.debug("preStart entering...")
         tg = taurus.Device(self.tg)
         tg["extraInitialDelayTime"] = self.software_delay
+        self.warning("Setting NI, trigger by position : %r"%self.extTrigger)
+        tg['slave'] = self.extTrigger
 
     def run(self, startPos, finalPos, speed, integTime):
         #works only in positive direction
@@ -197,16 +199,15 @@ class _madscan(Macro, SoftShutterController):
             self.debug("Leaving of _madscan")
             self.setEnv("ActiveMntGrp", oldMntGrp)
             
-
-            # Commented because the recorder writes the same:.
-
-            #self.info("Operation saved in %s/%s" %(self.MadScanDir, self.MadScanFile))
-            #now = time.strftime("%c")
-            #self.info("Scan #%i ended at %s"%(self.MadScanID,now))
-
- #           self.debug('Restoring %s'%self.bkpScanRecorder)
             posChan = taurus.Device(self.posName)
             posChan.stop()
+            
+            try:
+                self.warning("Setting NI, trigger by position to : False")
+                tg = taurus.Device(self.tg)
+                tg['slave'] = False
+            except:
+                pass
 
             self.setEnv("ScanFile", self.bkpScanFile)
             if self.bkpScanRecorder:
@@ -216,3 +217,4 @@ class _madscan(Macro, SoftShutterController):
             self.setEnv("MadScanID", self.getEnv("ScanID") )
             self.setEnv('ascanct.ScanRecorder', None)	    
             self.setEnv("ScanID", self.bkpScanID)
+            #time.sleep(3)
