@@ -13,6 +13,7 @@ MAX_VALUE = 95
 INTEGRATION_TIME = 0.3
 AUTO_RANGE_TIMEOUT = 40
 
+
 class findMaxRange(Macro):
     """
     Macro to find the best range of the electrommeter channels for the scan.
@@ -204,3 +205,91 @@ class em_inversion(Macro):
             new_state = ch.read_attribute('Inversion').value
             self.output('%s changed inversion from %s to %s' % (ch, old_state,
                                                                 new_state))
+
+
+class em_autorange(Macro):
+    """
+        Macro to change the electrometer range.
+    """
+    param_def = [['chns',
+                  [['ch', Type.CTExpChannel, None, 'electrometer chn'],
+                   ['enabled', Type.Boolean, None, 'Inversion enabled'],
+                   {'min': 1}],
+                  None, 'List of [channels, inversion]'], ]
+
+    def run(self, chns):
+        for ch, enabled in chns:
+            old_state = ch.read_attribute('Autorange').value
+            ch.write_attribute('Autorange', enabled)
+            new_state = ch.read_attribute('Autorange').value
+            self.output('{0} changed autorange from {1} '
+                        'to {2}'.format(ch, old_state, new_state))
+
+
+class em_findrange(Macro):
+    """
+        Macro to change the electrometer range.
+    """
+    param_def = [['chns',
+                  [['ch', Type.CTExpChannel, None, 'electrometer chn'],
+                   {'min': 1}],
+                  None, 'List of [channels]'],
+                 ['wait_time', Type.Float, 3, 'time to applied the '
+                                               'autorange']]
+
+    def run(self, chns, wait_time):
+        chns_enabled = [[chn, True] for chn in chns]
+        chns_desabled = [[chn, False] for chn in chns]
+        self.em_autorange(chns_enabled)
+        t1 = time.time()
+        try:
+            while time.time()-t1 < wait_time:
+                self.checkPoint()
+                time.sleep(0.01)
+        finally:
+            self.em_autorange(chns_desabled)
+
+
+class em_findmaxrange(Macro):
+    """
+    Macro to find the electrometer channel range according to the motor
+    position
+
+    """
+    param_def = [['motor', Type.Moveable, None, 'motor to scan'],
+                 ['positions',
+                  [['pos', Type.Float, None, 'position'], {'min': 1}],
+                  None, 'List of positions'],
+                 ['channels',
+                  [['chn', Type.CTExpChannel, None, 'electrometer channel'],
+                   {'min': 1}],
+                  None, 'List of channels'],
+                 ['wait_time', Type.Float, 3, 'time to applied the autorange'],
+                 ]
+
+    RANGES = ['1mA', '100uA', '10uA', '1uA', '100nA', '10nA', '1nA', '100pA']
+
+    def run(self, motor, positions, chns, wait_time):
+        chns_ranges = {}
+
+        for chn in chns:
+            range = chn.range
+            chns_ranges[chn] = range
+            self.debug('{0}: {1}'.format(chn.name, range))
+
+        for energy in positions:
+            self.umv(motor, energy)
+            self.em_findrange(chns, wait_time)
+            for chn, prev_range in chns_ranges.items():
+                new_range = chn.range
+                new_range_idx = self.RANGES.index(new_range)
+                prev_range_idx = self.RANGES.index(prev_range)
+                if new_range_idx > prev_range_idx:
+                    chns_ranges[chn] = new_range
+
+        self.info('Setting maximum range...')
+        chns_cfg = []
+        for chn, range in chns_ranges.items():
+            chns_cfg.append([chn, range])
+        self.em_range(chns_cfg)
+
