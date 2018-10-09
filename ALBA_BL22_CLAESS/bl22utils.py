@@ -458,3 +458,25 @@ class nextract(Macro):
                 next_scan = mem_file.find("#S")
                 mem_file.seek(next_scan)
                 line = mem_file.readline()
+
+
+class ic_auto(Macro):
+    param_def = [['positions',
+                  [['pos', Type.Float, None, 'energy'], {'min': 1}],
+                  None, 'List of [energies]'],
+                 ['chambers',
+                  [['chamber', Type.String, 'all', 'i0, i1, i2 or all'],
+                   {'min': 1}],
+                  None, 'List of [channels]'],
+                 ]
+
+    def run(self, positions, chambers):
+        if 'all' in chambers:
+            chambers = ['i0', 'i1', 'i2']
+
+        chns = []
+        energy = self.getMoveable('energy')
+        for chamber in chambers:
+            chns.append(self.getExpChannel('e_{0}_1'.format(chamber)))
+            chns.append(self.getExpChannel('e_{0}_2'.format(chamber)))
+        self.em_findmaxrange(energy, positions, chns, 5)
