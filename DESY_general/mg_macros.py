@@ -18,6 +18,11 @@ from PyTango import *
 import json
 import HasyUtils
 
+
+from taurus.console.list import List
+from taurus.console import Alignment
+Left, Right, HCenter = Alignment.Left, Alignment.Right, Alignment.HCenter
+
 class MgConf:
     def __init__(self, poolName, mntgrpName, flagClear):
         self.db = Database()
@@ -1076,5 +1081,31 @@ class setmg(Macro):
             self.output("")
             self.output("Active measurement group: %s" % (actmg))
 
+
+class check_mg(Macro):
+    """
+    check_mg - check status MG channels
+
+    """
+
+    def run(self):
+        active_mg = self.getEnv('ActiveMntGrp')
+        self.mntGrp = self.getObj(active_mg, type_class=Type.MeasurementGroup)
+
+        self.output("")
+        self.output("Active measurement group (" + active_mg + ") in " + str(self.mntGrp.getState()) +
+                    " state")
+        self.output("")
+        cols = "Channel", "State"
+        width = -1,     -1
+        align = HCenter,  Right
+        out = List(cols, text_alignment=align,
+                   max_col_width=width)
+        for channel in self.mntGrp.getChannels():
+            ch =  self.getObj(channel['name'])
+            out.appendRow([channel['name'], ch.getState()])
+            
+        for line in out.genOutput():
+            self.output(line)
 
 
