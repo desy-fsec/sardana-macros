@@ -18,6 +18,11 @@ from PyTango import *
 import json
 import HasyUtils
 
+
+from taurus.console.list import List
+from taurus.console import Alignment
+Left, Right, HCenter = Alignment.Left, Alignment.Right, Alignment.HCenter
+
 class MgConf:
     def __init__(self, poolName, mntgrpName, flagClear):
         self.db = Database()
@@ -1077,4 +1082,67 @@ class setmg(Macro):
             self.output("Active measurement group: %s" % (actmg))
 
 
+class check_mg(Macro):
+    """
+    check_mg - check status MG channels
 
+    """
+
+    def run(self):
+        active_mg = self.getEnv('ActiveMntGrp')
+        self.mntGrp = self.getObj(active_mg, type_class=Type.MeasurementGroup)
+
+        self.output("")
+        self.output("Active measurement group (" + active_mg + ") in " + str(self.mntGrp.getState()) +
+                    " state")
+        self.output("")
+        cols = "Channel", "State"
+        width = -1,     -1
+        align = HCenter,  Right
+        out = List(cols, text_alignment=align,
+                   max_col_width=width)
+        for channel in self.mntGrp.getChannels():
+            ch =  self.getObj(channel['name'])
+            out.appendRow([channel['name'], ch.getState()])
+            
+        for line in out.genOutput():
+            self.output(line)
+
+
+
+class check_activeMntGrpStatus(Macro):
+    """
+    returns True, if the status of the ActiveMntGrp and their elements are neither ALARM nor FAULT.
+    Consider to call the macro get_activeMntGrpStatus to see the details.
+    """
+    param_def = []
+    result_def = [[ "result", Type.Boolean, None, "True, if the ActiveMntGrp is OK" ]]
+    
+    def run(self):
+        lst = HasyUtils.getActiveMntGrpStatus()
+        if len( lst) == 0:
+            result = True
+            return result
+        else:
+            result = False
+            return result
+
+class get_activeMntGrpStatus(Macro):
+    """
+    Displays '<activeMntGrp> is OK', if everything is OK,  or
+    the status strings of the ActiveMntGrp and their elements.
+    This list is created by HasyUtils.getActiveMntGrpStatus().
+    If the list is not empty, the ActiveMntGrp is not operational.
+    """
+    param_def = []
+    
+    def run(self):
+        lst = HasyUtils.getActiveMntGrpStatus()
+        if lst is None or len( lst) == 0:
+            mg_name = self.getEnv( 'ActiveMntGrp')
+            self.output( "get_ActiveMntGrpStatus: %s is OK" % mg_name)
+            return 
+            
+        for elm in lst:
+            self.output( "get_ActiveMntGrpStatus: %s" % elm)
+        return 

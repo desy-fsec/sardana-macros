@@ -36,6 +36,21 @@ import time
     
 
 class run_seq(Macro):
+    '''
+    run_seq commandFile.lis
+
+      SequencyPath is the directory where commandFile.lis is stored, e.g.: 
+        spock> senv SequencyPath /home/p99user/temp
+
+      commandFile.lis contains a list of spock commands, e.g.: 
+
+      #
+      timescan 0 1 10 0.1
+      mv exp_dmy01 1
+      # execute 2nd time-scan
+      timescan 0 1 10 0.1
+      mv exp_dmy01 2
+    '''
     param_def = [
         ['seq_file',Type.String,   None, 'Name of the file with the sequency of macros']
         ]
@@ -57,6 +72,10 @@ class run_seq(Macro):
             return
         
         for macro_info in f_seq:
+            if macro_info.strip().find( "#") == 0:
+                continue
+            if len( macro_info.strip()) == 0:
+                continue
             self.output("Running macro %s", macro_info)
             self.execMacro(macro_info)
                 
