@@ -223,7 +223,7 @@ class escan(Macro):
                 self.runMacro(macro_hkl)
             if self.diffrac_defined == 1: 
                 self.diffrac.write_attribute("autoenergyupdate", self.initial_autoenergy)   
-            while self.energy_device.state() == DevState.MOVING:
+            while self.energy_device.getState() == DevState.MOVING:
                 time.sleep(1)
 
 class me(Macro):
