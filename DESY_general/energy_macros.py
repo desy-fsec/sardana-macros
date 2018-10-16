@@ -201,11 +201,13 @@ class escan(Macro):
             macro_hkl,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1)
     
             self.runMacro(macro_hkl)
-        
-            macro.hooks = [ (self.hkl_pre_move, ["pre-move"]), (self.hkl_post_move, ["post-move"]), ] 
+
+            
+            macro.appendHook((self.hkl_pre_move, ["pre-move"]))
+            macro.appendHook((self.hkl_post_move, ["post-move"])) 
         else:
             if self.diffrac_defined:
-                macro.hooks = [ (self.energy_pre_move, ["pre-move"]), ] 
+                macro.appendHook((self.energy_pre_move, ["pre-move"])) 
 
         self.runMacro(macro)
 
