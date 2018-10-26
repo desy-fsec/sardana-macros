@@ -80,7 +80,8 @@ class escan(Macro):
             move_flag = 0
             time.sleep(1)
             for i in range(0,len(self.angle_dev)):
-                if self.angle_dev[i].state() == DevState.MOVING:
+                #+++ was: if self.angle_dev[i].state() == DevState.MOVING:
+                if self.angle_dev[i].getState() == DevState.MOVING:
                     move_flag = 1
 
     def on_stop(self):
