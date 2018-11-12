@@ -153,7 +153,7 @@ buttons in the collect widget '''
                if startangle != 90:
                    self.error('COLLECT_WRAPPER ERROR: Plate diffraction requires omega = 90 deg.')
                    return
-               self.execMacro('collect_simple',direc,prefix,run,startnum,startangle,0,1,userexpt,diffrmode)
+               self.execMacro('collect_simple',direc,prefix,run,startnum,startangle,0,ni,userexpt,diffrmode)
                defaultcollection = False
            if diffrmode in ['1wedge']:
                #pass
@@ -227,6 +227,7 @@ class collect_simple(Macro):
 
         file_template='%s_%d_####.cbf'%(file_prefix,number_of_run)
         self.info('COLLECT_SIMPLE: diffrmode %s',diffrmode)
+        self.debug('COLLECT_SIMPLE DEBUG: no of images %d' % num_frames)
         
         real = True
         if real:

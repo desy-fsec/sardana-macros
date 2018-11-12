@@ -13,6 +13,7 @@ class repeated_xbpm_align(Macro):
     ''' align the beam using xbpm5 and xbpm6.'''
 
     def run(self):
+        # 201809
         starttime = time.time()
         nscans = 45#12
         cscan = 0 
@@ -38,6 +39,7 @@ class xbpm_align_beam_z(Macro):
         diftabz position
         '''
         
+        #test 20181003
         # Prepare the beamline for scan:
         # Check the electrometer values
         # Scan motor to start value
@@ -48,17 +50,18 @@ class xbpm_align_beam_z(Macro):
         # 
         
         # Motor list to be moved
-        bpm5z_mot = taurus.Device('bpm5z')
-        bpm5z_mot_pos = bpm5z_mot.position 
-        bpm6z_mot = taurus.Device('bpm6z')
-        bpm6z_mot_pos = bpm6z_mot.position 
+        self.bpm5z_mot = taurus.Device('bpm5z')
+        self.bpm5z_mot_pos = self.bpm5z_mot.position 
+        self.bpm6z_mot = taurus.Device('bpm6z')
+        self.bpm6z_mot_pos = self.bpm6z_mot.position 
 
         # Setup SCAN parameters
         # for bpm6z: p0 = [1E-8,-0.027,0.01] # Initial values for scale, center and st. dev.
         # bpm5x should be set to 2, then the field numbers 3 and 5 correspond to ib5lu (3) and ib5ld(5)
-        motorparlib5 = {'refpos': -0.2118, 'scanwidth': 1.3, 'startpos' : -0.8, 'fieldnumber_verdown' : 3, 'fieldnumber_verup' : 4, 'dist2samp' : 1331.4}  # TODO: check distance between xbpm6 and sample position
+        motorparlib5 = {'refpos': -0.17804, 'scanwidth': 0.9, 'startpos' : -0.5, 'fieldnumber_verdown' : 3, 'fieldnumber_verup' : 4, 'dist2samp' : 1331.4}  # TODO: check distance between xbpm6 and sample position
         # 20180522: for bpm5z: baseline 8.395e-08, peak height 1.208e-06, mu -0.3895, sigma 0.09345, FWHM 0.2201
-        motorparlib6 = {'refpos': 0.1317, 'scanwidth': 0.2, 'startpos' : 0.3, 'fieldnumber_verdown' :  12, 'fieldnumber_verup' : 10, 'dist2samp' : 226.6} # TODO: check distance between xbpm6 and sample position
+        motorparlib6 = {'refpos': 0.14512, 'scanwidth': 0.9, 'startpos' : -0.3, 'fieldnumber_verdown' :  12, 'fieldnumber_verup' : 10, 'dist2samp' : 226.6} # TODO: check distance between xbpm6 and sample position
+        ref_angle_lib = {'ref_angle': 7E-7, 'diftabzb': 37.9222167969, 'diftabzf' : 53.3890625, 'Ealign' : 12.661} #This is the angle the beam made for the reference points mentioned above.
         scan_npoints = 30
         scan_intgintv = 0.1
 
@@ -85,7 +88,7 @@ class xbpm_align_beam_z(Macro):
         if os.path.isfile(os.path.join(scand,scanf)): os.remove(os.path.join(scand,scanf))
 
         # call xbpmz_scan_ver
-        datalib = self.do_xbpmz_scan_ver(bpm5z_mot.alias(),motorparlib5['scanwidth'],bpm6z_mot.alias(),motorparlib6['scanwidth'],scan_npoints,scan_intgintv,scand,scanf)
+        datalib = self.do_xbpmz_scan_ver(self.bpm5z_mot.alias(),motorparlib5['scanwidth'],self.bpm6z_mot.alias(),motorparlib6['scanwidth'],scan_npoints,scan_intgintv,scand,scanf)
         
         #self.execMacro('act slowshu in')
         # Return motor positions
@@ -122,8 +125,8 @@ class xbpm_align_beam_z(Macro):
             self.warning('xbpm_align_beam: Unrealistic beam fit parameters. No alignment done')
 
         # return motors to original positions
-        bpm5z_mot.getAttribute('position').write(bpm5z_mot_pos)
-        bpm6z_mot.getAttribute('position').write(bpm6z_mot_pos)
+        self.bpm5z_mot.getAttribute('position').write(self.bpm5z_mot_pos)
+        self.bpm6z_mot.getAttribute('position').write(self.bpm6z_mot_pos)
         
         ###TODO: this should be done in a different macro. The idea is to run two scans in paralel, one for bpm5x/z in door_sats and one for bpm6x/z in door_exp
         # Calculate the beam shift at sample position
@@ -131,29 +134,33 @@ class xbpm_align_beam_z(Macro):
         self.debug('Gaussian peak determined on Apr17 (elog 999)   : bpm6z =  0.122')
         self.debug('Gaussian peak determined on Apr24 at 12.662 keV: bpm6z =  0.131')
         self.debug('Gaussian peak determined on 20180619 at 12.662 keV: bpm6z =  0.1315, bpm5z -0.212')
+        self.debug('Gaussian peak determined on 20181031 at 12.661 keV: bpm6z =  0.14512, bpm5z -0.17804, diftabzf 37.9222167969 , diftabzb 53.3890625, diftabpit 10.5499808104')
+        
+        self.info('xbpm_align_beam_z: center of beam on xbpm5  is %.5f and xbpm6 %.5f' % (center5,center6))
         beamshift5 = (center5-motorparlib5['refpos'])
         #self.info('Vertical offset of beam wrt reference position of xbpm5: %g' % (beamshift5))
         beamshift6 = (center6-motorparlib6['refpos'])
         #self.info('Vertical offset of beam wrt reference position of xbpm6: %g' % (beamshift6))
         
         # Calculate the beam position at sample using both xbpm positions and warn if an excessive shift is observed
-        offset = motorparlib6['dist2samp'] - center6 * (center5-center6) / (motorparlib5['dist2samp']-motorparlib6['dist2samp'])
-        refoffset = motorparlib6['dist2samp'] - motorparlib6['refpos'] * (motorparlib5['refpos']-motorparlib6['refpos']) / (motorparlib5['dist2samp']-motorparlib6['dist2samp'])
-        self.info('The drift using the offsets of the beam calculated at the sample: %.4g' % (offset-refoffset) )
-        beamshiftsamp = (motorparlib5['dist2samp']/ (motorparlib5['dist2samp']-motorparlib6['dist2samp']) ) * (beamshift6-beamshift5) + beamshift5
+        alpha = math.atan((beamshift6-beamshift5)/(motorparlib5['dist2samp']-motorparlib6['dist2samp']))
+        self.debug('beamshift5 %.6f, beamshift6 %.6f, motorparlib5[dist2samp] %.6f, motorparlib6[dist2samp], %.6f' % (beamshift5, beamshift6, motorparlib5['dist2samp'], motorparlib6['dist2samp']))
+        sampoffset = motorparlib6['dist2samp'] * math.tan(alpha - ref_angle_lib['ref_angle']) + beamshift6
+        self.info('The calculated shift in beam position at the sample is: %.4g mm' % (sampoffset) )
+        
         fwhmsamp =  FWHM6 * motorparlib6['dist2samp'] * ((FWHM5-FWHM6) / (motorparlib5['dist2samp']-motorparlib6['dist2samp']) )
-        self.info('The calculated shift in beam position at the sample is: %.4g, the vertical FWHM at sample is %.4g' % (beamshiftsamp,fwhmsamp) )
-        if math.fabs(beamshiftsamp) > 0.002:   
-            self.info('xbpmz_scan_ver: excessive beam shift in vertical direction: %4g)' % (beamshiftsamp) )
+        self.info('The calculated shift in beam position at the sample is: %.4g mm, the vertical FWHM at sample is %.4g mm' % (sampoffset,fwhmsamp) )
+        if math.fabs(sampoffset) > 0.002:   
+            self.info('xbpmz_scan_ver: excessive beam shift in vertical direction: %4g)' % (sampoffset) )
             #self.info('To fix this, type: mvr diftabz %4g' % (beamshiftsamp))
                     
         
-        return beamshiftsamp, (offset-refoffset)
+        return sampoffset
 
     def on_abort(self):
         self.debug('xbpm_align_beam_z: return motors to original positions')
-        bpm5z_mot.getAttribute('position').write(bpm5z_mot_pos)
-        bpm6z_mot.getAttribute('position').write(bpm6z_mot_pos)
+        self.bpm5z_mot.getAttribute('position').write(self.bpm5z_mot_pos)
+        self.bpm6z_mot.getAttribute('position').write(self.bpm6z_mot_pos)
         
     
     def checkEMRanges(self, emdevicename, requiredrange):
