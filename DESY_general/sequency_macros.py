@@ -45,10 +45,10 @@ class run_seq(Macro):
       commandFile.lis contains a list of spock commands, e.g.: 
 
       #
-      timescan 0 1 10 0.1
-      mv exp_dmy01 1
-      # execute 2nd time-scan
-      timescan 0 1 10 0.1
+      ascan exp_dmy01 0 1 10 0.1
+      mv exp_dmy01 3
+      # execute 2nd ascan
+      ascan exp_dmy01 0 1 10 0.1
       mv exp_dmy01 2
     '''
     param_def = [
