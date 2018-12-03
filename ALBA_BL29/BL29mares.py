@@ -627,7 +627,6 @@ class mares_ccd(Macro):
             self.dev_ao = PyTango.DeviceProxy(device_ao_name)
             self.dev_ao.state()
             self.dev_ccd = PyTango.DeviceProxy(device_ccd_name)
-#            self.dev_ccd.set_timeout_millis(10000)
             self.dev_ccd.state()
         except Exception as e:
             msg = ('Check that environment is setup %s and tango devices for '
@@ -773,6 +772,11 @@ class mares_ccd(Macro):
 
     def acquire_image(self, integration=None):
         try:
+            # for unknown reasons sometimes the device takes very long to
+            # respond (even to simple commands such as state()): furthermore,
+            # sometimes NFS gets crazy and takes very long to save image
+            self.dev_ccd.set_timeout_millis(10000)
+
             # get acquisition CCD acquisition time CCD if necessary
             frame_time = self.dev_ccd.read_attribute('FrameTime').value
             frame_units = float(
@@ -852,7 +856,6 @@ class mares_ccd(Macro):
             # save image
             msg = 'Saving image ...'
             self.info(msg)
-            self.dev_ccd.set_timeout_millis(10000)  # sometimes NFS gets crazy
             self.dev_ccd.command_inout('Save', self.fname)
             msg = 'Image saved'
             self.info(msg)
