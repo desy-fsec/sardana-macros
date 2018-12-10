@@ -480,4 +480,4 @@ class ic_auto(Macro):
         for chamber in chambers:
             chns.append(self.getExpChannel('e_{0}_1'.format(chamber)))
             chns.append(self.getExpChannel('e_{0}_2'.format(chamber)))
-        self.em_findmaxrange(energy, positions, chns, 5)
+        self.em_findmaxrange(energy, positions, chns, 10)
