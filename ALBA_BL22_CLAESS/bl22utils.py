@@ -263,12 +263,13 @@ class set_mode(Macro):
                    'n_sca4']
 
     xpress3_chns = ['x_timer', 'x_ch1_roi1', 'x_ch2_roi1', 'x_ch3_roi1',
-                    'x_ch4_roi1', 'x_ch5_roi1', 'x_ch1_roi2', 'x_ch2_roi2',
-                    'x_ch3_roi2', 'x_ch4_roi2', 'x_ch5_roi2', 'x_ch1_roi3',
-                    'x_ch2_roi3', 'x_ch3_roi3', 'x_ch4_roi3', 'x_ch5_roi3',
-                    'x_ch1_roi4', 'x_ch2_roi4', 'x_ch3_roi4', 'x_ch4_roi4',
-                    'x_ch5_roi4', 'x_ch1_roi5', 'x_ch2_roi5', 'x_ch3_roi5',
-                    'x_ch4_roi5', 'x_ch5_roi5']
+                    'x_ch4_roi1', 'x_ch5_roi1', 'x_ch6_roi1', 'x_ch1_roi2',
+                    'x_ch2_roi2', 'x_ch3_roi2', 'x_ch4_roi2', 'x_ch5_roi2',
+                    'x_ch6_roi2', 'x_ch1_roi3', 'x_ch2_roi3', 'x_ch3_roi3',
+                    'x_ch4_roi3', 'x_ch5_roi3', 'x_ch6_roi3', 'x_ch1_roi4',
+                    'x_ch2_roi4', 'x_ch3_roi4', 'x_ch4_roi4', 'x_ch5_roi4',
+                    'x_ch6_roi4', 'x_ch1_roi5', 'x_ch2_roi5', 'x_ch3_roi5',
+                    'x_ch4_roi5', 'x_ch5_roi5', 'x_ch6_roi5']
 
     xpress3_dt_chns = ['x_timer', 'x_dt_1', 'x_dt_2', 'x_dt_3', 'x_dt_4',
                        'x_dt_5', 'x_dtf_1', 'x_dtf_2', 'x_dtf_3', 'x_dtf_4',
@@ -458,3 +459,55 @@ class nextract(Macro):
                 next_scan = mem_file.find("#S")
                 mem_file.seek(next_scan)
                 line = mem_file.readline()
+
+
+class ic_auto(Macro):
+    param_def = [['positions',
+                  [['pos', Type.Float, None, 'energy'], {'min': 1}],
+                  None, 'List of [energies]'],
+                 ['chambers',
+                  [['chamber', Type.String, 'all', 'i0, i1, i2 or all'],
+                   {'min': 1}],
+                  None, 'List of [channels]'],
+                 ]
+
+    def run(self, positions, chambers):
+        if 'all' in chambers:
+            chambers = ['i0', 'i1', 'i2']
+
+        chns = []
+        energy = self.getMoveable('energy')
+        for chamber in chambers:
+            chns.append(self.getExpChannel('e_{0}_1'.format(chamber)))
+            chns.append(self.getExpChannel('e_{0}_2'.format(chamber)))
+        self.em_findmaxrange(energy, positions, chns, 10)
+
+
+class ohmotors(Macro):
+    """
+    Macro to turn ON/OFF the motor of the optical hutch.
+    """
+    param_def = [['state', Type.String, None, 'State: ON or OFF']]
+
+    MOTORS = ('oh_fsm1_z', 'oh_vcm_bend', 'oh_vcm_jack1', 'oh_vcm_jack2',
+              'oh_vcm_jack3', 'oh_vcm_x1', 'oh_vcm_x2', 'oh_fsm2_z',
+              'oh_dcm_jack1', 'oh_dcm_jack2', 'oh_dcm_jack3',
+              'oh_dcm_xtal1_roll', 'oh_dcm_xtal2_pitch', 'oh_dcm_xtal2_roll',
+              'oh_dcm_x', 'oh_diag_foil_z', 'oh_diag_bottom',
+              'oh_diag_left', 'oh_diag_right', 'oh_diag_top', 'oh_fsm3_z',
+              'oh_vfm_bend', 'oh_vfm_jack1', 'oh_vfm_jack2', 'oh_vfm_jack3',
+              'oh_vfm_x1', 'oh_vfm_x2', 'oh_fsm4_z')
+
+    def run(self, state):
+        state = state.lower()
+        if state not in ['on', 'off']:
+            raise ValueError('You must pass: on or off')
+
+        power = state == 'on'
+        for motor_name in self.MOTORS:
+            try:
+                motor = self.getDevice(motor_name)
+                motor.write_attribute('poweron', power)
+                self.output('{0}.poweron={1}'.format(motor_name, power))
+            except Exception:
+                self.error('Can not configure {0}'.format(motor_name))

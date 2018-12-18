@@ -80,7 +80,8 @@ class escan(Macro):
             move_flag = 0
             time.sleep(1)
             for i in range(0,len(self.angle_dev)):
-                if self.angle_dev[i].state() == DevState.MOVING:
+                #+++ was: if self.angle_dev[i].state() == DevState.MOVING:
+                if self.angle_dev[i].getState() == DevState.MOVING:
                     move_flag = 1
 
     def on_stop(self):
@@ -201,11 +202,13 @@ class escan(Macro):
             macro_hkl,pars = self.createMacro("br", self.h_fix, self.k_fix, self.l_fix, -1)
     
             self.runMacro(macro_hkl)
-        
-            macro.hooks = [ (self.hkl_pre_move, ["pre-move"]), (self.hkl_post_move, ["post-move"]), ] 
+
+            
+            macro.appendHook((self.hkl_pre_move, ["pre-move"]))
+            macro.appendHook((self.hkl_post_move, ["post-move"])) 
         else:
             if self.diffrac_defined:
-                macro.hooks = [ (self.energy_pre_move, ["pre-move"]), ] 
+                macro.appendHook((self.energy_pre_move, ["pre-move"])) 
 
         self.runMacro(macro)
 
@@ -223,7 +226,7 @@ class escan(Macro):
                 self.runMacro(macro_hkl)
             if self.diffrac_defined == 1: 
                 self.diffrac.write_attribute("autoenergyupdate", self.initial_autoenergy)   
-            while self.energy_device.state() == DevState.MOVING:
+            while self.energy_device.getState() == DevState.MOVING:
                 time.sleep(1)
 
 class me(Macro):

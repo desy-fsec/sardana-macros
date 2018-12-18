@@ -29,29 +29,7 @@ class lup(Macro):
             scan=self.dscan( motor, rel_start_pos, rel_final_pos, nr_interv, integ_time)
         else:
             self.output( "Usage:   lup motor start end intervals time")
-          
-class timescan(Macro):
-    """timescan:
-    
-    Scan of dummy motor, just reading out the counters   
-    """ 
-
-    param_def = [
-       ['start_pos',  Type.Float,   -999, 'Scan start position'],
-       ['final_pos',  Type.Float,   -999, 'Scan final position'],
-       ['nr_interv',  Type.Integer, -999, 'Number of scan intervals'],
-       ['integ_time', Type.Float,   -999, 'Integration time']
-       ]    
-
-    
-    def run(self,start_pos,final_pos,nr_interv,integ_time):
-  
-        if ((integ_time != -999)):       
-            scan=self.ascan( "exp_dmy01", start_pos, final_pos, nr_interv, integ_time)
-        else:
-            self.output( "Usage:   timescan start stop intervals time")
-            
-
+ 
 
 class scan_loop(Macro):
 
