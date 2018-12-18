@@ -2289,7 +2289,11 @@ class mythen_take(Macro, MntGrpController):
             Temps = ["blowerT","blowerSP"]
             Temp0 = " T0 %.2f"%(taurus.Device(Temps[0]).value)
         if 'cryo' in snap: 
-            Temps = ["cryoT","cryoSP"]
+            #Temps = ["cryoT","cryoSP"]
+            Temps = ["cryoT","cryoSP","tc1"]
+            Temp0 = " T0 %.2f"%(taurus.Device(Temps[0]).value)
+        if 'julabo' in snap: 
+            Temps = ["julaboT","julaboSP"]
             Temp0 = " T0 %.2f"%(taurus.Device(Temps[0]).value)
         if 'dyna' in snap: 
             Temps = ["dynTa","dynSP1"]
