@@ -187,7 +187,7 @@ class BaseExp:
         self.debug('Abort the acquisition')
         if self.countId:
             self.debug('abortAcq, waitFinish()')
-            self.mntGrp.waitFinish()
+            self.waitMntGrp()
         self.debug('Cleaned the event object of the Measurmente Group')
         self.rayonixCCD.stopAcq()
         while True:     
