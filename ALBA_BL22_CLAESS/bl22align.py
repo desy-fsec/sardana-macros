@@ -153,6 +153,7 @@ class MoveBeamline(ConfigAlign):
     def runMoveBeamline(self, energy, config_env, config_range, retries, 
                         debug_on=False):
         try:
+            self.execMacro('ohmotors on')
             if debug_on:
                 self.execMacro = self.info
             config_path = self.getEnv(config_env)
@@ -223,7 +224,9 @@ class MoveBeamline(ConfigAlign):
         self.update_config()
 
     def runMoveMono(self, energy, retries):
+
         try:
+            self.execMacro('ohmotors on')
             last_config = self.getEnv('LastBlConfig')
             config_path = last_config['file_config']
             self.initConfig(energy, config_path)
