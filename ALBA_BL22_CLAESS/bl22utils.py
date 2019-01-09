@@ -492,7 +492,7 @@ class ohmotors(Macro):
     MOTORS = ('oh_fsm1_z', 'oh_vcm_bend', 'oh_vcm_jack1', 'oh_vcm_jack2',
               'oh_vcm_jack3', 'oh_vcm_x1', 'oh_vcm_x2', 'oh_fsm2_z',
               'oh_dcm_jack1', 'oh_dcm_jack2', 'oh_dcm_jack3',
-              'oh_dcm_xtal1_roll', 'oh_dcm_xtal2_pitch', 'oh_dcm_xtal2_roll',
+              'oh_dcm_xtal1_roll', 'oh_dcm_xtal2_roll',
               'oh_dcm_x', 'oh_diag_foil_z', 'oh_diag_bottom',
               'oh_diag_left', 'oh_diag_right', 'oh_diag_top', 'oh_fsm3_z',
               'oh_vfm_bend', 'oh_vfm_jack1', 'oh_vfm_jack2', 'oh_vfm_jack3',
@@ -511,3 +511,5 @@ class ohmotors(Macro):
                 self.output('{0}.poweron={1}'.format(motor_name, power))
             except Exception:
                 self.error('Can not configure {0}'.format(motor_name))
+                status = motor.read_attribute('statusdetails').value
+                self.error('Error: {0}'.format(status))
