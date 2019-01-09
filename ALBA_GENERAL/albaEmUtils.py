@@ -284,7 +284,7 @@ class em_findmaxrange(Macro):
                 new_range = chn.range
                 new_range_idx = self.RANGES.index(new_range)
                 prev_range_idx = self.RANGES.index(prev_range)
-                if new_range_idx > prev_range_idx:
+                if new_range_idx < prev_range_idx:
                     chns_ranges[chn] = new_range
 
         self.info('Setting maximum range...')
