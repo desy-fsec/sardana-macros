@@ -118,10 +118,16 @@ class gh_enable(Macro):
             return 
 
         #
-        # hook_pos can be pre-scan
+        # hook_pos can be e.g. pre-scan
         #
         if hook_pos not in hookDct.keys():
             self.error("gh_enable( D9): hook %s not in dictionary" % hook_pos)
+            return 
+        #
+        # check, if macro_name exists on the MacroServer
+        #
+        if not macro_name in self.getMacroNames():
+            self.error("gh_enable( D9): macro %s does not exist" % macro_name)
             return 
             
         self.execMacro( 'defgh', macro_name, [hook_pos])
@@ -167,7 +173,13 @@ class gh_enable(Macro):
             self.error("gh_enableD8: wrong hook name, possible values:")
             self.error( str( default_dict.keys()))
             return
-
+        #
+        # check, if macro_name exists on the MacroServer
+        #
+        if not macro_name in self.getMacroNames():
+            self.error("gh_enable( D9): macro %s does not exist" % macro_name)
+            return 
+        
         try:
             gh_macros_dict = self.getEnv("GeneralHooks")
         except:
