@@ -1,9 +1,10 @@
 #CreatePoolElements.py
 #energy_macros.py
-handleGeneralFeatures.py
+#handleGeneralFeatures.py
 #hkl_macros.py
 #LimaMacros.py
 #mg_macros.py
+misc.py
 #motor_macros.py
 #motor_limits.py
 #mvsa.py
@@ -12,5 +13,4 @@ handleGeneralFeatures.py
 #ppDiff.py
 #scan_macros.py
 #sequency_macros.py
-#socket_macros.py
 #
