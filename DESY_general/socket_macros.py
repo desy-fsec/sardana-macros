@@ -103,38 +103,6 @@ class smPost(Macro):
         a = self.socketIO( socket.gethostname(), 7650, "post/print/nocon/lp=%s" % printer)
         if not a.getResult():
             self.output( "smPost: no SardanaMonitor")
-#
-# the message window macros
-#
-class mwOutput(Macro):
-    """
-    Send a message to the message window. 
-    To launch the message window from spock:
-      p10/door/haspp10e2.01 [6]: ! SardanaMessageWindow.py &
-    """
-    param_def = [
-        [ "msg", Type.String, "",  "message to the message window" ],
-        ]
-    def run(self, msg):
-        a = self.socketIO( socket.gethostname(), 7660, msg)
-
-class mwTest(Macro):
-    """
-    Send a test message to the message windowto see whether it exists. 
-    To launch the message window from spock, e.g.:
-      p10/door/haspp10e2.01 [6]: ! SardanaMessageWindow.py &
-    """
-    param_def = []
-    result_def = [[ "result", Type.Boolean, None, "server exists" ]]
-    def run(self):
-        result = False
-        #
-        # testMessage will not be printed
-        #
-        a = self.socketIO( socket.gethostname(), 7660, "testMessage")
-        if a.getResult():
-            result = True
-        return result
 
 
 
