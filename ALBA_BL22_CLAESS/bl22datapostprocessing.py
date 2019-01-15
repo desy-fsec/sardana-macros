@@ -1,86 +1,55 @@
+#!/usr/bin/env python
+
 import os
 from collections import OrderedDict
-from sardana.macroserver.macro import Macro, Type, Optional
 
 
-class extractscans(Macro):
-    """
-    Macro to concatenate and extract the last N scans
-    """
-    param_def = [
-        ['outputFile', Type.String, None, 'Name for the output file'],
-        ['nrOfScans', Type.Integer, 1, 'Nr of scans to concatenate'],
-        ['lastScanId', Type.Integer, Optional, 'last scan id'],
-        ['inputFile', Type.String, Optional, 'Input file'],
-        ['sampleDescription', Type.String,  '', 'Sample description include '
-                                                'it as comments'],
-        ['shiftXspress', Type.Boolean, True, 'Shift xspress data'],
-        ['removeMythen', Type.Boolean, True, 'Remove Mythen 1D data'],
+# Number of point to remove
+SHIFT = 1
 
-    ]
+try:
+    # Sardana macro declaration.
+    from sardana.macroserver.macro import Macro, Type, Optional
 
-    SHIFT = 1
+    class extractscans(Macro):
+        """
+        Macro to concatenate and extract the last N scans
+        """
+        param_def = [
+            ['outputFile', Type.String, None, 'Name for the output file'],
+            ['nrOfScans', Type.Integer, 1, 'Nr of scans to concatenate'],
+            ['lastScanId', Type.Integer, Optional, 'last scan id'],
+            ['inputFile', Type.String, Optional, 'Input file'],
+            ['sampleDescription', Type.String,  '',
+             'Sample description include it as comments'],
+            ['shiftXspress', Type.Boolean, True, 'Shift xspress data'],
+            ['removeMythen', Type.Boolean, True, 'Remove Mythen 1D data'],
 
-    def run(self, output_file, nr_scans, last_scanid, input_file,
-            sample_desc, shift_xspress, rm_mythen):
+        ]
 
-        # Check the input file and the last_scanid
-        if input_file is None:
-            scan_dir = self.getEnv("ScanDir")
-            scan_file = self.getEnv("ScanFile")
-            if type(scan_file) is list:
-                for f in scan_file:
-                    if f.endswith(".dat"):
-                        input_file = os.path.join(scan_dir, f)
-                        break
-        if input_file is None:
-            raise RuntimeError('The macro only works with spec file!')
+        def run(self, output_file, nr_scans, last_scanid, input_file,
+                sample_desc, shift_xspress, rm_mythen):
 
-        if last_scanid is None:
-            last_scanid = self.getEnv("ScanID")
+            # Check the input file and the last_scanid
+            if input_file is None:
+                scan_dir = self.getEnv("ScanDir")
+                scan_file = self.getEnv("ScanFile")
+                if type(scan_file) is list:
+                    for f in scan_file:
+                        if f.endswith(".dat"):
+                            input_file = os.path.join(scan_dir, f)
+                            break
+            if input_file is None:
+                raise RuntimeError('The macro only works with spec file!')
 
-        # Read date from spec file
-        scans_data, input_file = read_data(self, nr_scans,
-                                           last_scanid=last_scanid,
-                                           input_file=input_file)
-        scans_ids = scans_data.keys()
-        total_len = 0
+            if last_scanid is None:
+                last_scanid = self.getEnv("ScanID")
 
-        for scan in scans_data.values():
-            total_len += len(scan['Pt_No'])
+            extract_scans(self, output_file, nr_scans, last_scanid,
+                          input_file, sample_desc, shift_xspress, rm_mythen)
 
-        used_xspress = False
-        for channel in scans_data[scans_ids[0]]:
-            if shift_xspress and channel.startswith('x_ch'):
-                used_xspress = True
-                total_len -= self.SHIFT * len(scans_ids)
-                break
-
-        nr_points = range(total_len)
-        data = OrderedDict()
-        data['Pt_No'] = nr_points
-
-        for scan_id in scans_ids:
-            for channel, channel_data in scans_data[scan_id].items():
-                if channel in ['Pt_No', 'dt']:
-                    continue
-                if rm_mythen and channel == 'm_raw':
-                    continue
-                if channel not in data:
-                    # TODO: Implement solution to check if the previous scan do
-                    # not have the data
-                    data[channel] = []
-                if used_xspress:
-                    # Shift the Xspress3 channels data to the begging and the
-                    # other channel remove the last part. This is a
-                    # temporally solution upto find the problem on Lima.
-                    if channel.startswith('x_ch'):
-                        channel_data = channel_data[self.SHIFT:]
-                    else:
-                        channel_data = channel_data[:-self.SHIFT]
-
-                data[channel] += channel_data
-        write_data(self, output_file, data, sample_desc, input_file, scans_ids)
+except Exception:
+    pass
 
 
 def get_filename(filename, len_auto_index=3):
@@ -193,5 +162,82 @@ def write_data(log, output_file, data, sample_desc, input_file, scans_ids):
     log.output('Extracted scans on: {0}'.format(output_file))
 
 
+def extract_scans(log, output_file, nr_scans, last_scanid, input_file,
+                  sample_desc, shift_xspress, rm_mythen):
+
+    # Read date from spec file
+    scans_data, input_file = read_data(log, nr_scans,
+                                       last_scanid=last_scanid,
+                                       input_file=input_file)
+    scans_ids = scans_data.keys()
+    total_len = 0
+
+    for scan in scans_data.values():
+        total_len += len(scan['Pt_No'])
+
+    used_xspress = False
+    for channel in scans_data[scans_ids[0]]:
+        if shift_xspress and channel.startswith('x_ch'):
+            used_xspress = True
+            total_len -= SHIFT * len(scans_ids)
+            break
+
+    nr_points = range(total_len)
+    data = OrderedDict()
+    data['Pt_No'] = nr_points
+
+    for scan_id in scans_ids:
+        for channel, channel_data in scans_data[scan_id].items():
+            if channel in ['Pt_No', 'dt']:
+                continue
+            if rm_mythen and channel == 'm_raw':
+                continue
+            if channel not in data:
+                # TODO: Implement solution to check if the previous scan do
+                # not have the data
+                data[channel] = []
+            if used_xspress:
+                # Shift the Xspress3 channels data to the begging and the
+                # other channel remove the last part. This is a
+                # temporally solution upto find the problem on Lima.
+                if channel.startswith('x_ch'):
+                    channel_data = channel_data[SHIFT:]
+                else:
+                    channel_data = channel_data[:-SHIFT]
+
+            data[channel] += channel_data
+    write_data(log, output_file, data, sample_desc, input_file, scans_ids)
+
+
+if __name__ == '__main__':
+    import argparse
+    import logging
+    log = logging.getLogger('Application')
+    logging.basicConfig(level=logging.INFO)
+    # To be compatible with Sardana
+    log.output = log.info
+
+    desc = 'Claess Data Post-Processing to extract scan data.'
+    parse = argparse.ArgumentParser(description=desc)
+    parse.add_argument('input', help='Input raw data filename.')
+    parse.add_argument('scanID', help='Last scan ID to extract.')
+    parse.add_argument('nrScans', help='Number of scan to extract.')
+    parse.add_argument('output', help='Output filename.')
+    parse.add_argument('-x', '--xspress3', action='store_false',
+                       help='Deactivate Xspress3 shift')
+    parse.add_argument('-m', '--mythen', action='store_false',
+                       help='Deactivate mythen remove data')
+
+    args = parse.parse_args()
+    output_file = args.output
+    nr_scans = int(args.nrScans)
+    last_scanid = int(args.scanID)
+    input_file = args.input
+    sample_desc = ''
+    shift_xspress = args.xspress3
+    rm_mythen = args.mythen
+
+    extract_scans(log, output_file, nr_scans, last_scanid, input_file,
+                  sample_desc, shift_xspress, rm_mythen)
 
 
