@@ -1,13 +1,45 @@
 # Created on Oct 28, 2013
 # @author: droldan
 
-from sardana.macroserver.macro import Macro, Type
+from sardana.macroserver.macro import Macro, Type, Optional
 import PyTango
 import time
 import math
 
 
 class nDac(Macro):
+    """
+    Macro to read and write the configuration of the cell.
+    Allowed attributes: temp, sp1, sp2, flux, body, resistor, cube
+    """
+    param_def = [['attr', Type.String, None, 'Attribute'],
+                 ['value', Type.Float, Optional, 'Value']]
+
+    ATTRS = {'temp': 'temp_sample',
+             'sp1': 'SetPoint1',
+             'sp2': 'SetPoint2',
+             'flux': 'flux',
+             'body': 'temp_body',
+             'resistor': 'temp_resistor',
+             'cube': 'temp_cube'}
+
+    DS_NAME = 'bl22/ct/nanodac'
+
+    def run(self, attr, value):
+        if attr.lower() not in self.ATTRS:
+            raise ValueError('The allowed attributes '
+                             'are: {0}'.format(self.ATTRS.keys()))
+        ds = PyTango.DeviceProxy(self.DS_NAME)
+        attr_name = self.ATTRS[attr]
+        if value is not None:
+            ds.write_attribute(attr_name, value)
+            self.info('Writing {0} in {1}'.format(value, attr_name))
+
+        result = ds.read_attribute(attr_name).value
+        self.output('{0} = {1}'.format(attr, result))
+
+
+class nDacOld(Macro):
     """Usage:
     nDac temp  (to read temperature)
     nDac sp1   (to read Heat SetPoint1)
