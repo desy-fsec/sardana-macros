@@ -30,8 +30,8 @@ class lup(Macro):
         else:
             self.output( "Usage:   lup motor start end intervals time")
           
-class timescan(Macro):
-    """timescan:
+class dummyscan(Macro):
+    """dummyscan:
     
     Scan of dummy motor, just reading out the counters   
     """ 
@@ -49,7 +49,7 @@ class timescan(Macro):
         if ((integ_time != -999)):       
             scan=self.ascan( "exp_dmy01", start_pos, final_pos, nr_interv, integ_time)
         else:
-            self.output( "Usage:   timescan start stop intervals time")
+            self.output( "Usage:   dummyscan start stop intervals time")
             
 
 
