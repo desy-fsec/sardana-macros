@@ -469,9 +469,9 @@ class ic_auto(Macro):
                   [['chamber', Type.String, 'all', 'i0, i1, i2 or all'],
                    {'min': 1}],
                   None, 'List of [channels]'],
-                 ]
+                 ['wait_time',Type.Float, 15, 'waiting time to calibrate']]
 
-    def run(self, positions, chambers):
+    def run(self, positions, chambers, wait_time):
         if 'all' in chambers:
             chambers = ['i0', 'i1', 'i2']
 
@@ -480,7 +480,8 @@ class ic_auto(Macro):
         for chamber in chambers:
             chns.append(self.getExpChannel('e_{0}_1'.format(chamber)))
             chns.append(self.getExpChannel('e_{0}_2'.format(chamber)))
-        self.em_findmaxrange(energy, positions, chns, 10)
+
+        self.em_findmaxrange(energy, positions, chns, wait_time)
 
 
 class ohmotors(Macro):
