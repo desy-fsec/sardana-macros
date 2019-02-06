@@ -472,8 +472,12 @@ class ic_auto(Macro):
                  ['wait_time',Type.Float, 15, 'waiting time to calibrate']]
 
     def run(self, positions, chambers, wait_time):
+        use_moco = False
         if 'all' in chambers:
             chambers = ['i0', 'i1', 'i2']
+
+        if 'i0' in chambers or 'I0' in chambers:
+            use_moco = True
 
         chns = []
         energy = self.getMoveable('energy')
@@ -481,8 +485,21 @@ class ic_auto(Macro):
             chns.append(self.getExpChannel('e_{0}_1'.format(chamber)))
             chns.append(self.getExpChannel('e_{0}_2'.format(chamber)))
 
+        moco_dev = PyTango.DeviceProxy('bl22/oh/moco')
+        moco_status = moco_dev.read_attribute('MocoState').value
+
+        if use_moco:
+            self.info('Stopping moco...')
+            self.moco_stop()
+            self.set_moco_piezo(5)
+
         self.em_findmaxrange(energy, positions, chns, wait_time)
 
+        if use_moco:
+            self.set_moco_piezo(5)
+            if moco_status != 'IDLE':
+                self.info('Starting moco again...')
+                self.moco_go()
 
 class ohmotors(Macro):
     """
