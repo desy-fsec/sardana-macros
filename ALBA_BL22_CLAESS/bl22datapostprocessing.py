@@ -129,7 +129,9 @@ def read_data(log, nr_scans, last_scanid, input_file):
         raise ValueError('You must read at least one scan')
 
     first_scan = last_scanid - nr_scans + 1
-    scans_ids = range(first_scan, last_scanid + 1)
+    # Be compatible with python3
+    scans_ids = list(range(first_scan, last_scanid + 1))
+    scans_ids.sort()
 
     log.info('Reading scans {0} from {1}'.format(scans_ids, input_file))
 
@@ -169,7 +171,8 @@ def extract_scans(log, output_file, nr_scans, last_scanid, input_file,
     scans_data, input_file = read_data(log, nr_scans,
                                        last_scanid=last_scanid,
                                        input_file=input_file)
-    scans_ids = scans_data.keys()
+    # Be compatible with python3
+    scans_ids = list(scans_data.keys())
     total_len = 0
 
     for scan in scans_data.values():
