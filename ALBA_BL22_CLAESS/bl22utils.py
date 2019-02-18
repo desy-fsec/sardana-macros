@@ -279,7 +279,7 @@ class set_mode(Macro):
 
     # energyc is the timer first channel and it
     # does not  work on the macro
-    common_chns = ['energyc', 'sr_i_1', 'Tn', 'Td', 'TBody']
+    common_chns = ['energyc', 'sr_i_1', 'TSample', 'Td', 'TBody']
 
     # Dictionary with the experiment types and their enabled channels
     exp_type_conf = {
