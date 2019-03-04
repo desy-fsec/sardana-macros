@@ -271,7 +271,8 @@ class set_mode(Macro):
                     'x_ch4_roi3', 'x_ch5_roi3', 'x_ch6_roi3', 'x_ch1_roi4',
                     'x_ch2_roi4', 'x_ch3_roi4', 'x_ch4_roi4', 'x_ch5_roi4',
                     'x_ch6_roi4', 'x_ch1_roi5', 'x_ch2_roi5', 'x_ch3_roi5',
-                    'x_ch4_roi5', 'x_ch5_roi5', 'x_ch6_roi5']
+                    'x_ch4_roi5', 'x_ch5_roi5', 'x_ch6_roi5', 'x_ch7_roi1',
+                    'x_ch7_roi2', 'x_ch7_roi3', 'x_ch7_roi4', 'x_ch7_roi5']
 
     xpress3_dt_chns = ['x_timer', 'x_dt_1', 'x_dt_2', 'x_dt_3', 'x_dt_4',
                        'x_dt_5', 'x_dtf_1', 'x_dtf_2', 'x_dtf_3', 'x_dtf_4',
