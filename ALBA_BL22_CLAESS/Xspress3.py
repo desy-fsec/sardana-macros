@@ -3,15 +3,15 @@ from sardana.macroserver.macro import Type, Macro, Hookable
 import taurus
 
 RoIs = [['x_ch1_roi1', 'x_ch2_roi1', 'x_ch3_roi1', 'x_ch4_roi1',
-         'x_ch5_roi1', 'x_ch6_roi1'],
+         'x_ch5_roi1', 'x_ch6_roi1', 'x_ch7_roi1'],
         ['x_ch1_roi2', 'x_ch2_roi2', 'x_ch3_roi2', 'x_ch4_roi2',
-         'x_ch5_roi2', 'x_ch6_roi2'],
+         'x_ch5_roi2', 'x_ch6_roi2', 'x_ch7_roi2'],
         ['x_ch1_roi3', 'x_ch2_roi3', 'x_ch3_roi3', 'x_ch4_roi3',
-         'x_ch5_roi3', 'x_ch6_roi3'],
+         'x_ch5_roi3', 'x_ch6_roi3', 'x_ch7_roi3'],
         ['x_ch1_roi4', 'x_ch2_roi4', 'x_ch3_roi4', 'x_ch4_roi4',
-         'x_ch5_roi4', 'x_ch6_roi4'],
+         'x_ch5_roi4', 'x_ch6_roi4', 'x_ch7_roi4'],
         ['x_ch1_roi5', 'x_ch2_roi5', 'x_ch3_roi5', 'x_ch4_roi5',
-         'x_ch5_roi5', 'x_ch6_roi5']]
+         'x_ch5_roi5', 'x_ch6_roi5', 'x_ch7_roi5']]
 
 
 class setXRoI(Macro):
@@ -47,7 +47,7 @@ class getXRoIs(Macro):
         header = 'Chn\tRoI1L\tRoI1H\tRoI2L\tRoI2H\tRoI3L\tRoI3H\tRoI4L\t' +\
             'RoI4H\tRoI5L\tRoI5H'
         self.output(header)
-        for chn_nr in range(6):
+        for chn_nr in range(7):
             line = 'ch_%d\t' % (chn_nr+1)
             for roi_nr in range(5):
                 roi_name = RoIs[roi_nr][chn_nr]
@@ -87,7 +87,7 @@ class dtX(Macro):
         finally:
             self.limaccd.stopAcq()
                
-        for idx in range(6):
-            #"dt%", data[9] "dtf", data[10]
-            data = self.xspress3.ReadScalers([0,idx])
+        for idx in range(7):
+            # "dt%", data[9] "dtf", data[10]
+            data = self.xspress3.ReadScalers([0, idx])
             self.output('dt(ch%d) = %0.4f%%' % (idx+1, data[9]))
