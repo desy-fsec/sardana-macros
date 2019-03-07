@@ -278,7 +278,7 @@ class set_mode(Macro):
                        'x_dt_5', 'x_dtf_1', 'x_dtf_2', 'x_dtf_3', 'x_dtf_4',
                        'x_dtf_5']
 
-    mythen_chns = ['m_raw', 'm_roi1', 'm_roi2', 'm_roi3']
+    mythen_chns = ['m_raw', 'mc_roi1', 'mc_roi2', 'mc_roi3']
 
     # energyc is the timer first channel and it
     # does not  work on the macro
