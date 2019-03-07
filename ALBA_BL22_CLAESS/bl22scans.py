@@ -398,8 +398,10 @@ class qMythen(Macro):
             wait_fe, config_pid):
 
         qexafs = BL22qExafs(self)
+        self.warning('This macro is deprecated. Run first: "%set_mode clear", '
+                     'and run a qExafs instead.')
         qexafs.run_qexafs(startPos, finalPos, nrOfTriggers, intTime, speedLim,
-                          wait_fe, config_pid, mythen=True)
+                          wait_fe, config_pid, mythen=False)
 
 
 class nqMythen(Macro):
@@ -431,8 +433,11 @@ class nqMythen(Macro):
             configPID):
 
         qexafs = BL22qExafs(self)
+        self.warning('This macro is deprecated. Run first: "%set_mode clear", '
+                     'and run a nqExafs instead.')
+
         qexafs.run_nqexafs(startPos, end_triggers, intTime, nrOfRepetitions,
-                           waitFE, configPID, mythen=True)
+                           waitFE, configPID, mythen=False)
 
 
 # ******************************************************************************
