@@ -141,8 +141,7 @@ class GasFillBase(object):
             if i[0] == 0:
                 is_open_al_valve = True
                 io0_energy = i[1]
-                self.macro.info('Opening Aluminium valve...')
-                self.macro.openAl()
+                self.macro.Alout()
             for j in i:
                 v.append(j)
 
@@ -150,8 +149,7 @@ class GasFillBase(object):
         self.device.fill(v)
         self.wait()
         if is_open_al_valve and io0_energy > 4000:
-            self.macro.info('Closing Aluminium valve...')
-            self.macro.closeAl()
+            self.macro.Alin()
     
         self.state()
 
@@ -210,7 +208,7 @@ class getFill(Macro):
     """
 
     hints = {}
-   
+
     def run(self):
         self.gas_filling = GasFillBase(self)
         self.gas_filling.state()
@@ -250,7 +248,6 @@ class gasFill(Macro):
         self.gas_filling.stop()
 
 
-
 class AluminiumValve(object):
     def __init__(self, macro, timeout=10):
         self.eps = PyTango.DeviceProxy('bl22/ct/eps-plc-02')
@@ -275,30 +272,34 @@ class AluminiumValve(object):
         self.macro.output('The Al valve is {0}'.format(['CLOSE','OPEN'][v]))
 
     def open(self):
+        self.macro.info('Opening Aluminium valve...')
         self.write(1)
 
     def close(self):
+        self.macro.info('Closing Aluminium valve...')
         self.write(0)
 
 
-class openAl(Macro):
+class Alout(Macro):
     param_def = [['timeout', Type.Float, 10, 'Timeout']]
 
     def run(self, timeout):
         valve = AluminiumValve(self, timeout)
         valve.open()
+        valve.get()
 
 
-class closeAl(Macro):
+class Alin(Macro):
     param_def = [['timeout', Type.Float, 10, 'Timeout']]
 
     def run(self, timeout):
         valve = AluminiumValve(self, timeout)
         valve.close()
+        valve.get()
 
 
-class getAl(Macro):
+class Alstate(Macro):
     
     def run(self):
-        valve= AluminiumValve(self,10)
+        valve = AluminiumValve(self, 10)
         valve.get()
