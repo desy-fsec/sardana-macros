@@ -8,7 +8,7 @@ from bl22clearmotor import ClearSpectrometer
 
 TRAJECTORY_CTRL = 'cbragg_traj_ctrl'
 TRAJECTORY_MOTOR = 'cbragg'
-TRAJECTORY_POINTS = 120
+TRAJECTORY_POINTS = 170
 
 
 class clearSync(Macro):
@@ -266,8 +266,8 @@ class clearSetCeout(Macro):
         os.rename(traj_file, bkp_file)
         self.info('Create backup: {0}'.format(bkp_file))
         # TODO: Implement table for each
-        clear.save_trajectory(43,
-                              77,
+        clear.save_trajectory(30,
+                              80,
                               TRAJECTORY_POINTS,
                               traj_file)
 
