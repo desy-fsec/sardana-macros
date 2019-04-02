@@ -112,7 +112,6 @@ class clearLoadTable(Macro):
     param_def = [['filename', Type.String, '', 'Parametric table filename']]
 
     def run(self, filename):
-        self.clearRestoreMotors()
         if filename == '':
            filename = None
         cmd = 'Load {0}'.format(filename)
