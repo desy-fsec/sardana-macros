@@ -112,6 +112,7 @@ class clearLoadTable(Macro):
     param_def = [['filename', Type.String, '', 'Parametric table filename']]
 
     def run(self, filename):
+        self.clearRestoreMotors()
         if filename == '':
            filename = None
         cmd = 'Load {0}'.format(filename)
@@ -140,8 +141,36 @@ class clearReconfig(Macro):
     """
     Macro to restore the velocity and acceleration of the cbragg motor
     """
+    CONFIG = {'cy': {'velocity': 0.4, 'acceleration': 1},
+              'cslx1': {'velocity': 0.15051, 'acceleration': 0.15},
+              'cslx2': {'velocity': 0.15051, 'acceleration': 0.15},
+              'cslz1': {'velocity': 0.15051, 'acceleration': 0.15},
+              'cslz2': {'velocity': 0.15051, 'acceleration': 0.15},
+              'cslxr': {'velocity': 1, 'acceleration': 0.1},
+              'cay': {'velocity': 0.8, 'acceleration': 1.6},
+              'caz': {'velocity': 0.8, 'acceleration': 1.6},
+              'caxr': {'velocity': 0.4, 'acceleration': 1.6},
+              'cdxr': {'velocity': 1, 'acceleration': 0.5},
+              'cdz': {'velocity': 0.8, 'acceleration': 1.6},
+              'cdy': {'velocity': 1.6, 'acceleration': 1.6},
+              'cdx': {'velocity': 0.09933, 'acceleration': 0.1},
+              'cdmask': {'velocity': 0.15051, 'acceleration': 0.15},
+              'cabd': {'velocity': 1.8, 'acceleration': 0.1},
+              'cabu': {'velocity': 1.8, 'acceleration': 0.2},
+              'chi': {'velocity': 5.004, 'acceleration': 0.1}}
+
     def run(self):
-        self.info('Restore cbragg configuration')
+        self.info('Restoring clear Motors '
+                  'configuration {0}'.format(self.CONFIG.keys()))
+        for motor_name, config in self.CONFIG.items():
+            motor = self.getMotor(motor_name)
+            for param, value in config.items():
+                motor.write_attribute(param, value)
+
+        self.info('Restoring cbragg configuration...')
+        pool = self.getPools()[0]
+        pool.SendToController([TRAJECTORY_CTRL, 'CalcVel'])
+
         try:
             dev = self.getMotor(TRAJECTORY_MOTOR)
             max_vel = dev.read_attribute('maxvelocity').value - 0.0001
