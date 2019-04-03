@@ -159,25 +159,26 @@ class clearReconfig(Macro):
               'chi': {'velocity': 5.004, 'acceleration': 0.1}}
 
     def run(self):
-        self.info('Restoring clear Motors '
-                  'configuration {0}'.format(self.CONFIG.keys()))
-        for motor_name, config in self.CONFIG.items():
-            motor = self.getMotor(motor_name)
-            for param, value in config.items():
-                motor.write_attribute(param, value)
-
-        self.info('Restoring cbragg configuration...')
-        pool = self.getPools()[0]
-        pool.SendToController([TRAJECTORY_CTRL, 'CalcVel'])
-
         try:
+            self.info('Restoring clear Motors '
+                      'configuration {0}'.format(self.CONFIG.keys()))
+            for motor_name, config in self.CONFIG.items():
+                motor = self.getMotor(motor_name)
+                for param, value in config.items():
+                    motor.write_attribute(param, value)
+
+            self.info('Restoring cbragg configuration...')
+            pool = self.getPools()[0]
+            pool.SendToController([TRAJECTORY_CTRL, 'CalcVel'])
+
             dev = self.getMotor(TRAJECTORY_MOTOR)
             max_vel = dev.read_attribute('maxvelocity').value - 0.0001
             dev.write_attribute('velocity', max_vel)
             dev.write_attribute('acceleration', 1.6)
-        except Exception:
-            self.warning('Can not restore the {0} '
-                         'configuration.'.format(TRAJECTORY_MOTOR))
+
+        except Exception as e:
+            self.error('Can not restore the {0} '
+                       'configuration. {1}'.format(TRAJECTORY_MOTOR, e))
 
 
 class clearAutoSync(Macro):
