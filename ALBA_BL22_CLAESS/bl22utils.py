@@ -172,6 +172,12 @@ class reconfig(Macro):
         # fluo_x.acceleration = 1
         self.info('Restore exit_offset')
         self.execMacro('mv oh_dcm_exit_offset 25.5')
+        self.info('Restore phx velocity')
+        dev = PyTango.DeviceProxy('phx')
+        dev.write_attribute('velocity', 1.8)
+        self.info('Restore phz velocity')
+        dev = PyTango.DeviceProxy('phz')
+        dev.write_attribute('velocity', 1.8)
         self.info('Restore tripod_x velocity')
         dev = PyTango.DeviceProxy('tripod_x')
         dev.write_attribute('velocity', 0.15)
