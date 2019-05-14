@@ -1061,6 +1061,7 @@ def set_selector(mcr):
 
     if servers and servers[0] != 'module':
         mcr.selector = PyTango.DeviceProxy(str(servers[0]))
+        # to see other timeouts
         mcr.selector.set_timeout_millis(6000)
         setversion(mcr)
         return str(servers[0])
