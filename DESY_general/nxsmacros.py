@@ -956,7 +956,7 @@ def printConfList(mcr, name, decode=True, label=None, out=None):
             mcr.output("%s:  %s" % (
                 title,
                 Splitter.join(data) if data else Nothing))
-        except:
+        except Exception as e:
             mcr.output(str(e))
     else:
         out.appendRow([title, Splitter.join(data) if data else Nothing])
@@ -1061,6 +1061,7 @@ def set_selector(mcr):
 
     if servers and servers[0] != 'module':
         mcr.selector = PyTango.DeviceProxy(str(servers[0]))
+        mcr.selector.set_timeout_millis(6000)
         setversion(mcr)
         return str(servers[0])
     else:
