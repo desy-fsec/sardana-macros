@@ -197,6 +197,12 @@ class reconfig(Macro):
         else:
             chn = ['1', 'YES']
 
+        if self.getEnv('phd_enabled'):
+            self.warning('Using pin-hole')
+            chn_i1_1 = ['4', 'NO']
+        else:
+            chn_i1_1 = ['4', 'YES']
+
         try:
             e0 = AlbaEm(host_e0)
             e0_channels = [chn, ['2', 'YES'], ['3', 'YES'], ['4', 'YES']]
@@ -210,8 +216,7 @@ class reconfig(Macro):
 
         try:
             e1 = AlbaEm(host_e1)
-            e1_channels = [['1', 'YES'], ['2', 'YES'], ['3', 'YES'],
-                           ['4', 'YES']]
+            e1_channels = [['1', 'YES'], ['2', 'YES'], ['3', 'YES'], chn_i1_1]
             e1.setInvs(e1_channels)
             time.sleep(0.5)
             e1_inv = e1.getInvs([1, 2, 3, 4])

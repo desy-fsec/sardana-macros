@@ -1,4 +1,4 @@
-from sardana.macroserver.macro import Macro
+from sardana.macroserver.macro import Macro, Type
 
 
 class lim_tp(Macro):
@@ -68,3 +68,28 @@ class restoreph(Macro):
         self.output(cmd)
         self.execMacro(cmd)
 
+
+class phd(Macro):
+    """
+    Macro to configure the system to use the pin-hole diode. It inverts the
+    signal of the e_i1_1 and set the environment phd_enabled of the reconfig
+    macro.
+    """
+
+    param_def = [['enabled', Type.Boolean, True,
+                  'Activate/deactive the system to use the pin-hole']]
+
+    def run(self, enabled):
+        self.setEnv('reconfig.phd_enabled', enabled)
+        if enabled:
+            msg = 'Pin-hole enabled.'
+        else:
+            msg = 'Pin-hole disabled.'
+        try:
+            self.info('Configuring e_i1_1 channel...')
+            e_i1_1 = self.getExpChannel('e_i1_1')
+            e_i1_1.write_attribute('inversion', not enabled)
+            self.output('Done: {}'.format(msg))
+        except Exception:
+            self.error('Channel configuration failed. Try again or run '
+                       'reconfig')
