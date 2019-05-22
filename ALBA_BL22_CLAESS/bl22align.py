@@ -63,7 +63,11 @@ class ConfigAlign(object):
         all_motors = self.config_file.get(instrument, 'all') == 'True'
 
         for motor in motors:
-            pos = self.config_file.get(self.config, motor)
+            try:
+                pos = self.config_file.get(self.config, motor)
+            except Exception:
+                self.warning('{} does not have value saved.'.format(motor))
+                continue
             if motor in self.motors_cal:
                 equation = pos
                 if motor == 'oh_dcm_xtal2_pitch':
