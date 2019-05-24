@@ -114,10 +114,12 @@ class GasFillBase(object):
     """
 
     device_name = 'bl22/ct/bl22gasfilling'
-
+    valve_name = 'bl22/eh/pnv-01'
+    
     def __init__(self, macro_obj):
         self.macro = macro_obj
         self.device = PyTango.DeviceProxy(self.device_name)
+        self.pnv01 = PyTango.DeviceProxy(self.valve_name)
 
     def wait(self):
         while True:
@@ -132,16 +134,45 @@ class GasFillBase(object):
         else:
             self.macro.output('The process has ended successfully')
 
+    def _change_pnv01(self, close=True):
+        if close:
+            self.macro.info('Closing valve {} ...'.format(self.valve_name))
+            state = PyTango._PyTango.DevState.CLOSE
+            action = self.pnv01.close
+        else:
+            self.macro.info('Opening valve {} ...'.format(self.valve_name))
+            state = PyTango._PyTango.DevState.OPEN
+            action = self.pnv01.open
+
+        pnv01_state = self.pnv01.state()
+        if pnv01_state != state:
+            action()
+            t = time.time()
+            while True:
+                pnv01_state = self.pnv01.state()
+                if pnv01_state == state:
+                    break
+                if time.time() - t > 20:
+                    raise RuntimeError('It is not possible to {} the '
+                                       'valve. Check it'.state)
+                time.sleep(0.1)
+
     def fill(self, values):
         v = []
         is_open_al_valve = False
         io0_energy = 0
         self.macro.shc()
+        open_pnv = False
+        pnv01_state = self.pnv01.state()
+        if pnv01_state == PyTango._PyTango.DevState.OPEN:
+            open_pnv = True
+
         for i in values:
             if i[0] == 0:
                 is_open_al_valve = True
                 io0_energy = i[1]
                 self.macro.Alout()
+                self._change_pnv01(close=True)
             for j in i:
                 v.append(j)
 
@@ -150,7 +181,8 @@ class GasFillBase(object):
         self.wait()
         if is_open_al_valve and io0_energy > 4000:
             self.macro.Alin()
-    
+        if open_pnv:
+            self._change_pnv01(close=False)
         self.state()
 
     def state(self):
@@ -174,11 +206,13 @@ class GasFillBase(object):
 
     def clean(self, io):
         self.macro.output('Starting the purge...')
-        self.macro.shc()
+        self._close_valves()
         self.device.clean(io)
         self.wait()
 
     def stop(self):
+        self.macro.info('Open PNV-01 valve')
+        self.pnv01.open()
         self.macro.output('Send stop to de device...')
         self.device.stop()
 
