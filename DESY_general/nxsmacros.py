@@ -1063,6 +1063,7 @@ def set_selector(mcr):
         mcr.selector = PyTango.DeviceProxy(str(servers[0]))
         # to see other timeouts
         mcr.selector.set_timeout_millis(6000)
+        mcr.selector.set_source(PyTango.DevSource.DEV)
         setversion(mcr)
         return str(servers[0])
     else:
@@ -1078,13 +1079,75 @@ def setversion(mcr):
         mcr.selector_version = 1
 
 
+def _long_command(server, command, *var):
+    """ Excecutes a long command
+    """
+    if hasattr(server, "command_inout_asynch"):
+        # aid = self.__dp.command_inout_asynch("PreselectComponents")
+        # _wait(self.__dp)
+        try:
+            _command(server, command, *var)
+        except PyTango.CommunicationFailed as e:
+            if e[-1].reason == "API_DeviceTimedOut":
+                _wait(server)
+            else:
+                raise
+    else:
+        _command(server, command, *var)
+
+
+def _command(server, command, *var):
+    """ executes command on the server
+
+    :param server: server instance
+    :type server: :class:`PyTango.DeviceProxy` \
+    or 'nxsrecconfig.Settings.Settings'
+    :param command: command name
+    :type command: :obj:`str`
+    :returns: command result
+    :rtype: `any`
+
+    """
+    if not hasattr(server, "command_inout"):
+        return getattr(server, command)(*var)
+    elif var is None:
+        return server.command_inout(command)
+    else:
+        return server.command_inout(command, *var)
+
+
+def _wait(proxy, counter=100):
+    """ waits for server until server is not in running state
+
+    :param proxy: server proxy
+    :type proxy: :class:`PyTango.DeviceProxy`
+    :param counter: maximum waiting timer in 0.01 sec
+                    (without command execution)
+    :type counter: :obj:`int`
+    """
+    found = False
+    cnt = 0
+    while not found and cnt < counter:
+        if cnt > 1:
+            time.sleep(0.01)
+        try:
+            if proxy.state() != PyTango.DevState.RUNNING:
+                found = True
+        except (PyTango.DevFailed, PyTango.Except, PyTango.DevError):
+            time.sleep(0.01)
+            found = False
+            if cnt == counter - 1:
+                raise
+        cnt += 1
+
+
 def update_configuration(mcr):
     """ Synchonize profile with mntgrp """
     if hasattr(mcr.selector, "updateProfile"):
-        mcr.selector.updateProfile()
+        _long_command(mcr.selector, "updateProfile")
     else:
-        mcr.selector.updateMntGrp()
-        mcr.selector.importMntGrp()
+        _long_command(mcr.selector, "updateMntGrp")
+        _long_command(mcr.selector, "importMntGrp")
     if not isinstance(mcr.selector, PyTango.DeviceProxy):
         mcr.selector.exportEnvProfile()
 
