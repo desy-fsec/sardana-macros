@@ -561,3 +561,99 @@ class constKscan(Macro, Hookable):
     @property
     def data(self):
         return self._gScan.data
+
+
+class fascanct(Macro):
+    """
+    ascanct wrapper macro to do the scan at the maximum velocity allowed.
+    """
+
+    param_def = [['motor', Type.Moveable, None, 'Moveable name'],
+                 ['start_pos', Type.Float, None, 'Scan start position'],
+                 ['final_pos', Type.Float, None, 'Scan final position'],
+                 ['integ_time', Type.Float, None, 'Integration time'],
+                 ['latency_time', Type.Float, 0, 'Latency time']]
+
+    DEFAULT_INTERVALS = 10
+
+    def _calc_max_time(self, moveable, start_pos, end_pos):
+        moveable_type = moveable.getType()
+        if moveable_type == Type.Motor:
+            velocity = moveable.velocity
+            self.info('{}.velocity: {}'.format(moveable.name, velocity))
+            t = abs(end_pos - start_pos)/velocity
+            return t
+
+        elif moveable_type == Type.PseudoMotor:
+            moveables_names = moveable.elements
+            starts_pos = moveable.calcphysical(start_pos)
+            ends_pos = moveable.calcphysical(end_pos)
+            max_time = float('-inf')
+            for name, start, end in zip(moveables_names, starts_pos,
+                                        ends_pos):
+                sub_moveable = self.getMoveable(name)
+                t = self._calc_max_time(sub_moveable, start, end)
+                if t > max_time:
+                    max_time = t
+            return max_time
+
+    def _get_min_intervals(self):
+        try:
+            min_intervals = self.getEnv('MinIntervals')
+        except Exception:
+            self.warning('MinIntervals environment variable is not defined. '
+                         'Set it to default value {}. \n'
+                         'To change it use: "senv fascanct.MinIntervals '
+                         '<value>"'
+                         ''.format(self.DEFAULT_INTERVALS))
+            self.setEnv('fascanct.MinIntervals', self.DEFAULT_INTERVALS)
+            min_intervals = self.DEFAULT_INTERVALS
+
+        return min_intervals
+
+    def run(self, moveable, start_pos, end_pos, integ_time, latency_time):
+        max_time = self._calc_max_time(moveable, start_pos, end_pos)
+
+        mg_name = self.getEnv('ActiveMntGrp')
+        mg = self.getMeasurementGroup(mg_name)
+        mg_latency_time = mg.getLatencyTime()
+
+        total_time = integ_time + latency_time
+        if mg_latency_time > latency_time:
+            self.debug("Choosing measurement group "
+                       "latency time: {}".format(mg_latency_time))
+            total_time = integ_time + mg_latency_time
+
+        intervals = int(max_time / total_time)
+        min_intervals = self._get_min_intervals()
+        if intervals < min_intervals:
+            self.warning('Calculated intervals value is too small. Use '
+                         'MinIntervals value: {}'.format(min_intervals))
+            intervals = min_intervals
+
+        cmd = 'ascanct {} {} {} {} {} {}' \
+              ''.format(moveable, start_pos, end_pos, intervals,
+                        integ_time, latency_time)
+        self.output('Run: {}'.format(cmd))
+        self.execMacro(cmd)
+
+
+class dfascanct(Macro):
+    """
+    fascanct wrapper macro to do a relative scan at the maximum velocity
+    allowed.
+    """
+
+    param_def = [['motor', Type.Moveable, None, 'Moveable name'],
+                 ['start_pos', Type.Float, None, 'Scan start position'],
+                 ['final_pos', Type.Float, None, 'Scan final position'],
+                 ['integ_time', Type.Float, None, 'Integration time'],
+                 ['latency_time', Type.Float, 0, 'Latency time']]
+
+    def run(self, moveable, start_pos, end_pos, integ_time, latency_time):
+        curr_pos = moveable.readPosition(force=True)[0]
+        start_pos += curr_pos
+        end_pos += curr_pos
+        self.execMacro('fascanct {} {} {} {} {}'
+                       ''.format(moveable, start_pos, end_pos,
+                                 integ_time, latency_time))
