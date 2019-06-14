@@ -6,8 +6,7 @@ from PyTango import DeviceProxy
 import pyIcePAP
 import time
 from sardana.macroserver.macro import *
-from macro_utils.icepap import create_motor_info_dict, home, \
-                               home_group, home_strict, home_group_strict
+from macro_utils.icepap import create_motor_info_dict, home
 
 # globals
 ENV_FROM = '_IcepapEmailAuthor'
@@ -328,15 +327,16 @@ class ipap_homing(Macro):
         
         
     def run(self, *args, **opts):
+        return home(self, self.motorsInfoList, self.group, self.strict)
 
-        if self.group and self.strict:
-            return home_group_strict(self, self.motorsInfoList)
-        elif self.group:
-            return home_group(self, self.motorsInfoList)
-        elif self.strict:
-            return home_strict(self, self.motorsInfoList)
-        else: 
-            return home(self, self.motorsInfoList)
+        # if self.group and self.strict:
+        #     return home_group_strict(self, self.motorsInfoList)
+        # elif self.group:
+        #     return home_group(self, self.motorsInfoList)
+        # elif self.strict:
+        #     return home_strict(self, self.motorsInfoList)
+        # else:
+        #     return home(self, self.motorsInfoList)
 
 
 @macro([["motor", Type.Motor, None, "motor to jog"],
