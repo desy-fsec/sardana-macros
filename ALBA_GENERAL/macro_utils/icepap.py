@@ -127,7 +127,7 @@ def home(macro, motorsInfoList, group=True, strict=True):
         while True:
             macro.checkPoint()
             ans = pool.SendToController([ctrlName, HM_STATUS_CMD])
-            homeStats = ans.split()[1::2]
+            homeStats = ans.split()[0::2]
             macro.debug('Home stats: %s' % repr(homeStats))
             # updating motor info dictionaries
             for i, motInfo in enumerate(motorsInfoList):
@@ -143,12 +143,10 @@ def home(macro, motorsInfoList, group=True, strict=True):
                     axis = motor.getAxis()
                     ans = pool.SendToController([ctrlName,
                                                  HM_POS_CMD.format(axis)])
-                    homeIcePos = ans.split()[1]
-                    motInfo['home_ice_pos'] = homeIcePos
+                    motInfo['home_ice_pos'] = ans
                     ans = pool.SendToController([ctrlName,
                                                  HM_ENCIN_CMD.format(axis)])
-                    encin = ans.split()[1]
-                    motInfo['encin'] = encin
+                    motInfo['encin'] = ans
             # refreshing output table
             output_homing_status(macro, motorsInfoList)
 
