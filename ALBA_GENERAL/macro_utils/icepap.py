@@ -41,8 +41,8 @@ def populate_homing_commands(motors, directions, group=False, strict=False):
 
     homing_cmd = '#home'
     homing_status_cmd = '?homestat'
-    homing_pos_cmd = '?homepos'
-    homing_encin_cmd = '?homeenc encin'
+    homing_pos_cmd = '?homepos {0}'
+    homing_encin_cmd = '?homeenc encin {0}'
     abort_cmd = 'stop'
 
     if group is True:
@@ -56,8 +56,6 @@ def populate_homing_commands(motors, directions, group=False, strict=False):
         icepap_direction = m.getSign() * d
         homing_cmd += ' %d %d' % (icepap_axis, icepap_direction)
         homing_status_cmd += ' %s' % icepap_axis
-        homing_pos_cmd += ' %s' % icepap_axis
-        homing_encin_cmd += ' %s' % icepap_axis
         abort_cmd += ' %s' % icepap_axis
 
     return homing_cmd, homing_status_cmd, homing_pos_cmd, homing_encin_cmd, \
@@ -144,11 +142,11 @@ def home(macro, motorsInfoList, group=True, strict=True):
                     motInfo['homed'] = True
                     axis = motor.getAxis()
                     ans = pool.SendToController([ctrlName,
-                                                 '?homepos %d' % axis])
+                                                 HM_POS_CMD.format(axis)])
                     homeIcePos = ans.split()[1]
                     motInfo['home_ice_pos'] = homeIcePos
                     ans = pool.SendToController([ctrlName,
-                                                 '?homeenc encin %d' % axis])
+                                                 HM_ENCIN_CMD.format(axis)])
                     encin = ans.split()[1]
                     motInfo['encin'] = encin
             # refreshing output table
