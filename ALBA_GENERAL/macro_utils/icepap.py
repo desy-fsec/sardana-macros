@@ -43,7 +43,7 @@ def populate_homing_commands(motors, directions, group=False, strict=False):
     homing_status_cmd = '?homestat'
     homing_pos_cmd = '?homepos'
     homing_encin_cmd = '?homeenc encin'
-    abort_cmd = '#abort'
+    abort_cmd = 'stop'
 
     if group is True:
         homing_cmd += ' group'
