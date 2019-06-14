@@ -134,7 +134,7 @@ def home(macro, motorsInfoList):
             # updating motor info dictionaries
             for i, motInfo in enumerate(motorsInfoList):
                 motor = motInfo['motor']
-                motor_pos = motor.getPositionObj().getDisplayValue(cache=False)
+                motor_pos = motor.getAttribute('Position').getDisplayValue()
                 motInfo['position'] = motor_pos
                 macro.debug('Motor: %s, position: %s', motor.alias(),
                             motInfo['position'])
