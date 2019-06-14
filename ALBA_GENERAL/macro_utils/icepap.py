@@ -39,7 +39,7 @@ def populate_homing_commands(motors, directions, group=False, strict=False):
     :param strict: strict homing
     :return: (list<str>) list of homing commands"""
 
-    homing_cmd = '#home'
+    homing_cmd = 'home'
     homing_status_cmd = '?homestat'
     homing_pos_cmd = '?homepos {0}'
     homing_encin_cmd = '?homeenc encin {0}'
