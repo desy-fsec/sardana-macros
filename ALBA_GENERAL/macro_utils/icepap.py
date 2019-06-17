@@ -82,14 +82,17 @@ def output_homing_status(macro, motorsInfoList):
         data[2].append(str(motInfo['status']))
         data[3].append(str(motInfo['position']))
 
-    macro.output(colHead)
-    macro.output(rowHead)
-    macro.output(data)
     table = Table(data, elem_fmt=['%*s'], term_width=None,
                   col_head_str=colHead, col_head_fmt='%*s', col_head_width=15,
                   row_head_str=rowHead, row_head_fmt='%-*s', row_head_width=15,
                   col_sep='|', row_sep='_', col_head_sep='-', border='=')
-    macro.outputBlock(table.genOutput())
+    output = ''
+    output += '{0}\n'.format(colHead)
+    output += '{0}\n'.format(rowHead)
+    output += '{0}'.format(data)
+    for l in table.genOutput():
+        output += '\n{0}'.format(l)
+    macro.outputBlock(output)
     macro.flushOutput()
 
 
