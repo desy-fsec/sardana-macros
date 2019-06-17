@@ -112,6 +112,10 @@ def home(macro, motorsInfoList, group=True, strict=True):
 
     motors = [i.get('motor') for i in motorsInfoList]
     hmDirections = [i.get('direction') for i in motorsInfoList]
+
+    if strict is True:
+        group = True
+
     HM_CMD, HM_STATUS_CMD, HM_POS_CMD, HM_ENCIN_CMD, ABORT_CMD = \
         populate_homing_commands(motors, hmDirections, group=group,
                                  strict=strict)
