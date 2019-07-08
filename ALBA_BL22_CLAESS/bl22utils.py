@@ -2,7 +2,7 @@ import time
 import datetime
 import os
 import mmap
-from sardana.macroserver.macro import macro, Type, Macro, ViewOption
+from sardana.macroserver.macro import macro, Type, Macro, ViewOption, Optional
 from sardana.macroserver.msexception import StopException
 import taurus
 import PyTango
@@ -270,7 +270,6 @@ class set_mode(Macro):
 
     param_def = [['ExpType', Type.String, None, 'transm, fluo, clear, all']]
 
-
     # Channels by elements
     iochamber_chns = ['a_i0i1_timer', 'a_i0_1', 'a_i0_2', 'a_i1_1', 'a_i1_2',
                       'n_timer', 'n_i0_1', 'n_i0_2', 'n_i1_1', 'n_i1_2',
@@ -338,7 +337,7 @@ class get_outfilename(Macro):
 
     def run(self, filename):
         fname, ext = os.path.splitext(filename)
-        temp_filename = fname + '_{0}' + ext
+        temp_filename = fname + '_{0:02}' + ext
         count = 0
         while True:
             self.checkPoint()
@@ -348,38 +347,6 @@ class get_outfilename(Macro):
             count += 1
         return new_filename
 
-
-# Old version of set_mode macro
-# class set_mode(Macro):
-#     """
-#     Macro to set the Measuement Group acording to the experiment type:
-#     * Transmission (transm)
-#     * Fluorescence (fluo)
-#     * CLEAR (clear)
-#     * ALL (all)
-#     """
-#     env = ('ContScanMG', 'DefaultMG', 'ActiveMntGrp')
-#
-#     param_def = [['ExpType', Type.String, None, 'transm, fluo, clear, all']]
-#
-#     exp_type = {'transm': ['mg_cont', 'mg_step'],
-#                 'fluo': ['mg_xcont', 'mg_xstep'],
-#                 'clear': ['mg_mcont', 'mg_mstep'],
-#                 'all': ['mg_all', 'mg_all']
-#                 }
-#
-#     def run(self, exptype):
-#         exptype = exptype.lower()
-#
-#         if exptype not in self.exp_type:
-#             raise ValueError('The values must be: %r' % self.exp_type.keys())
-#         mg_cont, mg_step = self.exp_type[exptype]
-#         self.output('Setting mode...')
-#         self.setEnv('ContScanMG', mg_cont)
-#         self.setEnv('DefaultMG', mg_step)
-#         self.setEnv('ActiveMntGrp', mg_step)
-#         self.output('ContScanMG: %s\nDefaultMG: %s\n' % (mg_cont, mg_step))
-#
 
 class nextract(Macro):
     """
@@ -519,6 +486,7 @@ class ic_auto(Macro):
                 self.info('Starting moco again...')
                 self.moco_go()
 
+
 class ohmotors(Macro):
     """
     Macro to turn ON/OFF the motor of the optical hutch.
@@ -551,3 +519,61 @@ class ohmotors(Macro):
                 self.error('Error: {0}'.format(status))
 
 
+class set_user_path(Macro):
+    """
+    Macro to set the user path used on startup macro
+    """
+
+    param_def = [['path', Type.String, None, 'Path to the user folder'],
+                 ['scan_id', Type.Integer, Optional, 'Start scan ID']]
+
+    def run(self, path, scan_id):
+        if not os.path.exists(path):
+            raise ValueError('The path {} is not exists. '
+                             'Could you check it?'.format(path))
+
+        self.setEnv('startup.UserPath', path)
+        self.output('User path set to: {}'.format(path))
+        if scan_id is not None:
+            if scan_id < 0:
+                raise ValueError('The scan id must be positive')
+            self.setEnv('ScanID', scan_id)
+
+
+class get_user_path(Macro):
+    """
+    Macro to get the user path set on the startup macro
+    """
+    result_def = [['path', Type.String, None, 'User path set']]
+
+    def run(self):
+        try:
+            path = self.getEnv('UserPath', macro_name='startup')
+        except Exception:
+            raise RuntimeError('You should set the user path first: '
+                               'set_user_path <path> ')
+        self.output('User path set to: {}'.format(path))
+        return path
+
+
+class startup(Macro):
+    """
+    Macro to create
+    """
+
+    def run(self, *args):
+        user_path = self.get_user_path().getResult()
+        name = time.strftime('%Y%m%d')
+        data_path = os.path.join(user_path, name)
+        if not os.path.exists(data_path):
+            os.makedirs(data_path)
+
+        base_filename = os.path.join(data_path, name)
+        dat_filename = base_filename + '.dat'
+        h5_filename = base_filename + '.h5'
+        lima_filename = base_filename + '.lima'
+
+        dat_filename = self.get_outfilename(dat_filename).getResult()
+        h5_filename = self.get_outfilename(h5_filename).getResult()
+        scan_id = self.getEnv('ScanID')
+        self.newfile([dat_filename, h5_filename, lima_filename], scan_id)
