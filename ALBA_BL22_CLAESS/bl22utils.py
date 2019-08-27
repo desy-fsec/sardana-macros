@@ -157,7 +157,7 @@ class reconfig(Macro):
 
     param_def = [["moco_pos", Type.Boolean, True,
                   "Work in moco position mode"]]
-    timeout = 10
+
     def run(self, moco_pos):
         self.execMacro('qExafsCleanup')
 
@@ -171,9 +171,12 @@ class reconfig(Macro):
         # fluo_x = PyTango.DeviceProxy('motor/eh_ipap_ctrl/53')
         # fluo_x.velocity = 0.8
         # fluo_x.acceleration = 1
-        self.info('Configure mg_all timeout to {}s'.format(self.timeout))
-        mg = taurus.Device('mg_all')
-        mg.set_timeout_millis(self.timeout*1000)
+        timeout = self.getEnv('MntGrpTimeout')
+        if timeout != 0:
+            self.warning('Configure mg_all timeout to '
+                         '{}s'.format(self.timeout))
+            mg = taurus.Device('mg_all')
+            mg.set_timeout_millis(timeout*1000)
         self.info('Restore exit_offset')
         self.execMacro('mv oh_dcm_exit_offset 25.5')
         self.info('Restore phx velocity')
