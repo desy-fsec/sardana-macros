@@ -174,9 +174,14 @@ class reconfig(Macro):
         timeout = self.getEnv('MntGrpTimeout')
         if timeout != 0:
             self.warning('Configure mg_all timeout to '
-                         '{}s'.format(self.timeout))
-            mg = taurus.Device('mg_all')
-            mg.set_timeout_millis(timeout*1000)
+                         '{}s'.format(timeout))
+        else:
+            timeout = 3
+            self.info('Configure mg_all timeout to default value '
+                         '{}s'.format(timeout))
+        mg = taurus.Device('mg_all')
+        mg.set_timeout_millis(timeout * 1000)
+
         self.info('Restore exit_offset')
         self.execMacro('mv oh_dcm_exit_offset 25.5')
         self.info('Restore phx velocity')
