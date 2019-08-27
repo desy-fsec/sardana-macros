@@ -295,6 +295,10 @@ class set_mode(Macro):
                        'x_dt_5', 'x_dtf_1', 'x_dtf_2', 'x_dtf_3', 'x_dtf_4',
                        'x_dtf_5']
 
+    xspress3_first_roi = ['x_timer', 'x_ch1_roi1', 'x_ch2_roi1', 'x_ch3_roi1',
+                          'x_ch4_roi1', 'x_ch5_roi1', 'x_ch6_roi1',
+                          'x_ch7_roi1']
+
     mythen_chns = ['m_raw', 'mc_roi1', 'mc_roi2', 'mc_roi3']
 
     # energyc is the timer first channel and it
@@ -305,9 +309,10 @@ class set_mode(Macro):
     exp_type_conf = {
         'transm': iochamber_chns + amptek_chns + common_chns,
         'fluo': iochamber_chns + amptek_chns + xpress3_chns + common_chns,
-        'fluodt': iochamber_chns +amptek_chns + xpress3_chns +
+        'fluodt': iochamber_chns + amptek_chns + xpress3_chns +
                   xpress3_dt_chns + common_chns,
-        'clear': iochamber_chns + amptek_chns + mythen_chns + common_chns,
+        'clear': iochamber_chns + amptek_chns + mythen_chns + common_chns +
+                 xspress3_first_roi,
         'all': iochamber_chns + amptek_chns + mythen_chns + xpress3_chns +
                xpress3_dt_chns + common_chns
     }
@@ -329,6 +334,9 @@ class set_mode(Macro):
         mg_manager = MGManager(self, mg, chns_names)
         mg_manager.enable_only_channels()
         mg_manager.status()
+        self.info('Set ROI 1 to all range [0, 4096]')
+        if exp_type == 'clear':
+            self.setXRoI([[1, 0, 4095]])
 
 
 class get_outfilename(Macro):
