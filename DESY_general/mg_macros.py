@@ -333,18 +333,18 @@ class MgConf:
             dct[ u'source'] = dct['full_name'] + "/value"
             ctrlChannels[fullDeviceName] = dct
 
-    def addCounter( self, device, flagDisplay):
+    def addCounter( self, device, flagDisplay, flagOutput):
         if not HasyUtils.versionSardanaNewMg():
-            self.addCounterD8( device, flagDisplay)
+            self.addCounterD8( device, flagDisplay, flagOutput)
         else:
-            self.addCounterD9( device, flagDisplay)
+            self.addCounterD9( device, flagDisplay, flagOutput)
     #
     # add a counter to the measurement group
     #
-    def addCounterD8( self, device, flagDisplay):
+    def addCounterD8( self, device, flagDisplay, flagOutput):
 
         if device.find( 'sca_') == 0:
-            return self.addSCA( device, flagDisplay)
+            return self.addSCA( device, flagDisplay, flagOutput)
             
         ctrl = self.findDeviceController( device)
         if not self.hsh[ u'controllers'].has_key( ctrl):
@@ -378,7 +378,10 @@ class MgConf:
             dct[u'ndim'] = 0
             dct[u'nexus_path'] = u''
             dct[u'normalization'] = 0
-            dct[u'output'] = True
+            if flagOutput:
+                dct[u'output'] = True
+            else:
+                dct[u'output'] = False               
             dct[u'plot_axes'] = [u'<mov>']
             if flagDisplay:
                 dct[u'plot_type'] = 1
@@ -390,10 +393,10 @@ class MgConf:
     #
     # add a counter to the measurement group
     #
-    def addCounterD9( self, device, flagDisplay):
+    def addCounterD9( self, device, flagDisplay, flagOutput):
 
         if device.find( 'sca_') == 0:
-            return self.addSCA( device, flagDisplay)
+            return self.addSCA( device, flagDisplay, flagOutput)
             
         ctrl = self.findDeviceController( device)
         if not self.hsh[ u'controllers'].has_key( ctrl):
@@ -420,7 +423,10 @@ class MgConf:
             dct[u'name'] = unicode( device)
             dct[u'ndim'] = 0
             dct[u'normalization'] = 0
-            dct[u'output'] = True
+            if flagOutput:
+                dct[u'output'] = True
+            else:
+                dct[u'output'] = False  
             dct[u'plot_axes'] = [u'<mov>']
             if flagDisplay:
                 dct[u'plot_type'] = 1
@@ -734,13 +740,13 @@ class MgConf:
 
 
 
-    def addSCA( self, device, flagDisplay):
+    def addSCA( self, device, flagDisplay, flagOutput):
         if not HasyUtils.versionSardanaNewMg():
-            self.addSCAD8( device, flagDisplay)
+            self.addSCAD8( device, flagDisplay, flagOutput)
         else:
-            self.addSCAD9( device, flagDisplay)
+            self.addSCAD9( device, flagDisplay, flagOutput)
 
-    def addSCAD8( self, device, flagDisplay):
+    def addSCAD8( self, device, flagDisplay, flagOutput):
         """
         add a SCA to the measurement group
           input: device, e.g. sca_exp_mca01_100_200
@@ -780,7 +786,10 @@ class MgConf:
             dct[u'name'] = unicode( device)
             dct[u'ndim'] = 0
             dct[u'normalization'] = 0
-            dct[u'output'] = True
+            if flagOutput:
+                dct[u'output'] = True
+            else:
+                dct[u'output'] = False
             dct[u'plot_axes'] = [u'<mov>']
             if flagDisplay:
                 dct[u'plot_type'] = 1
@@ -790,7 +799,7 @@ class MgConf:
             ctrlChannels[self.findFullDeviceName( device)] = dct
         return True
 
-    def addSCAD9( self, device, flagDisplay):
+    def addSCAD9( self, device, flagDisplay, flagOutput):
         """
         add a SCA to the measurement group
           input: device, e.g. sca_exp_mca01_100_200
@@ -826,7 +835,10 @@ class MgConf:
             dct[u'name'] = unicode( device)
             dct[u'ndim'] = 0
             dct[u'normalization'] = 0
-            dct[u'output'] = True
+            if flagOutput:
+                dct[u'output'] = True
+            else:
+                dct[u'output'] = False
             dct[u'plot_axes'] = [u'<mov>']
             if flagDisplay:
                 dct[u'plot_type'] = 1
@@ -907,7 +919,9 @@ class delete_mg(Macro):
 class change_mg(Macro):
     """
     change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer>
-              -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>
+              -c <counter> -m <mca> -nd <not displayed counters> 
+              -no <not spock output for counters> -ndo <not displayed and not spock output counters> 
+              -q <pilatus>
 
     All parameters are optional. However, a timer has to be specified, if a new 
     MG is created or if an existing MG is cleared and re-filled ('-a False' or 
@@ -924,8 +938,8 @@ class change_mg(Macro):
     """
     param_def = [ 
         ["options_list",
-         ParamRepeat(['option', Type.String, None, 'option'],
-                     ['value', Type.String, None, 'value']),
+         ParamRepeat(['option', Type.String, "None", 'option'],
+                     ['value', Type.String, "None", 'value']),
          ["None","None"], "List of options and values"
          ]
         ]
@@ -934,23 +948,25 @@ class change_mg(Macro):
         
         if options_list[0][0] == "None":
             self.output( "\
-    change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer>\
-              -c <counter> -m <mca> -n <not displayed counters> -q <pilatus>\
-\
-    All parameters are options. However, a timer has to be specified, if a new MGoptions\
-    is created or if an existing MG is cleared and re-filled ('-a False' or '-a' not supplied.\
-    If mgName is not supplied, the active MGe is changed.\
-    If addFlag (true or false) is not given, the MG will be cleared (addFlag False by default)\
-    and re-filled with the given elements.\
-\
-    Lists of elements are separated by ',', like: -c exp_ct01,exp_ct02  (no blank space)\
-\
-    The ActiveMntGrp is set to the created/change MG. \
-\
-    Example:\
-      change_mg -g mg_ivp -t exp_t01 -c exp_c01,vc_pilatus300k,vc_pilatus1m -m d1_mca01\
-\
-    ")
+            change_mg -a <addflag> -g <mgName> -t <timer> -e <extraTimer>\
+            -c <counter> -m <mca>  -nd <not displayed counters>\
+            -no <not spock output for counters> -ndo <not displayed and not spock output counters>\
+            -q <pilatus>\
+            \
+            All parameters are options. However, a timer has to be specified, if a new MGoptions\
+            is created or if an existing MG is cleared and re-filled ('-a False' or '-a' not supplied.\
+            If mgName is not supplied, the active MGe is changed.\
+            If addFlag (true or false) is not given, the MG will be cleared (addFlag False by default)\
+            and re-filled with the given elements.\
+            \
+            Lists of elements are separated by ',', like: -c exp_ct01,exp_ct02  (no blank space)\
+            \
+            The ActiveMntGrp is set to the created/change MG. \
+            \
+            Example:\
+            change_mg -g mg_ivp -t exp_t01 -c exp_c01,vc_pilatus300k,vc_pilatus1m -m d1_mca01\
+            \
+            ")
             return
        
         opt_dict = {}
@@ -1018,18 +1034,28 @@ class change_mg(Macro):
         key = '-c'
         if key in opt_dict:
             for elem in opt_dict[key].split(','):
-                mgConf.addCounter(elem,1)  
+                mgConf.addCounter(elem,1,1)  
 
-        key = '-n'
+        key = '-nd'
         if key in opt_dict:
             for elem in opt_dict[key].split(','):
-                mgConf.addCounter(elem,0)
-
+                mgConf.addCounter(elem,0,1)
+                
+        key = '-no'
+        if key in opt_dict:
+            for elem in opt_dict[key].split(','):
+                mgConf.addCounter(elem,1,0)
+                
+        key = '-ndo'
+        if key in opt_dict:
+            for elem in opt_dict[key].split(','):
+                mgConf.addCounter(elem,0,0)
+        
         key = '-q'
         if key in opt_dict:
             for elem in opt_dict[key].split(','):
                 mgConf.addPilatus(elem)
-                mgConf.addCounter(elem,0)
+                mgConf.addCounter(elem,0,1)
 
         mgConf.updateConfiguration()
         self.setEnv( 'ActiveMntGrp', mg_name)
