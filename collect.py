@@ -23,6 +23,7 @@ import os,sys
 import bl13constants
 import time
 import sample
+import math
 
 class collect_wrapper(Macro):
 
@@ -58,21 +59,19 @@ buttons in the collect widget '''
 
        force = force.upper()
 
-       if not diffrmode in ['1wedge','plate','inversebeam','1wedge_mvb','inversebeam_mvb']:
+       if not diffrmode in ['1wedge','plate','inversebeam','1wedge_mvb','inversebeam_mvb','jet_mvb']:
            self.info('The provided diffracion mode (%s) was not recognized' % diffrmode)
 
        # Set the default values for the collect environment
        
-       #collect_env = {'force':force,'pshu':pshu, 'slowshu':slowshu, 'fe':fe, 'beamstop':'MOVEABLE', 'setroi':setroi}    
-       #self.error('COLLECT_WRAPPER ERROR: RB changed shutter requirements in line 67 of collect.py')
        collect_env = self.getEnv( 'collect_env' )
        collect_env['force'] = force
        collect_env['pshu'] = pshu
        collect_env['slowshu'] = slowshu
        collect_env['fe'] = fe
-       #collect_env['beamstop'] = 'MOVEABLE'
-       #self.error('The moveable beamstop is being used!!')
-       collect_env['beamstop'] = 'FIXED'
+       #collect_env['beamstop'] = 'MOVEABLE' # 20190604: redundant, the moveable is set below, according to the diffrmode
+       #self.error('The moveable beamstop is being used!!') # 20190604: redundant, the moveable is set below, according to the diffrmode
+       collect_env['beamstop'] = 'FIXED' 
        collect_env['setroi'] = setroi
        collect_env['characterization'] = False
 
@@ -93,11 +92,14 @@ buttons in the collect widget '''
        self.info('COLLECT_WRAPPER: close fast shutter')   
        fshuz = taurus.Device('fshuz')
        try:
-           self.execMacro('turn fshuz on')
-           self.execMacro('mv fshuz 0')
+           if math.fabs(fshuz.position) > 0.01:
+               self.execMacro('turn fshuz on')
+               #self.error("20190719 RB: fshuz will not move in!!!!! Revert lines 97-98 in collect_wrapper")
+               self.execMacro('mv fshuz 0')
            self.execMacro('ni660x_shutter_open_close close')
-       except:
+       except Exception as e:
            self.error('COLLECT_WRAPPER ERROR: Cannot actuate the fast shutter')
+           self.error('COLLECT_WRAPPER ERROR: error message %s' % e.message)
            return
 
        #tries = 0
@@ -155,7 +157,7 @@ buttons in the collect widget '''
                    return
                self.execMacro('collect_simple',direc,prefix,run,startnum,startangle,0,ni,userexpt,diffrmode)
                defaultcollection = False
-           if diffrmode in ['1wedge']:
+           if diffrmode in ['1wedge','jet']:
                #pass
                self.execMacro('collect_simple',direc,prefix,run,startnum,startangle,angleincrement,ni,userexpt,diffrmode)
        except Exception, e:
@@ -192,21 +194,22 @@ buttons in the collect widget '''
         #lima_dev.stopAcq()
         #lima_dev.reset()
         lima_dev.abortAcq()
-        #close slowshu
-        #eps['slowshu'] = 0
+        # 20190719 RB : close slowshu
+        eps['slowshu'] = 0
         # abort omega movement and reset velocity
         omega.Abort()
         omegax.Abort()
         centx.Abort()
         centy.Abort()
         try: bsr.write_attribute('position', bl13constants.BSR_OUT_POSITION)
-        except: # When the yag is in, the motor is disabled
-            pass
+        except Exception as e: # When the yag is in, the motor is disabled
+            self.error('COLLECT_WRAPPER on_abort ERROR: exception raised, error below')
+            self.error(e)
 
         omega.write_attribute('velocity',60)
         omegax.write_attribute('velocity',1.0)
-        centx.write_attribute('velocity',0.07978)
-        centy.write_attribute('velocity',0.07978)
+        centx.write_attribute('velocity',0.15)
+        centy.write_attribute('velocity',0.15)
        
 class collect_simple(Macro):
     
@@ -243,6 +246,8 @@ class collect_simple(Macro):
             try:
                 self.execMacro('xdsinp %s %d %d %f %f %f %d %s' % (file_prefix,number_of_run,num_frames,startangle,angleincrement,exp_time,startnum,process_path))
             except Exception, e:
+                self.error('COLLECT_SIMPLE ERROR: error in preparing the xds script' % diffrmode)
+                self.error('COLLECT_SIMPLE ERROR: error is: %s' % e.messageeeee)
                 raise e
       
             self.info('COLLECT_SIMPLE: done Create XDS.INP & mosflm.dat files')
@@ -493,7 +498,8 @@ class collect_test_crystal(Macro):
            sample.snapshot(OAV_device_name,snapshotfile)
 
        self.execMacro('collect_prepare %s' % diffrmode)  
-
+       self.output('collect_test_crystal: collect_prepare %s' % diffrmode) 
+ 
        startnum = 1 
        for angle in angles: 
            self.info('COLLECT_TEST_CRYSTAL: Collecting at omega = %f deg' % angle)
@@ -503,11 +509,15 @@ class collect_test_crystal(Macro):
            # CREATE XDS.INP AND MOSFLM.DAT FILES
            self.info("running collect_saving")
            self.execMacro('collect_saving %s %s %i %d %s' % (dir, prefix ,run, startnum, diffrmode))
+           self.output('collect_test_crystal: collect_saving %s %s %i %d %s'%(dir, prefix, run, startnum, diffrmode))
            self.execMacro('collect_config %.6f %.6f %d %.6f %d %s %s' %(startangle, angleincrement,ni, userexpt, startnum, setroi, diffrmode))
+           self.output('collect_test_crystal: collect_config %.3f %.3f %d %.3f %d %s %s' % (startangle, angleincrement, ni, userexpt, startnum, setroi, diffrmode))
            self.execMacro('collect_acquire')
+           self.output('collect_test_crystal: collect_acquire')
            startnum += 1
            
        self.execMacro('collect_end') 
+       self.output('collect_test_crystal: collect_end')
        try: 
            mot = self.getMoveable('omega')
            t1 = time.time()
@@ -526,9 +536,9 @@ class collect_test_crystal(Macro):
            self.warning("COLLECT_TEST_CRYSTAL: Error Moving Omega to Start position %f." % initomega)
            self.warning("Error is: %s" % sys.exc_info()[0] )
       except Exception,e:
-       self.error("COLLECT_TEST_CRYSTAL: error in execution, running on_abort")
-       self.error(str(e))
-       self.on_abort()
+          self.error("COLLECT_TEST_CRYSTAL: error in execution, running on_abort")
+          self.error(str(e))
+          self.on_abort()
       return       
 
     # ABORT DATA COLLECTION 
@@ -538,6 +548,8 @@ class collect_test_crystal(Macro):
         eps = taurus.Device('bl13/ct/eps-plc-01')
         lima_dev = taurus.Device('bl13/eh/pilatuslima')
         omega = taurus.Device('omega')
+        # WORKAROUND: bsr has been removed
+
         bsr = taurus.Device('bsr')
         bsr.Abort()
 
@@ -552,13 +564,16 @@ class collect_test_crystal(Macro):
         lima_dev.stopAcq()
         lima_dev.reset()
 
-        # close slowshu
-        #eps['slowshu'] = 0
+        # 20190719 RB : close slowshu
+        eps['slowshu'] = 0
+
         # abort omega movement and reset velocity
         omega.Abort()
         try: bsr.write_attribute('position', bl13constants.BSR_OUT_POSITION)
-        except: # When the yag is in, the motor is disabled
-            pass
+        except Exception as e: # When the yag is in, the motor is disabled
+            self.error("COLLECT_TEST_CRYSTAL on_abort ERROR: error in moving bsr")
+            self.error(str(e))
+            self.error('COLLECT_TEST_CRYSTAL on_abort ERROR: continuing...')
 
         omega.write_attribute('velocity',60)
 

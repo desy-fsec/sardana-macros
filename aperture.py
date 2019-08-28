@@ -6,8 +6,8 @@ from bl13constants import pentaaperpos_Z as pz
 from bl13constants import APERZ_OUT_POSITION
 
 from PyTango import DeviceProxy
-from bl13constants import (pentaaperpos_X, pentaaperpos_Z,
-                           pentaaper_postolerance_X, pentaaper_postolerance_Z)
+#from bl13constants import (pentaaperpos_X, pentaaperpos_Z
+from bl13constants import pentaaper_postolerance_X, pentaaper_postolerance_Z
 from sardana.macroserver.macro import Macro
 
 
@@ -146,10 +146,11 @@ class aperture_update_configuration(Macro):
 
     def prepare(self):
         self.aperture = DeviceProxy('aperture')
+        self.vars = DeviceProxy('bl13/ct/variables')
         # Read values from file and check consistency with existent labels
-        xpos = pentaaperpos_X
+        xpos = self.vars.pentaaperpos_X
         xtol = pentaaper_postolerance_X
-        zpos = pentaaperpos_Z
+        zpos = self.vars.pentaaperpos_Z
         ztol = pentaaper_postolerance_Z
         npos = self.aperture.nlabels
 

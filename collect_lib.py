@@ -57,12 +57,16 @@ class collect_prepare(Macro):
                 
         self.info('COLLECT_PREPARE: prepare fast shutter')   
         try:
-            self.execMacro('turn fshuz on')
-            self.execMacro('mv fshuz 0')
+            fshuz = taurus.Device('fshuz')
+            if math.fabs(fshuz.position) > 0.01:
+                self.execMacro('turn fshuz on')
+                #self.error("20190719 RB: fshuz will not move in!!!!! Revert lines 97-98 in collect_wrapper")
+                self.execMacro('mv fshuz 0')
             self.execMacro('ni660x_shutter_open_close close')
-        except Exception('COLLECT_PREPARE ERROR: Cannot move the fast shutter into position'):
+        except Exception as e:
             msg = 'COLLECT_PREPARE ERROR: Cannot move the fast shutter into position'
             self.error(msg)
+            raise Exception(e)
 
         collect_env = self.getEnv( 'collect_env' )
         self.debug("Collect environment vars: %s"  % str(collect_env) )
@@ -206,17 +210,18 @@ class collect_saving(Macro):
         except Exception, e:
             msg = 'COLLECT_SAVING WARNING: the diffrmode %s is not intialized in the system' % diffrmode
             self.error(msg)
-            raise Exception(msg)
+            raise Exception(e)
             
         # CREATE DIRECTORIES 
         datadir = dir + "/" + prefix + "/" + bl13constants.BL13_DATSAV_DICT[diffrmode] + "/"
+        if 'jet' in diffrmode: datadir = os.path.join( datadir, ('run%d' % run) )
         if not os.path.exists(dir): 
             try: 
                 os.makedirs(dir)
             except Exception, e: 
                 msg = 'COLLECT_SAVING ERROR: Could not create root directory [%s]' % dir
                 self.error(msg)
-                raise Exception(msg)
+                raise Exception(e)
         #if stop_execution: raise Exception(msg)
         COLLECT_ENV['dir'] = dir
         self.debug('COLLECT_SAVING: Rootdir made ')
@@ -227,7 +232,7 @@ class collect_saving(Macro):
             except Exception, e:  
                 msg = 'COLLECT_SAVING ERROR: Could not create data directory %s' % datadir
                 self.error(msg)
-                raise Exception(msg)
+                raise Exception(e)
         self.debug('COLLECT_SAVING: Datadir made ')
 
         if not os.path.exists(datadir): 
@@ -263,10 +268,10 @@ class collect_saving(Macro):
             #self.execMacro(['lima_saving','pilatus',datadir,limaprefix,'CBF', True])
             self.execMacro(['lima_saving','pilatus',datadir,limaprefix,'CBF', True,startnum]) 
             #self.execMacro(['lima_saving','pilatus',datadir,limaprefix,'TIFF', True,startnum]) 
-        except:
+        except Exception as e:
             msg ='COLLECT_SAVING ERROR: Error with lima_saving'
             self.error(msg)
-            raise Exception(msg)
+            raise Exception(e)
         self.debug('COLLECT_SAVING: sent data to lima')
 
 
@@ -323,10 +328,10 @@ class collect_config(Macro):
             var_dev = 'bl13/ct/variables'
             var = taurus.Device(var_dev)
             var_state = var.state()
-        except:
+        except Exception as e:
             self.error('COLLECT_CONFIG ERROR: ' + \
                        'The DS of the %s Device is unavailable, start it' %(var_dev))
-            raise
+            raise Exception(e)
 #         dettabx = self.getMoveable("dettabx")
 #         dettaby = self.getMoveable("dettaby")
 #         dettabzf = self.getMoveable("dettabzf")
@@ -343,20 +348,20 @@ class collect_config(Macro):
             pilatusdet = taurus.Device(pilatus_dev)
             pilatus_state = pilatusdet.state()
             pilatuslima = taurus.Device('pilatus') # pilatuslima device server
-        except:
+        except Exception as e:
             #self.error('COLLECT_CONFIG ERROR: ' + 
             #           "The DS of the %s Device is unavailable, start it" %(pilatus_dev))
             self.error('COLLECT_CONFIG ERROR: ' + 
                        "The DS of the %s Device is unavailable, start it" %(pilatuslima))
-            raise
+            raise Exception(e)
 
  
         # CHECK THE MBATS AND CALCULATE TRANSMISSION
         try: 
             transmission = mbattrans.getPosition() / 100. 
-        except:
+        except Exception as e:
             self.error("COLLECT_CONFIG ERROR: Could not read the mbat positions")
-            raise
+            raise Exception(e)
 
         if transmission < 0.001: 
             self.warning('COLLECT_CONFIG WARNING: transmission below 0.1 %')
@@ -376,15 +381,15 @@ class collect_config(Macro):
 
         try: 
             sampledetdistance = var['detsamdis'].value / float(1000)
-        except: 
+        except  Exception as e: 
             self.error("COLLECT_CONFIG ERROR: " + 
                        "Could not read the detector-to-sample distance")
-            raise
+            raise Exception(e)
         try: 
             beamx, beamy = var['beamx'].value, var['beamy'].value
-        except: 
+        except  Exception as e: 
             self.error("COLLECT_CONFIG ERROR: Could not read the beam center") 
-            raise
+            raise Exception(e)
 
         COLLECT_ENV['limaexpt'] = limaexpt
         COLLECT_ENV['readouttime'] = readouttime
@@ -405,7 +410,7 @@ class collect_config(Macro):
         else:
             try:
                 flux = getflux.lastcurrenttrans()
-            except:
+            except Exception as e:
                 flux = defaultflux
                 self.warning('COLLECT_CONFIG WARNING: The set flux has unlikely values, flux set to default of %.2g' % flux)
 
@@ -416,9 +421,11 @@ class collect_config(Macro):
         single_header["Exposure_period"] = '%7f' % userexpt
         try:
             single_header["Wavelength"] = "%.5f A" % wavelength.getPosition()
-        except:
+        except Exception as e:
             single_header["Wavelength"] = 0.979
             self.warning('COLLECT_CONFIG WARNING: The wavelength cannot be read, machine not up? Lambda set to %.2f' % single_header["Wavelength"])
+            self.error('COLLECT_CONFIG ERROR: error message %s' % e.message)
+            self.error('COLLECT_CONFIG ERROR: continuing...')
             
         single_header["Detector_distance"] = "%.5f m" % sampledetdistance
         single_header["Detector_Voffset"] = '0 m' #"%.5f m" % detector_vosffset
@@ -478,7 +485,7 @@ class collect_config(Macro):
         # on 20130507 omegai/motor27 acceleration was 0.05957 for velocity 1 deg/s 
         # on 20130507 omegai/motor27 acceleration was 0.2 for velocity 50 deg/s (icepapcms) 
         # RB 20160526: for plates, omega cannot be turned on, but omegavelocity will be set to zero
-        if not diffrmode== 'plate':
+        if not diffrmode== 'plate' and not 'jet' in diffrmode:
           self.execMacro('turn omega on')
           self.execMacro('turn omegaenc on')
 
@@ -488,7 +495,10 @@ class collect_config(Macro):
 	# 2017/07/07 Apply correction to omega velocity to correct synchronization with pilatus (JAx2)
         # omegavelocity = omegavelocity/1.00023875
         omegaaccelerationtime = omega.read_attribute('Acceleration').value
-        omega.write_attribute('velocity', 60)
+        
+        # 20190317 RB: this is now done as a test at the end of a collect_acquire
+        #self.output('COLLECT_CONFIG: setting omega velocity to 60 deg/s')
+        #omega.write_attribute('velocity', 60)
 
         self.info('COLLECT_CONFIG: omega velocity = %s' % omegavelocity)
         omegaaccelerationtime = omegaaccelerationtime + 0.2
@@ -509,8 +519,8 @@ class collect_config(Macro):
 
 	headers = list()
 	for i, sa in enumerate(startangles_list):
-            header = '_array_data.header_convention "PILATUS_1.2"\n' #No present in mxcube
-            header += "# Detector: PILATUS 6M, S/N 60-0108, Alba\n"
+            #header = '_array_data.header_convention "PILATUS_1.2"\n' #No present in mxcube
+            header = "# Detector: PILATUS 6M, S/N 60-0108, Alba\n"
             header += "# %s\n" % time.strftime("%Y/%b/%d %T")
             header += "# Pixel_size 172e-6 m x 172e-6 m\n"
             header += "# Silicon sensor, thickness 0.000320 m\n"
@@ -535,13 +545,15 @@ class collect_config(Macro):
         # set_pilatus_header(headers, pilatuslima)
 
         # RB 20160524: for plates the rotation angle is zero
-        if not diffrmode== 'plate':
+        self.debug('COLLECT_CONFIG: omega state is %s' % str(omega.state()) )
+        time.sleep(0.2)
+        if not diffrmode== 'plate' and not 'jet' in diffrmode:
             try: 
                 self.info('COLLECT_CONFIG: Moving omega to initial position %s' % initialpos)
                 self.execMacro('mv omega %s' % initialpos) 
-            except:
+            except Exception as e:
                 self.error('COLLECT_CONFIG ERROR: Cannot move omega')
-                return
+                raise Exception(e)
  
             # CHECK THAT OMEGA IS FINE
             #if testomega() != '1':
@@ -588,8 +600,10 @@ class collect_config(Macro):
                 try:
                     COLLECT_ENV['omegaxvel'], ratomx, COLLECT_ENV['centxvel'], ratcenx, COLLECT_ENV['centyvel'], ratceny  = sample.SamplePosition.helical_synchronization(COLLECT_ENV['duration'], 
                                                                                         COLLECT_ENV['omegaxfinpos'], COLLECT_ENV['centxfinpos'], COLLECT_ENV['centyfinpos'])
-                except:
-                    raise
+                    self.info('COLLECT_CONFIG DEBUG: speed (mm/sec) omegax %.4f centx %.4f and centy %.4f' % 
+                                    (COLLECT_ENV['omegaxvel'],COLLECT_ENV['centxvel'],COLLECT_ENV['centyvel'],))
+                except Exception as e:
+                    raise Exception(e)
                 omegax = self.getMoveable("omegax")
                 centx = self.getMoveable("centx")
                 centy = self.getMoveable("centy")
@@ -624,7 +638,7 @@ class collect_config(Macro):
             #                              angleincrement/2., ni))
 
         # OPEN SLOW SHUTTER , collect_acquire checks if the slowshu opened or not!
-        if diffrmode in ['1wedge','inversebeam','plate','test']:
+        if diffrmode in ['1wedge','inversebeam','plate','test','jet_mvb']:
             self.info('COLLECT_CONFIG: Open the slowshu')
             #collect_env = self.getEnv( 'collect_env' )
             self.debug("Collect environment vars: %s"  % str(collect_env) )
@@ -633,8 +647,9 @@ class collect_config(Macro):
                 try:  
                     if epsf('read', 'slowshu')[2] != 1:
                         self.execMacro('act slowshu out')
-                except:
+                except Exception as e:
                     self.error('COLLECT_CONFIG ERROR: Cannot actuate the slow shutter')
+                    raise Exception(e)
 
 
         # TEMPLATE TO CREATE XDS.INP FILE IN THE STRATEGY
@@ -662,9 +677,9 @@ class collect_config(Macro):
             self.info('COLLECT_CONFIG: n images %d' % ni)
             self.execMacro(['lima_prepare', 'pilatus', 
                             limaexpt, readouttime, ni, trigger]) # 'pilatus' is bl13/eh/pilatuslima
-        except: 
+        except Exception as e: 
             self.error('COLLECT_CONFIG ERROR: Error with lima_prepare')
-            raise
+            raise Exception(e)
 
 
             
@@ -740,19 +755,19 @@ class collect_acquire(Macro):
                try: 
                    self.info('COLLECT_ACQUIRE: Started moving omega toward final position %f' 
                         % COLLECT_ENV['finalpos'])
+                   self.debug('COLLECT_ACQUIRE: omega state is %s' % omega.state()) 
                    omega.write_attribute('position', COLLECT_ENV['finalpos'])
-               except:
+               except Exception as e:
                    self.error('COLLECT_ACQUIRE ERROR: Cannot move omega')
-                   raise
+                   raise Exception(e)
 
 ######JA END
            ni = COLLECT_ENV['ni']
 
 ##############
            ## The following while loop waits for the collection to finish, as lima_acquire only sends the command and then exits
+           #pilatusdev = taurus.Device('bl13/eh/pilatusspecific')
            while True:
-               limastatus_macro = self.execMacro('lima_status','pilatus')
-               state, acq = limastatus_macro.getResult().split()
 ###              TODO: fix implementation of last image ready in the plugin
 ###                    to know the acquisition progress
 #                m = self.execMacro('lima_lastimage','pilatus')
@@ -760,9 +775,12 @@ class collect_acquire(Macro):
 #                yield 100*lastimagenumber/float(ni)
                self.checkPoint()
                time.sleep(1)
+               #acq = pilatusdev.cam_state
+               limastatus_macro = self.execMacro('lima_status','pilatus')
+               state, acq = limastatus_macro.getResult().split()
                self.info("Acquiring: acq status is %s" % acq)
                time.sleep(1)
-               if acq != 'Running':
+               if acq.lower() != 'running':
                    break
 ##############
 
@@ -779,6 +797,8 @@ class collect_acquire(Macro):
         # UNCOFIGURE NI660
         self.info('COLLECT_ACQUIRE: Unconfiguring NI660')
         self.execMacro('ni660x_unconfigure_collect')
+        # 20190317 RB: to try to solve moving omega problems during tests
+        omega.write_attribute('velocity', COLLECT_ENV['initomegavelocity'])
         
 
 class collect_end(Macro):
@@ -815,7 +835,8 @@ class collect_end(Macro):
         self.info('COLLECT_END: close fast shutter')
 #        if omegavelocity == 0: 
         self.execMacro(['ni660x_shutter_open_close','close'])
-
+        # 20190719 RB: close the slow shutter!!
+        self.execMacro('act slowshu in')
 
         # SET OMEGA VELOCITY TO THE INITIAL ONE
         omega = self.getMoveable("omega")
@@ -832,26 +853,34 @@ class collect_end(Macro):
             omegax.write_attribute('velocity', COLLECT_ENV['initomegaxvelocity'])
             centx.write_attribute('velocity', COLLECT_ENV['initcentxvelocity'])
             centy.write_attribute('velocity', COLLECT_ENV['initcentyvelocity'])
-            self.debug('COLLECT_CONFIG: setting velocity of omegax to %s' % COLLECT_ENV['initomegaxvelocity'])
-            self.debug('COLLECT_CONFIG: setting velocity of centx to %s' % COLLECT_ENV['initcentxvelocity'])
-            self.debug('COLLECT_CONFIG: setting velocity of centy to %s' % COLLECT_ENV['initcentyvelocity'])
+            self.debug('COLLECT_END: setting velocity of omegax to %s' % COLLECT_ENV['initomegaxvelocity'])
+            self.debug('COLLECT_END: setting velocity of centx to %s' % COLLECT_ENV['initcentxvelocity'])
+            self.debug('COLLECT_END: setting velocity of centy to %s' % COLLECT_ENV['initcentyvelocity'])
+        except Exception as e:
+            self.error('COLLECT_END ERROR: Could not set initial motor velocities')
+            self.error('COLLECT_END ERROR: %s' % e.message)
+            self.error('COLLECT_END ERROR: continuing...')
             
-        except:
-            self.error('COLLECT_END WARNING: Could not set initial motor velocities')
+            
         self.info('COLLECT_END: Data collection finished') 
 
         # MOVE OMEGA TO REAL FINAL POSITION
+        self.debug('COLLECT_END: omega state is %s' % omega.state())
         try: 
             self.info('COLLECT_END: Moving omega to %s' % COLLECT_ENV['realfinalpos'])
             self.execMacro('mv omega %s' % COLLECT_ENV['realfinalpos']) 
-        except:
-            self.error('COLLECT_END WARNING: Cannot move omega to final position')
+        except Exception as e:
+            self.error('COLLECT_END ERROR: Cannot move omega to final position')
+            self.error('COLLECT_END ERROR: %s' % e.message)
+            self.error('COLLECT_END ERROR: continuing...')
 
         # remove bsr 
         bsr_m = taurus.Device('bsr')
         try: bsr_m.getAttribute('position').write(bl13constants.BSR_OUT_POSITION)
-        except: # When the yag is in, the motor is disabled
-            pass
+        except Exception as e: # When the yag is in, the motor is disabled
+            self.warning('COLLECT_END WARNING: Cannot read bsr position')
+            self.warning('COLLECT_END WARNING: %s' % e.message)
+            self.warning('COLLECT_END WARNING: continuing...')
         
         # RB: 20150924: no need to close cover, only when changing sample..
         # CLOSE DETECTOR COVER
@@ -887,7 +916,7 @@ class collect_end(Macro):
         #                if epsf('read', 'pshu')[2] != 1:
         #                    break
         #                time.sleep(1)
-        #    except:
+        #    except Exception as e:
         #        self.error('COLLECT_END ERROR: Cannot actuate the safety shutter')
         #        return
         #elif collect_env['pshu'] == 'NO':
@@ -904,7 +933,7 @@ class collect_end(Macro):
 #                         if epsf('read', 'fe_open')[2] is False:
 #                             break
 #                         time.sleep(0.2)
-#             except:
+#             except Exception as e:
 #                 self.error('COLLECT ERROR: Cannot actuate the FE')
 #                 return 
 #         elif fe == 'NO':
@@ -981,10 +1010,10 @@ class collect_env_set(Macro):
             # Try con convert to integer or float if not keep the string
             try:
                 v = int(value)
-            except:
+            except Exception as e:
                 try: 
                     v = float(value)
-                except:
+                except Exception as e:
                     v = value.upper()
             COLLECT_ENV[param] = v
             self.info("%s = %s" % (param, str(COLLECT_ENV[param])))

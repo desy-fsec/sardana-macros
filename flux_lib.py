@@ -96,7 +96,7 @@ class flux_measure(Macro):
             return
         
         # FLUX MEASUREMENT
-        time.sleep(1)
+        time.sleep(1.5) # CRITICAL: if the wait is too short, the current will not reach the maximum value at the diode
         if writeflux == '1':
             self.info('FLUX_MEASURE: Flux measurement and writing to variables')
             self.execMacro('flux sample 1')
@@ -169,9 +169,22 @@ class flux(Macro):
 #       diosamdev = taurus.Device('expchan/eh_emetdiodes_ctrl/2')
 #       idiodesamp = diosamdev.getAttribute('value').read().value
        diosamdev = taurus.Device('bl13/di/emet-06-diodes')
+       
+       # 20181123: RB change error in EM reading according to channel range
+       dioderange = 1 # a high value to make sure the flux is not written to variables in case of failure
+       if diosamdev.range_ch1 == '1mA': dioderange = 1E-3
+       elif diosamdev.range_ch1 == '100uA': dioderange = 1E-4
+       elif diosamdev.range_ch1 == '10uA': dioderange = 1E-5
+       elif diosamdev.range_ch1 == '1uA': dioderange = 1E-6
+       elif diosamdev.range_ch1 == '100nA': dioderange = 1E-7
+       elif diosamdev.range_ch1 == '10nA': dioderange = 1E-8
+       elif diosamdev.range_ch1 == '1nA': dioderange = 1E-9
+       elif diosamdev.range_ch1 == '100pA': dioderange = 1E-10
+       minimumdiodecurrent = 0.03*dioderange #3E-5 #range MUST BE 1mA
+       
+       self.info('FLUX: the minimumdiodecurrent = %.2g' % minimumdiodecurrent)
        idiodesamp = diosamdev.getAttribute('i1').read().value
        mA = 1000.
-       minimumdiodecurrent = 3E-5 #range MUST BE 1mA
        mbattrans = self.getMoveable("mbattrans")
        E = self.getMoveable("E")
        ugap = self.getMoveable("ugap")
@@ -189,26 +202,26 @@ class flux(Macro):
            #JJ 2016.09.22 aparently the diode needs some time to be placed, adjust range, whatever might be. Set to 2 seconds arbitrarily
            time.sleep(2.)
            diodeflux = diagnostics.samplediode.Flux()
-           msg = 'FLUX Old Calib: Flux at %s diode is %.3e ph/s (valid in 7<E<12.658 keV)' %(name, diodeflux[0])
+           msg = 'FLUX Calib: Flux at %s diode is %.3e ph/s (valid in 7<E<12.658 keV)' %(name, diodeflux[0])
            self.info(msg)
            fluxnorm = diodeflux[1]  #*100./transmission
-           msg = 'FLUX Old Calib: Normalized Flux at %s diode is %.3e ph/s/250mA at 100%% MBAT transmission' %(name, fluxnorm)
+           msg = 'FLUX Calib: Normalized Flux at %s diode is %.3e ph/s/250mA at 100%% MBAT transmission' %(name, fluxnorm)
            self.info(msg)
-
-           # 20160302 JJ New Calibration / TESTING
-           diodeflux = diagnostics.samplediode.Flux_new()
-           msg = 'FLUX NEW CALIB: Flux at %s diode is %.3e ph/s (valid in 7<E<12.658 keV)' %(name, diodeflux[0])
-           self.info(msg)
-           fluxnorm = diodeflux[1]  #*100./transmission
-           msg = 'FLUX NEW CALIB: Normalized Flux at %s diode is %.3e ph/s/250mA at 100%% MBAT transmission' %(name, fluxnorm)
-           self.info(msg)
-           self.warning('FLUX: Current at %s diode is %.2e mA (range=%s, minimum: +%.1e mA)' %(name, idiodesamp*mA,diosamdev.range_ch1,minimumdiodecurrent*mA))
 
            if idiodesamp >= minimumdiodecurrent:
                fluxlast = diodeflux[0]
                fluxlastnorm = fluxnorm
-               
-           
+
+           # 20160302 JJ New Calibration / TESTING
+           # 201811 RB calibration in progress, use old flux for the moment
+           #diodeflux = diagnostics.samplediode.Flux_new()
+           #msg = 'FLUX NEW CALIB: Flux at %s diode is %.3e ph/s (valid in 7<E<12.658 keV)' %(name, diodeflux[0])
+           #self.info(msg)
+           #fluxnorm = diodeflux[1]  #*100./transmission
+           #msg = 'FLUX NEW CALIB: Normalized Flux at %s diode is %.3e ph/s/250mA at 100%% MBAT transmission' %(name, fluxnorm)
+           #self.info(msg)
+           self.warning('FLUX: Current at %s diode is %.2e mA (range=%s, minimum: +%.1e mA)' %(name, idiodesamp*mA,diosamdev.range_ch1,minimumdiodecurrent*mA))
+
 
        # Detector Diode
        if diodename == 'detector' or diodename == 'all' or diodename == '':
@@ -232,13 +245,13 @@ class flux(Macro):
 
        # Write to Variables
        if diodename == 'detector':
-           self.warning('FLUX: %s diode is not writtable to Variables' %diodename)
+           self.warning('FLUX: %s diode is not writable to Variables' %diodename)
        elif diodename == 'sample' or diodename == 'all' or diodename == '':
            vars = taurus.Device('bl13/ct/Variables')
            vars.write_attribute('fluxlast',fluxlast)
            vars.write_attribute('fluxlastnorm',fluxlastnorm)
            vars.write_attribute('fluxlasttime',time.asctime())
-           self.info('FLUX: Flux on sample diode written in bl13/ct/Variables')
+           self.info('FLUX: Flux on sample diode written in bl13/ct/Variables, normalized flux %.2f'%fluxlastnorm)
 #          vars['fluxlast']=fluxlast
 #          vars['fluxlastnorm']=fluxlastnorm
 
