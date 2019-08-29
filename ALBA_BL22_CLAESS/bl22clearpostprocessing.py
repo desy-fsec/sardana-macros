@@ -4,15 +4,32 @@ from sardana.macroserver.macro import Macro, Type, Optional
 
 
 class ClearPostProcessing(object):
-    def __init__(self, macro_obj):
+    def __init__(self, macro_obj, params):
         self.macro_obj = macro_obj
+        self.params = params
+        self.cmd = None
 
-    def _get_scan_id(self, scan_id):
+    def add_scan_id(self):
+        try:
+            scan_id = self.params.pop('scanid')
+        except Exception:
+            scan_id = None
+
         if scan_id is None:
             scan_id = self.macro_obj.getEnv('ScanID')
-        return scan_id
+        self.cmd += '{} '.format(scan_id)
 
-    def _get_filename(self, scan_file, scan_dir):
+    def add_filename(self):
+        try:
+            scan_file = self.params.pop('scanfile')
+        except Exception:
+            scan_file = None
+
+        try:
+            scan_dir = self.params.pop('scandir')
+        except Exception:
+            scan_dir = None
+
         if scan_file is None:
             scan_files = self.macro_obj.getEnv('ScanFile')
             if type(scan_files) is list:
@@ -32,14 +49,71 @@ class ClearPostProcessing(object):
             scan_dir = self.macro_obj.getEnv('ScanDir')
 
         filename = os.path.join(scan_dir, scan_file)
-        return filename
+        self.cmd += '{} '.format(filename)
+        return
 
-    def run_subcmd(self, subcmd):
+    def add_roi(self):
+        try:
+            roi = self.params.pop('roi')
+        except Exception:
+            roi = None
+
+        if roi is not None:
+            roi_low, roi_high = roi.split(':')
+            self.cmd += '--no_auto_roi ' \
+                        '--roi=[{},{}] '.format(roi_low, roi_high)
+
+    def add_noise(self):
+        try:
+            noise = self.params.pop('noise')
+        except Exception:
+            noise = None
+        if noise is not None:
+            self.cmd += '--noise={} '.format(noise)
+
+    def add_raw(self):
+        try:
+            raw = self.params.pop('raw')
+        except Exception:
+            raw = None
+
+        if raw is not None and raw.lower() == 'true':
+            self.cmd += '--extract_raw '
+
+    def add_outfile(self):
+        out_file = self.params.pop('outfile')
+        self.cmd += '{} '.format(out_file)
+
+    def add_calibfile(self):
+        calib_file = self.macro_obj.getEnv('ClearCalibrationFile')
+        self.cmd += '{} '.format(calib_file)
+
+    def add_nrscans(self):
+        try:
+            nr_scans = self.params.pop('nrscans')
+        except Exception:
+            nr_scans = -3
+        self.cmd += '{} '.format(nr_scans)
+
+    def add_json(self):
+        try:
+            json_file = self.params.pop('json')
+        except Exception:
+            json_file = None
+
+        if json_file is not None and json_file.lower() == 'true':
+            self.cmd += '--extract_json '
+
+    def run(self):
+        if len(self.params.keys()) != 0:
+            self.macro_obj.warning('There are invalid parameters not used: '
+                                   '{}'.format(repr(self.params.keys())))
+
         # Run the command on another PC
         base_cmd = "ssh -X sicilia@ctbl22sard02 " \
                    "'conda activate pyclear; pyClear {}'" \
                    ""
-        cmd = base_cmd.format(subcmd)
+        cmd = base_cmd.format(self.cmd)
         self.macro_obj.info('Run command:\n {}'.format(cmd))
         self.macro_obj.output('Script output: ... ')
         p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
@@ -47,7 +121,7 @@ class ClearPostProcessing(object):
         output = ''
         while True:
             out = p.stdout.readline()
-            if out == '' and p.poll() != None:
+            if out == '' and p.poll() is not None:
                 break
             if out != '':
                 self.macro_obj.output(out.strip())
@@ -56,11 +130,16 @@ class ClearPostProcessing(object):
         # self.macro_obj.error(error)
         return output
 
-    def elastic(self, output, scan_id, scan_file, scan_dir):
-        scan_id = self._get_scan_id(scan_id)
-        filename = self._get_filename(scan_file, scan_dir)
-        subcmd = 'calib {} {} {}'.format(filename, scan_id, output)
-        out = self.run_subcmd(subcmd)
+    def elastic(self):
+        self.cmd = 'calib '
+        self.add_noise()
+        self.add_raw()
+        self.add_roi()
+        self.add_filename()
+        self.add_scan_id()
+        self.add_outfile()
+        out = self.run()
+
         out_lines = out.split('\n')
         calib_file = None
         for line in out_lines:
@@ -72,70 +151,98 @@ class ClearPostProcessing(object):
                                'output')
         self.macro_obj.setEnv('ClearCalibrationFile', calib_file)
 
-    def kbeta(self, output, scan_id, scan_file, scan_dir):
-        scan_id = self._get_scan_id(scan_id)
-        filename = self._get_filename(scan_file, scan_dir)
-        calib_file = self.macro_obj.getEnv('ClearCalibrationFile')
-        self.macro_obj.info('Use as calibration file: {}'.format(calib_file))
-        subcmd = 'spectra {} {} {} {}'.format(filename, scan_id, calib_file,
-                                              output)
-        self.run_subcmd(subcmd)
+    def spectra(self):
+        self.cmd = 'spectra '
+        self.add_raw()
+        self.add_filename()
+        self.add_scan_id()
+        self.add_calibfile()
+        self.add_outfile()
+        self.run()
 
-    def pfy(self, output, nr_scans, start_scan_id, scan_file, scan_dir):
-        start_scan_id = self._get_scan_id(start_scan_id)
-        filename = self._get_filename(scan_file, scan_dir)
-        calib_file = self.macro_obj.getEnv('ClearCalibrationFile')
-        self.macro_obj.info('Use as calibration file: {}'.format(calib_file))
-        subcmd = 'pfy {} {} {} {} {}'.format(filename, start_scan_id, nr_scans,
-                                             calib_file, output)
-        self.run_subcmd(subcmd)
+    def pfy(self):
+        self.cmd = 'pfy '
+        self.add_raw()
+        self.add_json()
+        self.add_roi()
+        self.add_filename()
+        self.add_scan_id()
+        self.add_nrscans()
+        self.add_calibfile()
+        self.add_outfile()
+        self.run()
 
 
 class elastic(Macro):
     """
-    Macro to calibrate the clear. It generate two text filesq
+    Macro to calibrate the clear. Allowed optional parameters:
+    * scanid: Number of the scan
+    * scanfile: Name of the file
+    * scandir: Path to the scan file
+    * noise: Percent of noise to be removed
+    * roi: ROI value eg [400,900]
+    * raw: True/False to extract the raw data
     """
     param_def = [
         ['output', Type.String, None, 'output file pattern'],
-        ['scanId', Type.Integer, Optional, 'scan id'],
-        ['scanFile', Type.String, Optional, 'scan filename'],
-        ['ScanDir', Type.String, Optional, 'scan dir'],
-    ]
+        ['params', [
+            ['param', Type.String, None, 'param to set'],
+            ['value', Type.String, None, 'param value'],
+            {'min': 0, 'max': None}], None, 'List of params']
+        ]
 
-    def run(self, output, scan_id, scan_file, scan_dir):
-        clear = ClearPostProcessing(self)
-        clear.elastic(output, scan_id, scan_file, scan_dir)
+    def run(self, output, params):
+        params = dict(params)
+        params['outfile'] = output
+        clear = ClearPostProcessing(self, params)
+        clear.elastic()
 
 
-class kbeta(Macro):
+class spectra(Macro):
     """
-    Macro to calibrate the clear. It generate two text filesq
+    Macro to extract the spectra. Allowed optional parameters:
+    * scanid: Number of the scan
+    * scanfile: Name of the file
+    * scandir: Path to the scan file
+    * raw: True/False to extract the Mythen raw data normalize by I0
     """
     param_def = [
         ['output', Type.String, None, 'output file pattern'],
-        ['scanId', Type.Integer, Optional, 'scan id'],
-        ['scanFile', Type.String, Optional, 'scan filename'],
-        ['ScanDir', Type.String, Optional, 'scan dir'],
-    ]
+        ['params', [
+            ['param', Type.String, None, 'param to set'],
+            ['value', Type.String, None, 'param value'],
+            {'min': 0, 'max': None}], None, 'List of params']
+        ]
 
-    def run(self, output, scan_id, scan_file, scan_dir):
-        clear = ClearPostProcessing(self)
-        clear.kbeta(output, scan_id, scan_file, scan_dir)
+    def run(self, output, params):
+        params = dict(params)
+        params['outfile'] = output
+        clear = ClearPostProcessing(self, params)
+        clear.spectra()
 
 
 class pfy(Macro):
     """
-    Macro to calibrate the clear. It generate two text filesq
+    Macro to extract the PFY. Allowed optional parameters:
+    * nrscans: Number of scans to concatenate. It can be negative.
+    * scanid: Number of the scan
+    * scanfile: Name of the file
+    * scandir: Path to the scan file
+    * roi: ROI value in energy value 7200:7250
+    * raw: True/False to extract the Mythen raw data normalize by I0
+    * json: True/False to extract the post-processed matrix and vectors.
     """
     param_def = [
         ['output', Type.String, None, 'output file pattern'],
-        ['nrScans', Type.Integer, -3,
-         'number of scans to concatenate can be negative'],
-        ['scanId', Type.Integer, Optional, 'scan id'],
-        ['scanFile', Type.String, Optional, 'scan filename'],
-        ['ScanDir', Type.String, Optional, 'scan dir'],
-    ]
+        ['params', [
+            ['param', Type.String, None, 'param to set'],
+            ['value', Type.String, None, 'param value'],
+            {'min': 0, 'max': None}], None, 'List of params']
+        ]
 
-    def run(self, output, nr_scans, scan_id, scan_file, scan_dir):
-        clear = ClearPostProcessing(self)
-        clear.pfy(output, nr_scans, scan_id, scan_file, scan_dir)
+    def run(self, output, params):
+        params = dict(params)
+        params['outfile'] = output
+        clear = ClearPostProcessing(self, params)
+        clear.pfy()
+
