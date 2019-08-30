@@ -156,6 +156,7 @@ class GasFillBase(object):
                     raise RuntimeError('It is not possible to {} the '
                                        'valve. Check it'.state)
                 time.sleep(0.1)
+        self.macro.info('Finished valve operation')
 
     def fill(self, values):
         v = []
@@ -206,13 +207,13 @@ class GasFillBase(object):
 
     def clean(self, io):
         self.macro.output('Starting the purge...')
-        self._close_valves()
+        self._change_pnv01(close=True)
+        self.macro.info('Sending command to the PLC')
         self.device.clean(io)
+        self.macro.info('Waiting...')
         self.wait()
 
     def stop(self):
-        self.macro.info('Open PNV-01 valve')
-        self.pnv01.open()
         self.macro.output('Send stop to de device...')
         self.device.stop()
 
