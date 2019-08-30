@@ -60,24 +60,26 @@ class YAG_moveE(Macro):
         
         Einit = E.getAttribute('Position').read().value
         DE = Efinal-Einit
-        (mvdiftabx, mvdiftabz, stripeRhIr_x, stripeRhIr_z)=diftab.getdiftab_E(Einit,Efinal)
-        if StripesCorrection=='YES':
-            mvdiftabx+=stripeRhIr_x
-            mvdiftabz+=stripeRhIr_z
-        self.info('YAG_MOVEE: Calculated change: E to %.4f keV (DE=%.4f keV)' %(Efinal,DE))
-        if abs(mvdiftabx)>0.001 and abs(mvdiftabx)<0.1:
-            strXmove = ' diftabx %.5f' %mvdiftabx
-            self.info('YAG_MOVEE: Calculated change: move rel. diftabx %f mm' %mvdiftabx)
-        else: strXmove = ''
-        if abs(mvdiftabz)>0.0005 and abs(mvdiftabz)<0.3:
-            strYmove = ' diftabz %.5f' %mvdiftabz
-            self.info('YAG_MOVEE: Calculated change: move rel. diftabz %f mm' %mvdiftabz)
-        else: strYmove = ''
-        movecommand = 'mvr Eugap %.5f' %DE
-        movecommand = movecommand+strXmove+strYmove
-        if Efinal>16.0: self.warning('YAG_MOVEE: Calculated change: move rel. diftabx %f mm' %mvdiftabx)
-        if StripesCorrection=='YES' and stripeRhIr_x!=0.: self.info('YAG_MOVEE: Horiztal Stripe Correction  diftabx %f mm' %stripeRhIr_x)
-        if StripesCorrection=='YES' and stripeRhIr_z!=0.: self.info('YAG_MOVEE: Vertical Stripe Correction  diftabz %f mm' %stripeRhIr_z)
+        
+        if math.fabs(DE) > 0.0001: # RB 20190702: no need to move stripes and diftab if the energy has not changed significantly
+            (mvdiftabx, mvdiftabz, stripeRhIr_x, stripeRhIr_z)=diftab.getdiftab_E(Einit,Efinal)
+            if StripesCorrection=='YES':
+                mvdiftabx+=stripeRhIr_x
+                mvdiftabz+=stripeRhIr_z
+            self.info('YAG_MOVEE: Calculated change: E to %.4f keV (DE=%.4f keV)' %(Efinal,DE))
+            if abs(mvdiftabx)>0.001 and abs(mvdiftabx)<0.1:
+                strXmove = ' diftabx %.5f' %mvdiftabx
+                self.info('YAG_MOVEE: Calculated change: move rel. diftabx %f mm' %mvdiftabx)
+            else: strXmove = ''
+            if abs(mvdiftabz)>0.0005 and abs(mvdiftabz)<0.3:
+                strYmove = ' diftabz %.5f' %mvdiftabz
+                self.info('YAG_MOVEE: Calculated change: move rel. diftabz %f mm' %mvdiftabz)
+            else: strYmove = ''
+            movecommand = 'mvr Eugap %.5f' %DE
+            movecommand = movecommand+strXmove+strYmove
+            if Efinal>16.0: self.warning('YAG_MOVEE: Calculated change: move rel. diftabx %f mm' %mvdiftabx)
+            if StripesCorrection=='YES' and stripeRhIr_x!=0.: self.info('YAG_MOVEE: Horiztal Stripe Correction  diftabx %f mm' %stripeRhIr_x)
+            if StripesCorrection=='YES' and stripeRhIr_z!=0.: self.info('YAG_MOVEE: Vertical Stripe Correction  diftabz %f mm' %stripeRhIr_z)
 
         # INITIAL E
         #LOW ZOOM ALIGNMENT
@@ -109,7 +111,6 @@ class YAG_moveE(Macro):
         if DE<0.002:
             self.info('YAG_MOVEE: Specified Energy change is %.2f eV (<2 eV)' %(DE*1000))
             self.info('YAG_MOVEE: Not realigning after Energy change')
-
         else:
             #ALIGNMENT AND CONDITIONING AT FINAL E
             self.info('YAG_MOVEE: FINAL ALIGNMENT')

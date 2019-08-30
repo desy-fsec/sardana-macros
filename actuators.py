@@ -123,9 +123,10 @@ class act(Macro):
         bstopx = self.getMoveable('bstopx')
         omegay = self.getMoveable('omegay')
         omegaz = self.getMoveable('omegaz')
-        bsz = self.getMoveable('bsz')
-        bsx = self.getMoveable('bsx')
-        bsr = self.getMoveable('bsr')
+        # RB 20190311: REVERT changes introduced becuase of moveable bs dismount
+        #bsz = self.getMoveable('bsz')
+        #bsx = self.getMoveable('bsx')
+        #bsr = self.getMoveable('bsr')
         aperz = self.getMoveable('aperz')
         kappa = self.getMoveable('kappa')
         cryodist = self.getMoveable('cryodist')
@@ -302,6 +303,12 @@ class act(Macro):
 
         # setting any remaining actuator to OUT 
         elif mode == 'OPEN' or mode == 'OUT':
+              # special case ln2cover, make sure the ln2shower is off
+              if axis == 'ln2cover':
+                  if not bl13check.is_ln2cover_open_allowed():
+                      self.error('ACT ERROR: ln2cover in not allowed: ln2shower on?')
+                      return
+
               # special case slowshu: make sure that bstop is in if detcover is out
               if axis == 'slowshu':
                  lim1 = m.fabs(bstopz.getPosition()) > 0.05 or m.fabs(bstopx.getPosition()) > 0.05 
@@ -354,8 +361,9 @@ class act(Macro):
 
                  # special case of back light
                  if axis == 'backlight':
-                     if bsr.getPosition() < BSR_OUT_POSITION:
-                         self.execMacro('mv bsr %f' % BSR_OUT_POSITION)
+                     # RB 20190311: REVERT changes introduced becuase of moveable bs dismount
+                     #if bsr.getPosition() < BSR_OUT_POSITION:
+                     #    self.execMacro('mv bsr %f' % BSR_OUT_POSITION)
                      if not bl13check.is_blight_in_allowed():
                          self.error('ACT ERROR: cannot set the backlight in')
                          return
