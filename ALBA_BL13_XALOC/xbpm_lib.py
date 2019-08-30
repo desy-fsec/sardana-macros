@@ -58,11 +58,11 @@ class xbpm_align_beam_z(Macro):
         # Setup SCAN parameters
         # for bpm6z: p0 = [1E-8,-0.027,0.01] # Initial values for scale, center and st. dev.
         # bpm5x should be set to 2, then the field numbers 3 and 5 correspond to ib5lu (3) and ib5ld(5)
-        motorparlib5 = {'refpos': -0.17804, 'scanwidth': 0.9, 'startpos' : -0.5, 'fieldnumber_verdown' : 3, 'fieldnumber_verup' : 4, 'dist2samp' : 1331.4}  # TODO: check distance between xbpm6 and sample position
+        motorparlib5 = {'refpos': -0.17804, 'scanwidth': 0.6, 'startpos' : -0.3, 'fieldnumber_verdown' : 3, 'fieldnumber_verup' : 4, 'dist2samp' : 1331.4}  # TODO: check distance between xbpm6 and sample position
         # 20180522: for bpm5z: baseline 8.395e-08, peak height 1.208e-06, mu -0.3895, sigma 0.09345, FWHM 0.2201
-        motorparlib6 = {'refpos': 0.14512, 'scanwidth': 0.9, 'startpos' : -0.3, 'fieldnumber_verdown' :  12, 'fieldnumber_verup' : 10, 'dist2samp' : 226.6} # TODO: check distance between xbpm6 and sample position
+        motorparlib6 = {'refpos': 0.14512, 'scanwidth': 0.6, 'startpos' : -0.3, 'fieldnumber_verdown' :  12, 'fieldnumber_verup' : 10, 'dist2samp' : 226.6} # TODO: check distance between xbpm6 and sample position
         ref_angle_lib = {'ref_angle': 7E-7, 'diftabzb': 37.9222167969, 'diftabzf' : 53.3890625, 'Ealign' : 12.661} #This is the angle the beam made for the reference points mentioned above.
-        scan_npoints = 30
+        scan_npoints = 20
         scan_intgintv = 0.1
 
         # Check if the beamline is in conditions to do the scan

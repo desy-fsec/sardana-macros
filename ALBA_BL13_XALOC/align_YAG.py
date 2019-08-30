@@ -19,9 +19,6 @@ from bl13constants import OAV_BW_device_name
 ScaleFactorX = bl13constants.ScaleFactorX # 100/68.2
 ScaleFactorY = bl13constants.ScaleFactorY #100./68.7
 
-ScaleFactorX = 1.0
-ScaleFactorY = 1.0
-
 YAGZ_YAG_POSITION = 0.0
 
 OAV_CENTER_X_PX = bl13constants.OAV_CENTER_X_PX
@@ -108,7 +105,7 @@ class YAG_align(Macro):
 class YAG_findbeam(Macro):
     """
     Macro to find the beam using a YAG screen and the OAV
-    Stores new coordinates in variables
+    Stores new coordinates in variables, does not move the diftab
     """
     param_def = []
 
@@ -188,7 +185,6 @@ class YAG_prepare(Macro):
         yagz = self.getMoveable("yagz")
         #iba_dev = taurus.Device('bl13/eh/oav-01-iba')
         falcon_dev = taurus.Device(OAV_BW_device_name)
-
 
         #CONDITIONING IMAGE
         #falcon_dev.write_attribute('ColorMode', 0)
@@ -325,7 +321,9 @@ class YAG_autoalign(Macro):
             return
             
         # Set the desired energy and move the diftab to lookup table position, set zoom, do initial YAG_align
-        try: self.execMacro(('YAG_moveE %s NO COMPLETE' % setEnergy))
+        try: 
+            self.execMacro(('YAG_moveE %s NO COMPLETE' % setEnergy))
+            time.sleep(2)
         except Exception,e:
             self.error('YAG_autoalign: ERROR in YAG_autoalign running YAG_moveE. Error: %s' % str(e) ) 
             return
@@ -335,13 +333,14 @@ class YAG_autoalign(Macro):
         YAG_align_tries = 1
         # Do a dummy YAG_align and check value boundaries
         self.execMacro('YAG_findbeam')
+
         (newXFC,newYFC,newXFWHM,newYFWHM) = diffractometer.readbeamvarsOAV()
         newXFC*=ScaleFactorX
         newYFC*=-ScaleFactorY
         self.debug('YAG_autoalign DEBUG: shifts in diftabx is %8.3f and diftabz is %8.3f' %(newXFC,newYFC))
-        if newXFC > bl13constants.OAV_xbeam_maxmisalign: strXmove = '%s' % newXFC
+        if math.fabs(newXFC) > bl13constants.OAV_xbeam_maxmisalign: strXmove = '%s' % newXFC
         else: strXmove=''
-        if newYFC > bl13constants.OAV_ybeam_maxmisalign: strYmove = '%s' % newYFC
+        if math.fabs(newYFC) > bl13constants.OAV_ybeam_maxmisalign: strYmove = '%s' % newYFC
         else: strYmove=''
         # A while loop to do multiple rounds of YAG_align until the shift is close to zero
         if any((strXmove,strYmove)):
@@ -351,23 +350,30 @@ class YAG_autoalign(Macro):
                 # Next do a YAG_align to finalize alignment
                 self.info('Moving diftabx by %s and diftaby %s',strXmove,strYmove)
                 self.execMacro('YAG_align', 'ALL')
+                time.sleep(2)
                 YAG_align_tries+=1
             else: YAG_stably_aligned=True
             self.execMacro('YAG_findbeam')
             (newXFC,newYFC,newXFWHM,newYFWHM) = diffractometer.readbeamvarsOAV()
             newXFC*=ScaleFactorX
             newYFC*=-ScaleFactorY
-            if newXFC > bl13constants.OAV_xbeam_maxmisalign: strXmove = 'diftabx %s' % newXFC
+            self.debug('YAG_autoalign: X and Y deviations of beam %.3f and %.3f' % (newXFC,newYFC))
+            if math.fabs(newXFC) > bl13constants.OAV_xbeam_maxmisalign: strXmove = 'diftabx %s' % newXFC
             else: strXmove=''
-            if newYFC > bl13constants.OAV_ybeam_maxmisalign: strYmove = 'diftaby %s' % newYFC
+            if math.fabs(newYFC) > bl13constants.OAV_ybeam_maxmisalign: strYmove = 'diftaby %s' % newYFC
             else: strYmove=''
 
-        # Return beamline to original status
+        # All aligned, now set the beam size
+        self.execMacro('mbat_beam_size') # low transmission to get proper beamsize
+        self.execMacro('YAG_align') # no align, just get beam size
+
+                # Return beamline to original status
         try:
             self.execMacro('mv mbattrans %f' % (transmis))
             #falcon_dev.write_attribute('ColorMode', falcm)
         except Exception,e: 
             self.info('YAG_autoalign: Cant reset parameters, error: %s' % str(e) )
         
+
         # flux_measure removes the YAG using act yagdiode out, thus returning the sample to its 0 position, if any
         self.execMacro('flux_measure 1')

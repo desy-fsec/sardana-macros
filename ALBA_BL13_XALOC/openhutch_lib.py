@@ -36,6 +36,7 @@ class openhutch(Macro):
        
        # REMOVE fluodet
        self.execMacro('act distfluo out')
+       limit = 0
        while epsf('read','distfluo')[2] != 1:
           self.info("OPEN HUTCH: waiting for the distfluo to be removed")
           limit = limit + 1
@@ -126,7 +127,7 @@ class openhutch(Macro):
            if current_aperz_pos>-94:
               self.info('OPEN HUTCH: Remove aperz')
               self.execMacro('turn aperz on')
-              self.execMacro('mvaperz out')
+              self.execMacro('mv aperture 0')
 
        if aperz.getPosition() > -94 or bstopz.getPosition() > -94: 
           self.info('OPEN HUTCH: Wait 10 s')
