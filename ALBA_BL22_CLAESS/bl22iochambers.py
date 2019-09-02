@@ -1,5 +1,5 @@
 import time
-from sardana.macroserver.macro import Type, Macro
+from sardana.macroserver.macro import Type, Macro, Table
 import PyTango
 
 
@@ -120,14 +120,74 @@ class GasFillBase(object):
         self.macro = macro_obj
         self.device = PyTango.DeviceProxy(self.device_name)
         self.pnv01 = PyTango.DeviceProxy(self.valve_name)
+        self.io_number = [0, 1, 2]
+
+    def print_status(self):
+        rowHead = []
+        colHead = [['Pressure'], ['Purging'], ['Filling 1st'],
+                   ['Filling 2nd'], ['Done']]
+        data = [[], [], [], [], []]
+        io_names = []
+        for i in self.io_number:
+            io_names.append('io{}'.format(i))
+
+        for io_name in io_names:
+            rowHead.append(io_name)
+            attr = '{}pressure'.format(io_name)
+            pressure = self.device.read_attribute(attr).value
+            data[0].append('{:3.2f}'.format(pressure))
+            attr = '{}purging'.format(io_name)
+            purging = self.device.read_attribute(attr).value
+            data[1].append(purging)
+            attr = '{}fillingfirst'.format(io_name)
+            first = self.device.read_attribute(attr).value
+            data[2].append(first)
+            attr = '{}fillingsecond'.format(io_name)
+            second = self.device.read_attribute(attr).value
+            data[3].append(second)
+            attr = '{}done'.format(io_name)
+            done = self.device.read_attribute(attr).value
+            data[4].append(done)
+        rowHead.append('Line')
+        value = self.device.read_attribute('linepressure').value
+        data[0].append('{:3.2f}'.format(value))
+        value = self.device.read_attribute('linepurging').value
+        data[1].append(value)
+        data[2].append('---')
+        data[3].append('---')
+        data[4].append('---')
+
+        table = Table(data,
+                      elem_fmt=['%*s'],
+                      term_width=None,
+                      col_head_str=colHead,
+                      col_head_fmt='%*s',
+                      col_head_width=12,
+                      row_head_str=rowHead,
+                      row_head_fmt='%-*s',
+                      row_head_width=12,
+                      col_sep='|',
+                      row_sep='_',
+                      col_head_sep='-',
+                      border='=')
+        output = 'Process Status:'
+        # output += '{0}\n'.format(colHead)
+        # output += '{0}\n'.format(rowHead)
+        # output += '{0}'.format(data)
+        for l in table.genOutput():
+            output += '\n{0}'.format(l)
+        self.macro.outputBlock(output)
+        self.macro.flushOutput()
 
     def wait(self):
         while True:
             self.macro.checkPoint()
+            self.print_status()
             state = self.device.state()
             if state in [PyTango.DevState.ALARM, PyTango.DevState.ON]:
                 break
             time.sleep(0.1)
+        self.print_status()
         if state == PyTango.DevState.ALARM:
             status = self.device.status()
             raise RuntimeError('The DS is in ALARM state: %s' % status)
@@ -167,8 +227,9 @@ class GasFillBase(object):
         pnv01_state = self.pnv01.state()
         if pnv01_state == PyTango._PyTango.DevState.OPEN:
             open_pnv = True
-
+        self.io_number = []
         for i in values:
+            self.io_number.append(i[0])
             if i[0] == 0:
                 is_open_al_valve = True
                 io0_energy = i[1]
@@ -181,9 +242,15 @@ class GasFillBase(object):
         self.device.fill(v)
         self.wait()
         if is_open_al_valve and io0_energy > 4000:
-            self.macro.Alin()
+            try:
+                self.macro.Alin()
+            except Exception as e:
+                self.macro.error(e)
         if open_pnv:
-            self._change_pnv01(close=False)
+            try:
+                self._change_pnv01(close=False)
+            except Exception as e:
+                self.macro.error(e)
         self.state()
 
     def state(self):
@@ -195,8 +262,7 @@ class GasFillBase(object):
         ar_attr_name = 'IO{0}Ar'
         kr_attr_name = 'IO{0}Kr'
         xe_attr_name = 'IO{0}Xe'
-
-        for i in range(3):
+        for i in self.io_number:
             n2 = self.device.read_attribute(n2_attr_name.format(i)).value
             he = self.device.read_attribute(he_attr_name.format(i)).value
             ar = self.device.read_attribute(ar_attr_name.format(i)).value
@@ -246,6 +312,7 @@ class getFill(Macro):
 
     def run(self):
         self.gas_filling = GasFillBase(self)
+        self.gas_filling.print_status()
         self.gas_filling.state()
 
 
@@ -298,7 +365,7 @@ class AluminiumValve(object):
             if v == value:
                 break
             if (time.time() - t) > self.timeout:
-                raise RuntimeError('To open/close the valve takes too'
+                raise RuntimeError('To open/close the valve takes too '
                                    'much time')
             time.sleep(0.1)
 
