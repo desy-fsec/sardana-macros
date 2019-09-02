@@ -104,6 +104,14 @@ class ClearPostProcessing(object):
         if json_file is not None and json_file.lower() == 'true':
             self.cmd += '--extract_json '
 
+    def add_i0(self):
+        try:
+            i0_name = self.params.pop('i0')
+        except Exception:
+            i0_name = None
+        if i0_name is not None:
+            self.cmd += '--i0={} '.format(i0_name)
+
     def run(self):
         if len(self.params.keys()) != 0:
             self.macro_obj.warning('There are invalid parameters not used: '
@@ -135,6 +143,7 @@ class ClearPostProcessing(object):
         self.add_noise()
         self.add_raw()
         self.add_roi()
+        self.add_i0()
         self.add_filename()
         self.add_scan_id()
         self.add_outfile()
@@ -176,12 +185,20 @@ class ClearPostProcessing(object):
 class elastic(Macro):
     """
     Macro to calibrate the clear. Allowed optional parameters:
-    * scanid: Number of the scan
-    * scanfile: Name of the file
-    * scandir: Path to the scan file
-    * noise: Percent of noise to be removed
-    * roi: ROI value eg [400,900]
-    * raw: True/False to extract the raw data
+    * scanid: Number of the scan.
+       Default last scan.
+    * scanfile: Name of the file.
+       Default last file.
+    * scandir: Path to the scan file.
+       Default last dir.
+    * noise: Percent of noise to be removed.
+       Default 10%
+    * roi: ROI value eg [400,900].
+       Default auto-roi
+    * raw: True/False to extract the raw data.
+       Default False
+    * i0: Channel name used for normalize.
+       Default: n_i0_1
     """
     param_def = [
         ['output', Type.String, None, 'output file pattern'],
@@ -201,10 +218,14 @@ class elastic(Macro):
 class spectra(Macro):
     """
     Macro to extract the spectra. Allowed optional parameters:
-    * scanid: Number of the scan
-    * scanfile: Name of the file
-    * scandir: Path to the scan file
-    * raw: True/False to extract the Mythen raw data normalize by I0
+    * scanid: Number of the scan.
+       Default last scan.
+    * scanfile: Name of the file.
+       Default last file.
+    * scandir: Path to the scan file.
+       Default last dir.
+    * raw: True/False to extract the raw data.
+       Default False
     """
     param_def = [
         ['output', Type.String, None, 'output file pattern'],
@@ -225,12 +246,19 @@ class pfy(Macro):
     """
     Macro to extract the PFY. Allowed optional parameters:
     * nrscans: Number of scans to concatenate. It can be negative.
-    * scanid: Number of the scan
-    * scanfile: Name of the file
-    * scandir: Path to the scan file
-    * roi: ROI value in energy value 7200:7250
-    * raw: True/False to extract the Mythen raw data normalize by I0
+       Default <-3> last three scans
+    * scanid: Number of the scan.
+       Default last scan.
+    * scanfile: Name of the file.
+       Default last file.
+    * scandir: Path to the scan file.
+       Default last dir.
+    * roi: Energy ROI value eg [7400,7450].
+       Default use the calibration ROI
+    * raw: True/False to extract the raw data.
+       Default False
     * json: True/False to extract the post-processed matrix and vectors.
+       Default False
     """
     param_def = [
         ['output', Type.String, None, 'output file pattern'],
