@@ -339,8 +339,8 @@ class set_mode(Macro):
         mg_manager = MGManager(self, mg, chns_names)
         mg_manager.enable_only_channels()
         mg_manager.status()
-        self.info('Set ROI 1 to all range [0, 4096]')
         if exp_type == 'clear':
+            self.info('Set ROI 1 to all range [0, 4096]')
             self.setXRoI([[1, 0, 4095]])
 
 
