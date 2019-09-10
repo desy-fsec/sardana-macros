@@ -193,7 +193,7 @@ class elastic(Macro):
        Default last dir.
     * noise: Percent of noise to be removed.
        Default 10%
-    * roi: ROI value eg [400,900].
+    * roi: ROI value eg 400:900.
        Default auto-roi
     * raw: True/False to extract the raw data.
        Default False
@@ -253,7 +253,7 @@ class pfy(Macro):
        Default last file.
     * scandir: Path to the scan file.
        Default last dir.
-    * roi: Energy ROI value eg [7400,7450].
+    * roi: Energy ROI value eg 7400:7450.
        Default use the calibration ROI
     * raw: True/False to extract the raw data.
        Default False
