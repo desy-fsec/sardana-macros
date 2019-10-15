@@ -52,7 +52,7 @@ class ClearPostProcessing(object):
         self.cmd += '{} '.format(filename)
         return
 
-    def add_roi(self):
+    def add_roi(self, send_auto_roi=True):
         try:
             roi = self.params.pop('roi')
         except Exception:
@@ -60,8 +60,11 @@ class ClearPostProcessing(object):
 
         if roi is not None:
             roi_low, roi_high = roi.split(':')
-            self.cmd += '--no_auto_roi ' \
-                        '--roi=[{},{}] '.format(roi_low, roi_high)
+
+            if send_auto_roi:
+                self.cmd += '--no_auto_roi '
+
+            self.cmd += '--roi=[{},{}] '.format(roi_low, roi_high)
 
     def add_noise(self):
         try:
@@ -173,7 +176,7 @@ class ClearPostProcessing(object):
         self.cmd = 'pfy '
         self.add_raw()
         self.add_json()
-        self.add_roi()
+        self.add_roi(send_auto_roi=False)
         self.add_filename()
         self.add_scan_id()
         self.add_nrscans()
