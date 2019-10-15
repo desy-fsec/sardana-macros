@@ -115,6 +115,38 @@ class ClearPostProcessing(object):
         if i0_name is not None:
             self.cmd += '--i0={} '.format(i0_name)
 
+    def add_energy_step(self):
+        try:
+            energy_step = self.params.pop('energy_step')
+        except Exception:
+            energy_step = None
+        if energy_step is not None:
+            self.cmd += '--energy_step={} '.format(energy_step)
+
+    def add_smooth_window(self):
+        try:
+            smooth_window = self.params.pop('smooth_window')
+        except Exception:
+            smooth_window = None
+        if smooth_window is not None:
+            self.cmd += '--smooth_window={} '.format(smooth_window)
+
+    def add_smooth_order(self):
+        try:
+            smooth_order = self.params.pop('smooth_order')
+        except Exception:
+            smooth_order = None
+        if smooth_order is not None:
+            self.cmd += '--smooth_order={} '.format(smooth_order)
+
+    def del_smooth(self):
+        try:
+            smooth = eval(self.params.pop('smooth'))
+        except Exception:
+            smooth = None
+        if smooth is not None and smooth is False:
+            self.cmd += '--no_smooth '
+
     def run(self):
         if len(self.params.keys()) != 0:
             self.macro_obj.warning('There are invalid parameters not used: '
@@ -147,6 +179,10 @@ class ClearPostProcessing(object):
         self.add_raw()
         self.add_roi()
         self.add_i0()
+        self.add_energy_step()
+        self.add_smooth_order()
+        self.add_smooth_window()
+        self.del_smooth()
         self.add_filename()
         self.add_scan_id()
         self.add_outfile()
@@ -187,7 +223,15 @@ class ClearPostProcessing(object):
 
 class elastic(Macro):
     """
-    Macro to calibrate the clear. Allowed optional parameters:
+    Macro to calibrate the clear.
+
+    How to use it
+        By using the last scan and the default parameters:
+            elastic /tmp/calib_output
+        By using another scanid and change some default parameters:
+            elastic /tmp/calib_output scanid 3042 energy_step 0.1 roi 300:800
+
+    Allowed optional parameters:
     * scanid: Number of the scan.
        Default last scan.
     * scanfile: Name of the file.
@@ -202,6 +246,15 @@ class elastic(Macro):
        Default False
     * i0: Channel name used for normalize.
        Default: n_i0_1
+    * energy_step: Change energy step interpolation,
+       Default: 0.03 eV
+    * smooth: True/False the smoothing of the calibration
+       Default: True
+    *smooth_window: Window for the savgol filter
+       Default: 51
+    *smooth_order: Order of the polynomial order
+       Default: 3
+
     """
     param_def = [
         ['output', Type.String, None, 'output file pattern'],
@@ -220,7 +273,14 @@ class elastic(Macro):
 
 class spectra(Macro):
     """
-    Macro to extract the spectra. Allowed optional parameters:
+    Macro to extract the spectra.
+    How to use it
+        By using the last scan and the default parameters:
+            spectra /tmp/kbeta_output
+        By using another scanid and change some default parameters:
+            elastic /tmp/kbeta_output scanid 3042 raw True
+
+    Allowed optional parameters:
     * scanid: Number of the scan.
        Default last scan.
     * scanfile: Name of the file.
@@ -247,7 +307,14 @@ class spectra(Macro):
 
 class pfy(Macro):
     """
-    Macro to extract the PFY. Allowed optional parameters:
+    Macro to extract the PFY.
+    How to use it
+        By using the last three scan and the default parameters:
+            pfy /tmp/pfy_output
+        By using another scanid and change some default parameters:
+            pfy /tmp/pfy_output scanid 3042 roi 8405:8406 raw True
+
+    Allowed optional parameters:
     * nrscans: Number of scans to concatenate. It can be negative.
        Default <-3> last three scans
     * scanid: Number of the scan.
