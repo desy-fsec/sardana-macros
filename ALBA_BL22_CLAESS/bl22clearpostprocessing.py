@@ -8,6 +8,12 @@ class ClearPostProcessing(object):
         self.macro_obj = macro_obj
         self.params = params
         self.cmd = None
+        self._develop = False
+        try:
+            self._develop = self.macro_obj.getEnv('_ClearDevelop')
+            self.macro_obj.warning('It is using develop version.!!!')
+        except Exception:
+            self._develop = False
 
     def add_scan_id(self):
         try:
@@ -153,9 +159,13 @@ class ClearPostProcessing(object):
                                    '{}'.format(repr(self.params.keys())))
 
         # Run the command on another PC
-        base_cmd = "ssh -X sicilia@ctbl22sard02 " \
-                   "'conda activate pyclear; pyClear {}'" \
-                   ""
+        if self._develop:
+            base_cmd = "ssh -X sicilia@ctbl22sard02 " \
+                       "'conda activate pyclear; pyClear {}'"
+        else:
+            base_cmd = "ssh -X sicilia@ctbl22sard02 " \
+                       "'pyClear {}'"
+
         cmd = base_cmd.format(self.cmd)
         self.macro_obj.info('Run command:\n {}'.format(cmd))
         self.macro_obj.output('Script output: ... ')
