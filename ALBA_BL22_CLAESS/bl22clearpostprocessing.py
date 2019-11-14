@@ -11,7 +11,8 @@ class ClearPostProcessing(object):
         self._develop = False
         try:
             self._develop = self.macro_obj.getEnv('_ClearDevelop')
-            self.macro_obj.warning('It is using develop version.!!!')
+            if self._develop:
+                self.macro_obj.warning('It is using develop version.!!!')
         except Exception:
             self._develop = False
 
