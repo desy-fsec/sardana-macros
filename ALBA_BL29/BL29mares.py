@@ -635,7 +635,7 @@ class mares_ccd(Macro):
             raise Exception(msg)
 
         # check if CCD device is OK
-        if ((parameter.lower() == 'Init') and 
+        if ((parameter.lower() != 'init') and
                 (self.dev_ccd.state() in [PyTango.DevState.FAULT])):
             msg = ('CCD device is FAULT: please check and/or try \"init\"'
                    'If it does not work a hardware reset of XCAM CCD '
@@ -799,10 +799,7 @@ class mares_ccd(Macro):
 
             # check if power is known and on: ask user what to do if not
             on = self.dev_ccd.read_attribute('Power')
-#            if on.quality != PyTango.AttrQuality.ATTR_VALID or not on.value:
-####remove me!!!
-            if False:
-####remove me!!!
+            if on.quality != PyTango.AttrQuality.ATTR_VALID or not on.value:
                 answer = ''
                 while not answer.lower() in ('y', 'n'):
                     self.warning('Power is OFF or in UNKNOWN state.')
@@ -812,10 +809,16 @@ class mares_ccd(Macro):
                         default_value='n')
                     if answer == 'y':  # switch on ccd
                         self.dev_ccd.write_attribute('Power', True)
-                self.output('OK. Press enter for prompt')
+                self.output('Press enter for prompt')
 
             # set ccd timeout
             self.dev_ccd.write_attribute('Timeout', timeout)
+
+            # if external trigger is required set it up (note that now the
+            # device server will take care of triggering) 
+            if hw_trig:
+                self.info('Configuring AO device')
+                self.setup_ao(frame_units, frame_time)
 
             # start image grabbing and wait for device to start moving
             self.info('Grabbing image into %s ...' % self.fname)
@@ -827,15 +830,6 @@ class mares_ccd(Macro):
                 else:
                     msg = 'Timeout while waiting for CCD device to start'
                     raise Exception(msg)
-
-            # if external trigger is required set it up and trigger it
-            if hw_trig:
-#                time.sleep(1) # TODO remove me!!!! Is this really necessary
-                self.info('Configuring AO device')
-                self.setup_ao(frame_units, frame_time)
-                msg = 'Triggering AO device'
-                self.info(msg)
-                self.dev_ao.command_inout('Start')
 
             # wait for image to be taken
             msg = 'Waiting for image to be taken ...'

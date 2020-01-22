@@ -358,7 +358,7 @@ class regmagscan(Macro):
     optionally another at specified energy2
     """
 
-    mono_pseudomotor_name = 'energy_mono'
+    mono_pseudomotor_name = 'energy_mono_corrected'
     id_pseudomotor_name = 'ideu71_motor_energy'
 
     param_def = [
