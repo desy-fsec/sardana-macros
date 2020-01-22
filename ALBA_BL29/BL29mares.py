@@ -670,7 +670,7 @@ class mares_ccd(Macro):
                     else:
                         self.fname_seq = 1
                     self.fname_base = fname_base
-                fmt = getattr(self, 'FileFormat') 
+                fmt = getattr(self, 'FileFormat')
                 fname = '%s_%03d.%s' % (self.fname_base, self.fname_seq, fmt)
                 self.fname = fname
             # check if file exists and if it is writable
@@ -815,7 +815,7 @@ class mares_ccd(Macro):
             self.dev_ccd.write_attribute('Timeout', timeout)
 
             # if external trigger is required set it up (note that now the
-            # device server will take care of triggering) 
+            # device server will take care of triggering)
             if hw_trig:
                 self.info('Configuring AO device')
                 self.setup_ao(frame_units, frame_time)

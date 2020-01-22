@@ -298,7 +298,7 @@ class escanct(Macro):
                 self.error(msg)
                 raise Exception(msg)
 
-        except Exception, e:
+        except Exception as e:
             self.error('Error while getting environment: %s' % str(e))
             raise
 
@@ -341,7 +341,7 @@ class escanct(Macro):
                            % (id_phase_start, id_phase_final))
                 self.debug('Phase (middle): %f'
                            % self.id_phase_middle)
-        except Exception, e:
+        except Exception as e:
             msg = 'Unable to compute ID gap positions'
             self.debug('%s: %s' % (msg, str(e)))
             raise Exception(msg)
@@ -576,7 +576,7 @@ class monoscanct(escanct):
             param_name = 'motor_name'
             self.motor_name = self.getEnv(param_name, door_name=self.door_name,
                                           macro_name=self.name)
-        except Exception, e:
+        except Exception as e:
             self.error('Error while getting environment: %s' % str(e))
             raise
 
@@ -622,7 +622,7 @@ class grscanct(escanct):
             param_name = 'motor_name'
             self.motor_name = self.getEnv(param_name, door_name=self.door_name,
                                           macro_name=self.name)
-        except Exception, e:
+        except Exception as e:
             self.error('Error while getting environment: %s' % str(e))
             raise
 
@@ -663,7 +663,7 @@ class timescanct(escanct):
             param_name = 'motor_name'
             self.motor_name = self.getEnv(param_name, door_name=self.door_name,
                                           macro_name=self.name)
-        except Exception, e:
+        except Exception as e:
             self.error('Error while getting environment: %s' % str(e))
             raise
 
@@ -708,8 +708,7 @@ class xbpm_timescanct(Macro):
                     if type_ is not None:
                         value = type_(value)
                     setattr(self, param_name, value)
-                    print param_name, value
-        except Exception, e:
+        except Exception as e:
             self.error('Error while getting environment: %s' % str(e))
             raise
 

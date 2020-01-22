@@ -545,7 +545,7 @@ class xmcd_sample_align(Macro):
                 try:
                     self.setEnv(env_prefix+arg, value)
                     self.output('%s correctly set to %s' % (arg, value))
-                except Exception, e:
+                except Exception as e:
                     msg = 'Unable to set %s with value %s' % \
                           (str(arg), str(value))
                     self.error(msg)
@@ -562,7 +562,7 @@ class xmcd_sample_align(Macro):
                     value = environment[env_prefix+arg]
                     self.arguments[arg] = value
                     self.output('%s: %s' % (arg, value))
-                except Exception, e:
+                except Exception as e:
                     msg = 'Unable to get --%s' % str(arg)
                     self.error(msg)
                     self.debug('%s:\n\n%s' % (msg, str(e)))
@@ -576,7 +576,7 @@ class xmcd_sample_align(Macro):
                 value = environment[env_prefix+arg]
                 self.arguments[arg] = value
                 self.output('\t%s: %s' % (arg, value))
-            except Exception, e:
+            except Exception as e:
                 msg = 'Unable to get %s environment parameter' % \
                       str(env_prefix+arg)
                 self.error(msg)
@@ -585,7 +585,7 @@ class xmcd_sample_align(Macro):
         # get motor name from align_scan
         try:
             motor_name = self.arguments['align_scan'].split()[1]
-        except Exception, e:
+        except Exception as e:
             msg = 'Unable to determine the motor involved in align_scan'
             self.error(msg)
             self.debug('%s:\n%s' % (msg, str(e)))
@@ -593,7 +593,7 @@ class xmcd_sample_align(Macro):
         # get offset
         try:
             offset = float(self.arguments['offset'])
-        except Exception, e:
+        except Exception as e:
             msg = 'Unable to determine offset'
             self.error(msg)
             self.debug('%s:\n%s' % (msg, str(e)))
@@ -610,7 +610,7 @@ class xmcd_sample_align(Macro):
             meas_name = environment['ActiveMntGrp']
             meas = seek_scan.getMeasurementGroup(meas_name).getObj()
             meas_channels = meas.getChannelNames()
-        except Exception, e:
+        except Exception as e:
             msg = 'Unable to get measurement group details'
             self.error(msg)
             self.debug('%s:\n%s' % (msg, str(e)))
@@ -653,7 +653,7 @@ class xmcd_sample_align(Macro):
             if ch1_name_scan is None or ch2_name_scan is None:
                 self.error(msg)
                 return
-        except Exception, e:
+        except Exception as e:
             msg = 'Unable to find the necessary data channels in the data ' \
                   'obtained from the scan'
             self.error(msg)
@@ -674,7 +674,7 @@ class xmcd_sample_align(Macro):
         ch2 = numpy.array(ch2)
         try:
             derivative = numpy.gradient(ch2/ch1, z_positions)
-        except Exception, e:
+        except Exception as e:
             msg = 'Unable to perform the necessary operations. Please check '\
                   'scan data validity!'
             self.error(msg)

@@ -68,11 +68,11 @@ class qzscan(Macro):
                 '%s%s' % (env_prefix, 'motor_sample_name')]
             motor_detector_name = environment[
                 '%s%s' % (env_prefix, 'motor_detector_name')]
-        except KeyError, e:
+        except KeyError as e:
             msg = 'Unable to recover motor names from environment. Please '\
                   'define %s* environment variables' % env_prefix
             raise ScanException({'msg': msg})
-        except Exception, e:
+        except Exception as e:
             msg = 'Unexpected exception while trying to recover motor names '\
                   'from environment:\n%s' % str(e)
             raise ScanException({'msg': msg})
@@ -85,7 +85,7 @@ class qzscan(Macro):
             motor_detector = self.getMoveable(motor_detector_name)
             moveables = [motor_energy, motor_energyid,
                          motor_sample, motor_detector]
-        except Exception, e:
+        except Exception as e:
             msg = 'Unable to access motors %s and/or %s' % \
                   (motor_sample_name, motor_detector_name)
             self.error(msg)

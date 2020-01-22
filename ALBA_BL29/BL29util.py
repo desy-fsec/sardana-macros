@@ -5,6 +5,7 @@ Utility macros specifically developed for Alba BL29 Boreas beamline
 """
 
 import PyTango
+import time
 
 from sardana.macroserver.macro import Macro, Type
 
@@ -78,7 +79,7 @@ class femtonew(Macro):
             if self.dio.read_attribute('OutputMode').value != 0:
                 msg = 'DIO OutputMode is not 0'
                 raise Exception(msg)
-        except Exception, e:
+        except Exception as e:
             if isinstance(e, PyTango.DevFailed):
                 desc = str(e[0].desc)
                 msg = 'DIO port %s is not ready: %s' % (self.dio_name, desc)
@@ -267,7 +268,7 @@ class speak(Macro):
         speech_dev = PyTango.DeviceProxy(self.SPEAK_DEV)
         speech_dev.command_inout('Play_Sequence', speech)
 
-import time
+
 class femto(Macro):
     """
     Macro to get/set the femto gain value
