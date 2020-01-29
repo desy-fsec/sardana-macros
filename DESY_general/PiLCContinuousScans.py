@@ -12,7 +12,7 @@ import time
 import pytz
 import datetime
 import numpy
-
+    
 
 class cscan_pilc_sis3820mcs(Macro):
     """Perfoms a continuous scan with the pilc triggering the sis3820"""
@@ -42,24 +42,26 @@ class cscan_pilc_sis3820mcs(Macro):
         mcs_device         = PyTango.DeviceProxy(mcs_device_name)
         
         motor_device       = PyTango.DeviceProxy(motor.getName())
-
+        
         #self.nexusconfig_device = PyTango.DeviceProxy(nexusconfig_device_name)
         #self.nexuswriter_device = PyTango.DeviceProxy(nexuswriter_device_name)
 
         #self._openNxFile()
     
         # Set the PiLCTriggerGenerator device
-        
-	pilctg_device.TriggerMode = trigger_mode
-        
-	pilctg_device.TriggerPulseLength = 0.00001 # always smaller als trigger_interval
 
+        ####
+
+        pilctg_device.TriggerMode = trigger_mode
+        
+        pilctg_device.TriggerPulseLength = 0.00001 # always smaller als trigger_interval
+    
         if trigger_mode == 1:
             pilctg_device.PositionTriggerStart = start_pos
-            pilctg_device.PositionTriggerStepSize = trigger_interval # position units between triggers
+            pilctg_device.PositionTriggerStepSize = trigger_interval # position units between triggers  
         elif trigger_mode == 2:
             pilctg_device.TimeTriggerStart = 0 # start triggering directly after Arm is set to 1
-            pilctg_device.TimeTriggerStepSize = trigger_interval # time for counting
+            pilctg_device.TimeTriggerStepSize = trigger_interval # time for counting  
         elif trigger_mode == 3:
             pilctg_device.PositionTriggerStart = start_pos
             pilctg_device.TimeTriggerStepSize = trigger_interval # time for counting
@@ -141,9 +143,8 @@ class cscan_pilc_sis3820mcs(Macro):
             # Start motor movement to final position (the macro mv can not be used because it blocks)
             motor_device.Position = final_pos + pos_offset
 
-            
-            
-        # Check when the triggering is done
+                             
+            # Check when the triggering is done
 
         while pilctg_device.State() == PyTango.DevState.MOVING:
             time.sleep(1)
@@ -165,7 +166,7 @@ class cscan_pilc_sis3820mcs(Macro):
         # PiLC Data
 
         pilcencoder_data = pilctg_device.EncoderData
-	pilccounter_data = pilctg_device.CounterData
+        pilccounter_data = pilctg_device.CounterData
             
         # Open the nexus file for saving data
 
@@ -236,13 +237,12 @@ class cscan_pilc_sis3820mcs(Macro):
 
 
     def _closeNxFile(self):
-        self.nexuswriter_device.CloseFile()
+        self._sendGlobalDictionaryAfter()
+        self.nexuswriter_device.CloseEntry()
         return 1
 
 
     def _closeNxEntry(self):
-        self._sendGlobalDictionaryAfter()
-        self.nexuswriter_device.CloseEntry()
         return 1
 
     def _sendGlobalDictionaryBefore(self, motor_name, start_pos, final_pos, nb_triggers, trigger_interval, xia_spec_length):
@@ -286,8 +286,6 @@ class cscan_pilc_sis3820mcs(Macro):
         self.nexuswriter_device.Record(mstr)
         return 1
 
-
-
 class cscan_pilc_xia(Macro):
     """Perfoms a continuous scan with the pilc triggering the xia"""
 
@@ -324,9 +322,9 @@ class cscan_pilc_xia(Macro):
     
         # Set the PiLCTriggerGenerator device
         
-	pilctg_device.TriggerMode = trigger_mode
+        pilctg_device.TriggerMode = trigger_mode
         
-	pilctg_device.TriggerPulseLength = 0.00001 # always smaller als trigger_interval
+        pilctg_device.TriggerPulseLength = 0.00001 # always smaller als trigger_interval
 
         if trigger_mode == 1:
             pilctg_device.PositionTriggerStart = start_pos
@@ -344,7 +342,7 @@ class cscan_pilc_xia(Macro):
             self.warning("Wrong trigger mode. Exit")
             result = "Not run"
             return result
-
+    
         pilctg_device.NbTriggers = nb_triggers
         
         # Set XIA
@@ -418,9 +416,7 @@ class cscan_pilc_xia(Macro):
             time.sleep(1)
             # Start motor movement to final position (the macro mv can not be used because it blocks)
             motor_device.Position = final_pos + pos_offset
-
-            
-           
+                  
         # Check when the triggering is done
 
         while pilctg_device.State() == PyTango.DevState.MOVING:
@@ -439,7 +435,7 @@ class cscan_pilc_xia(Macro):
         # PiLC Data
 
         pilcencoder_data = pilctg_device.EncoderData
-	pilccounter_data = pilctg_device.CounterData
+        pilccounter_data = pilctg_device.CounterData
             
         # Open the nexus file for saving data
 
@@ -453,8 +449,7 @@ class cscan_pilc_xia(Macro):
 
         result = "Scan ended sucessfully"
         return result 
-
-
+ 
 
 
     
@@ -487,9 +482,8 @@ class c2dscan_pilc_sis3820mcs_postrigger(Macro):
         
         # Move ext motor to start position
         motor_ext_device.Position = start_pos_ext
-        
-	for i in range(0, int(nb_scans + 1)):
-            
+
+        for i in range(0, int(nb_scans + 1)):
             while motor_ext_device.state() == PyTango.DevState.MOVING:
                 time.sleep(0.001)      
             while motor_int_device.state() == PyTango.DevState.MOVING:
@@ -503,7 +497,7 @@ class c2dscan_pilc_sis3820mcs_postrigger(Macro):
                 self.execMacro('cscan_pilc_sis3820mcs', motor, corrected_start, final_pos, nb_triggers, trigger_interval, trigger_mode)
             else:
                 self.execMacro('cscan_pilc_sis3820mcs', motor, corrected_start, start_pos, nb_triggers, trigger_interval, trigger_mode)
-    
+      
             # Move ext motor to next position, except for the last point
 
             if i < nb_scans:
@@ -512,7 +506,8 @@ class c2dscan_pilc_sis3820mcs_postrigger(Macro):
                 self.output(motor_ext_device.state())
                 #motor_ext_device.Position = start_pos_ext + (i+1) * pos_inc_ext
 
-    
+
+        
 class cscan_pilc_senv(Macro):
     """ Sets default environment variables """
 

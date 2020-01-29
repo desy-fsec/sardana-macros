@@ -1,6 +1,5 @@
 """Change motor limits for Hasy motors"""
 
-from __future__ import print_function
 
 __all__ = ["hasy_set_lim", "hasy_adjust_limits"]
 
@@ -109,7 +108,7 @@ class hasy_wm(Macro):
                 self.output("Current     : %f " % pos)
                 self.output("UnitLimitMax: %f " % high)
                     
-        except PyTango.DevFailed, e:
+        except PyTango.DevFailed as e:
             Except.print_exception( e)
             self.warning("Not able to read motor position or limits")
                 

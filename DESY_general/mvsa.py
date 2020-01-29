@@ -91,13 +91,13 @@ class mvsa(Macro):
             if hsh[ 'result'].upper() != 'DONE':
                 self.output( "mvsa: SardanaMonitor did not send DONE %s" % hsh[ 'result'])
                 return result
-            if len( hsh[ 'getData'].keys()) == 0:
+            if len( list(hsh[ 'getData'].keys())) == 0:
                 self.output( "mvsa: SardanaMonitor sent incomplete dict")
                 return result
-            if not hsh[ 'getData'].has_key( signalCounter.upper()):
+            if signalCounter.upper() not in hsh[ 'getData']:
                 self.output( "mvsa: column %s is missing (from SM)" % signalCounter)
                 return result
-            if not hsh[ 'getData'][ 'symbols'].has_key( 'file_name_'):
+            if 'file_name_' not in hsh[ 'getData'][ 'symbols']:
                 self.output( "mvsa: file_name_ %s is missing (from SM)" % signalCounter)
                 return result
             fileName = hsh[ 'getData'][ 'symbols'][ 'file_name_']
