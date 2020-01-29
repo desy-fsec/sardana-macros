@@ -13,11 +13,11 @@ def main( hostName, fileName):
     #
     if not HasyUtils.isHostOnline( hostName):
         if not args.quiet:
-            print "  %s is offline" % hostName
+            print("  %s is offline" % hostName)
         return True
 
     if os.system( "scp -q %s:%s/%s tempFile" % (hostName, REMOTE_DIR, fileName)):
-        print "Failed to scp %s from %s" % (fileName, hostName)
+        print("Failed to scp %s from %s" % (fileName, hostName))
         return False
 
     diff = os.popen( "diff %s tempFile" % fileName).read()
@@ -26,8 +26,8 @@ def main( hostName, fileName):
         return True
     else:
         if not args.quiet:
-            print "*** compare_files: differences host %s file %s " % (hostName, fileName)
-            print diff
+            print("*** compare_files: differences host %s file %s " % (hostName, fileName))
+            print(diff)
         return False
 
 if __name__ == "__main__":
@@ -62,7 +62,7 @@ Examples:
     else:
         files = HasyUtils.getListFromFile( FILE_LIST)
         if files is None:
-            print "%s is empty" % FILE_LIST
+            print("%s is empty" % FILE_LIST)
             sys.exit(255)
     #
     # compare files on single hosts or all
@@ -73,20 +73,20 @@ Examples:
     else:
         hosts = HasyUtils.getListFromFile( HOST_LIST)
         if hosts is None:
-            print "%s is empty" % HOST_LIST
+            print("%s is empty" % HOST_LIST)
             sys.exit(255)
 
     count = 0
     for host in hosts:
         count += 1
         if count % 10 == 0:
-            print "%d/%d" % (count, len( hosts))
+            print("%d/%d" % (count, len( hosts)))
         if not args.quiet:
-            print "%s" % host
+            print("%s" % host)
         for fl in files:
             if not main( host, fl):
-                print "***compare_files: trouble with %s on %s" % (fl, host)
+                print("***compare_files: trouble with %s on %s" % (fl, host))
             else:
                 if not args.quiet:
-                    print "  %s OK" % (fl)
+                    print("  %s OK" % (fl))
 

@@ -615,7 +615,7 @@ class MgConf:
         """
         try: 
             proxy = DeviceProxy( mcaSardanaDeviceAlias)
-        except DevFailed, e:
+        except DevFailed as e:
             Except.re_throw_exception( e, 
                                        "MgUtils",
                                        "failed to create proxy to %s " % mcaSardanaDeviceAlias,
@@ -667,7 +667,7 @@ class MgConf:
             print("MgUtils._addSca", lst)
             try:
                 self.poolMg.CreateController( lst)
-            except DevFailed, e:
+            except DevFailed as e:
                 Except.print_exception( e)
                 #print "failed to get proxy to ", poolName
                 sys.exit(255)
