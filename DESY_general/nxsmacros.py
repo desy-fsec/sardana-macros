@@ -404,7 +404,42 @@ class nxset(Macro):
         update_configuration(self)
 
 
-class nxsrm(Macro):
+class nxsdel(Macro):
+    """ Remove the given detector components.
+        Selected detector components can be listed by
+        'nxsprof' or 'lsprof' macros
+    """
+
+    param_def = [
+        ['component_list',
+         ParamRepeat(['component', Type.String, None,
+                      'detector component to remove']),
+         None, 'List of components to show'],
+    ]
+
+    def run(self, component_list):
+        set_selector(self)
+        cnf = json.loads(self.selector.profileConfiguration)
+        cpdct = json.loads(cnf["ComponentSelection"])
+        dsdct = json.loads(cnf["DataSourceSelection"])
+        timers = json.loads(cnf["Timer"])
+        for name in component_list:
+            if name in cpdct:
+                cpdct.pop(str(name))
+                self.output("Removing %s" % name)
+            if name in dsdct:
+                dsdct.pop(str(name))
+                self.output("Removing %s" % name)
+            if timers and name in timers and timers[0] != name:
+                timers.remove(name)
+        cnf["Timer"] = str(json.dumps(list(timers)))
+        cnf["DataSourceSelection"] = str(json.dumps(dsdct))
+        cnf["ComponentSelection"] = str(json.dumps(cpdct))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
+        update_configuration(self)
+
+
+class nxsdsel(Macro):
     """ Deselect the given detector components.
         Selected detector components can be listed by
         'nxsprof' or 'lsprof' macros
@@ -435,6 +470,23 @@ class nxsrm(Macro):
         cnf["ComponentSelection"] = str(json.dumps(cpdct))
         self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
+
+
+class nxsrm(Macro):
+    """ Deselect the given detector components.
+        Selected detector components can be listed by
+        'nxsprof' or 'lsprof' macros
+    """
+
+    param_def = [
+        ['component_list',
+         ParamRepeat(['component', Type.String, None,
+                      'detector component to remove']),
+         None, 'List of components to show'],
+    ]
+
+    def run(self, component_list):
+        self.macros.nxsdsel(component_list)
 
 
 @macro()
@@ -516,6 +568,23 @@ class nxsrmdesc(Macro):
     ]
 
     def run(self, component_list):
+        self.macros.nxsdeldesc(component_list)
+
+
+class nxsdeldesc(Macro):
+    """ Remove the given description components.
+        Selected description components can be listed by
+        'nxsprof' or 'lsprof' macros
+        """
+
+    param_def = [
+        ['component_list',
+         ParamRepeat(['component', Type.String, None,
+                      'description component to remove']),
+         None, 'List of descpription components to remove'],
+    ]
+
+    def run(self, component_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         cpdct = json.loads(cnf["ComponentPreselection"])
@@ -538,6 +607,47 @@ class nxsrmdesc(Macro):
                 if name in dsdct:
                     dsdct.pop(str(name))
                     self.output("Removing %s" % name)
+            cnf["DataSourcePreselection"] = str(json.dumps(dsdct))
+
+        cnf["ComponentPreselection"] = str(json.dumps(cpdct))
+        self.selector.profileConfiguration = str(json.dumps(cnf))
+        update_description(self)
+        update_configuration(self)
+
+
+class nxsdseldesc(Macro):
+    """ Deselect the given description components.
+        Selected description components can be listed by
+        'nxsprof' or 'lsprof' macros
+    """
+
+    param_def = [
+        ['component_list',
+         ParamRepeat(['component', Type.String, None,
+                      'description component to remove']),
+         None, 'List of descpription components to remove'],
+    ]
+
+    def run(self, component_list):
+        set_selector(self)
+        cnf = json.loads(self.selector.profileConfiguration)
+        cpdct = json.loads(cnf["ComponentPreselection"])
+        if self.selector_version <= 2:
+            dsdct = set(json.loads(cnf["InitDataSources"]))
+            for name in component_list:
+                if name in cpdct:
+                    cpdct[str(name)] = False
+                if name in dsdct:
+                    dsdct.remove(str(name))
+                    self.output("Removing %s" % name)
+            cnf["InitDataSources"] = str(json.dumps(list(dsdct)))
+        else:
+            dsdct = json.loads(cnf["DataSourcePreselection"])
+            for name in component_list:
+                if name in cpdct:
+                    cpdct[str(name)] = False
+                if name in dsdct:
+                    dsdct[str(name)] = False
             cnf["DataSourcePreselection"] = str(json.dumps(dsdct))
 
         cnf["ComponentPreselection"] = str(json.dumps(cpdct))
