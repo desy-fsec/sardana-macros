@@ -439,7 +439,7 @@ class nxsdel(Macro):
         update_configuration(self)
 
 
-class nxsdsel(Macro):
+class nxsrm(Macro):
     """ Deselect the given detector components.
         Selected detector components can be listed by
         'nxsprof' or 'lsprof' macros
@@ -470,23 +470,6 @@ class nxsdsel(Macro):
         cnf["ComponentSelection"] = str(json.dumps(cpdct))
         self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
-
-
-class nxsrm(Macro):
-    """ Deselect the given detector components.
-        Selected detector components can be listed by
-        'nxsprof' or 'lsprof' macros
-    """
-
-    param_def = [
-        ['component_list',
-         ParamRepeat(['component', Type.String, None,
-                      'detector component to remove']),
-         None, 'List of components to show'],
-    ]
-
-    def run(self, component_list):
-        self.macros.nxsdsel(component_list)
 
 
 @macro()
@@ -554,23 +537,6 @@ class nxsadddesc(Macro):
         update_configuration(self)
 
 
-class nxsrmdesc(Macro):
-    """ Remove the given description components.
-        Selected description components can be listed by
-        'nxsprof' or 'lsprof' macros
-        """
-
-    param_def = [
-        ['component_list',
-         ParamRepeat(['component', Type.String, None,
-                      'description component to remove']),
-         None, 'List of descpription components to remove'],
-    ]
-
-    def run(self, component_list):
-        self.macros.nxsdeldesc(component_list)
-
-
 class nxsdeldesc(Macro):
     """ Remove the given description components.
         Selected description components can be listed by
@@ -615,7 +581,7 @@ class nxsdeldesc(Macro):
         update_configuration(self)
 
 
-class nxsdseldesc(Macro):
+class nxsrmdesc(Macro):
     """ Deselect the given description components.
         Selected description components can be listed by
         'nxsprof' or 'lsprof' macros
