@@ -1,4 +1,4 @@
-recursive-include python *.py
+recursive-include DESY_general *.py
 
 # global-exclude *.pyc .gitignore
 # exclude setup.cfg
