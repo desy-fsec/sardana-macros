@@ -6,6 +6,7 @@ import time
 import json
 import fnmatch
 import os
+import sys
 import subprocess
 from sardana.macroserver.macro import (
     Macro, Type, macro, ParamRepeat)
@@ -17,6 +18,10 @@ from taurus.console import Alignment
 Left, Right, HCenter = Alignment.Left, Alignment.Right, Alignment.HCenter
 Nothing = '< None >'
 Splitter = ', '
+
+
+if sys.version_info > (3,):
+        unicode = str
 
 
 def device_groups(self):
