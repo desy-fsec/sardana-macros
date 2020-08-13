@@ -360,6 +360,29 @@ class nxsadd(Macro):
         update_configuration(self)
 
 
+class nxsetorder(Macro):
+    """ Set a new order of detector datasources or channels
+        Available datasources can be listed by 'nxslsds' macro
+    """
+
+    param_def = [
+        ['datasource_list',
+         ParamRepeat(['datasource', Type.String, None,
+                      'new order of datasources']),
+         None, 'List of datasources in the right order'],
+    ]
+
+    def run(self, component_list):
+        set_selector(self)
+        cnf = json.loads(self.selector.profileConfiguration)
+        dslist = json.loads(cnf["OrderedChannels"])
+        cnf["OrderedChannels"] = str(json.dumps(list(component_list)))
+        self.output("Old channel order: %s" % dslist)
+        self.output("New channel order: %s" % component_list)
+        self.selector.profileConfiguration = str(json.dumps(cnf))
+        update_configuration(self)
+
+
 class nxset(Macro):
     """ Set the given timer(s) and detector components
         Available components can be listed by
