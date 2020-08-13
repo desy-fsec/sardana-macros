@@ -372,7 +372,7 @@ class nxsetorder(Macro):
          None, 'List of datasources in the right order'],
     ]
 
-    def run(self, component_list):
+    def run(self, datasource_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         dslist = json.loads(cnf["OrderedChannels"])
