@@ -7,6 +7,8 @@ import PyTango
 import time
 import numpy as np
 import HasyUtils
+import PySpectra
+import PySpectra.calc as calc
 
 class mvsa(Macro):
     """   
@@ -23,40 +25,11 @@ class mvsa(Macro):
       'mvsa show' shows the results, no move 
 """
     param_def = [ 
-        ['mode', Type.String  , 'peak', "Options: 'show','peak','cms','cen','dip','dipm','dipc','slit', 'slitm', 'slitc', 'step','stepm' and 'stepc'"],
+        ['mode', Type.String  , 'peak', "Options: 'show','peak','cms','cen','dip','dipm','dipc','slit', 'slitm', 'slitc', 'step','stepm' and 'stepc', 'stepssa', 'stepcssa', 'stepmssa'"],
         ['interactiveFlag', Type.Integer , 1, " '1' query before move (def.) "],
         ]
     result_def = [[ "result", Type.String, None, "'status=False' or 'status=True,mot1=12,...'" ]]
     interactive = True
-
-    def getFullPathName( self): 
-        '''
-        constructs the full file name using ScanDir, ScanFile and ScanID
-        '''
-        self.scanId =  int(self.getEnv( "ScanID"))
-        temp = "%05d" % int(self.getEnv( "ScanID"))
-        
-        #
-        # sometimes ScanFile is a one-element list instead of an array
-        #
-        var = self.getEnv( "ScanFile")
-        lst = []
-        if type(var).__name__ == 'list':
-            if var[0].find( '.fio') > 0:
-                lst = var[0].split(".")
-            elif var[1].find( '.fio') > 0:
-                lst = var[1].split(".")
-            else:
-                self.output( "mvsa: ScanFile does not contain a .fio file")
-                return None
-        else:
-            if var.find( '.fio') > 0:
-                lst = var.split(".")
-            else:
-                self.output( "mvsa: ScanFile does not contain a .fio file")
-                return None
-        argout = self.getEnv( 'ScanDir') + "/" + lst[0] + "_" + temp + "." + lst[1]
-        return argout
 
     def run(self, mode, interactiveFlag):
         #
@@ -80,45 +53,52 @@ class mvsa(Macro):
         if self.scanInfo is None:
             self.output( "mvsa: last scan aborted?")
             return result
+
+        fileName = HasyUtils.getScanFileName()
+        if fileName is None:
+            self.output( "mvsa: fileName cannot be created")
+
         #
-        # data from SardanaMonitor
+        # data from pyspMonitor or SardanaMonitor
         #
         message = 'undefined'
-        flagFound = False
-        flagDataFromSM = True
-        if HasyUtils.isSardanaMonitorAlive(): 
-            hsh = HasyUtils.toSardanaMonitor( { 'getData': True})
+        flagDataFound = False
+        flagDataFromMonitor = True
+        toMonitorFunc = None
+        fsaFunc = None
+        isPysp = False
+        if PySpectra.isPyspMonitorAlive():
+            toMonitorFunc = PySpectra.toPyspMonitor
+            isPysp = True
+        elif HasyUtils.isSardanaMonitorAlive(): 
+            toMonitorFunc = HasyUtils.toSardanaMonitor
+
+        if toMonitorFunc is not None:
+            hsh = toMonitorFunc( { 'getData': True})
             if hsh[ 'result'].upper() != 'DONE':
-                self.output( "mvsa: SardanaMonitor did not send DONE %s" % hsh[ 'result'])
+                self.output( "mvsa: SardanaMonitor did not send DONE, instead: %s" % hsh[ 'result'])
                 return result
-            if len( list(hsh[ 'getData'].keys())) == 0:
-                self.output( "mvsa: SardanaMonitor sent incomplete dict")
+            if len( hsh[ 'getData'].keys()) == 0:
+                self.output( "mvsa: no data")
                 return result
-            if signalCounter.upper() not in hsh[ 'getData']:
+            if not hsh[ 'getData'].has_key( signalCounter.upper()):
                 self.output( "mvsa: column %s is missing (from SM)" % signalCounter)
                 return result
-            if 'file_name_' not in hsh[ 'getData'][ 'symbols']:
-                self.output( "mvsa: file_name_ %s is missing (from SM)" % signalCounter)
-                return result
-            fileName = hsh[ 'getData'][ 'symbols'][ 'file_name_']
-            if fileName.find( '.') > 0:
-                fileName = fileName.split( '.')[0]
-            flagFound = True
-            message, xpos, xpeak, xcms, xcen = HasyUtils.fastscananalysis( hsh[ 'getData'][ signalCounter.upper()][ 'x'], 
-                                                                           hsh[ 'getData'][ signalCounter.upper()][ 'y'],
-                                                                           mode)
+            flagDataFound = True
+            message, xpos, xpeak, xcms, xcen = calc.fastscananalysis( hsh[ 'getData'][ signalCounter.upper()][ 'x'], 
+                                                                      hsh[ 'getData'][ signalCounter.upper()][ 'y'],
+                                                                      mode)
             if mode.lower() == 'show':
                 #
                 # par-3: flag-non-background-subtraction
                 #
-                ssaDct = HasyUtils.ssa( np.array( hsh[ 'getData'][ signalCounter.upper()][ 'x']), 
-                                        np.array(hsh[ 'getData'][ signalCounter.upper()][ 'y']), False)
+                ssaDct = calc.ssa( np.array( hsh[ 'getData'][ signalCounter.upper()][ 'x']), 
+                                     np.array(hsh[ 'getData'][ signalCounter.upper()][ 'y']), False)
         #
         # data from file
         #
         else:
-            flagDataFromSM = False
-            fileName = self.getFullPathName()
+            flagDataFromMonitor = False
             if fileName is None: 
                 self.output( "mvsa.run: terminated ")
                 return result
@@ -126,16 +106,16 @@ class mvsa(Macro):
 
             for col in a.columns:
                 if col.name == signalCounter:
-                    message, xpos, xpeak, xcms, xcen = HasyUtils.fastscananalysis( col.x, col.y, mode)
+                    message, xpos, xpeak, xcms, xcen = calc.fastscananalysis( col.x, col.y, mode)
                     if mode.lower() == 'show':
                         #
                         # par-3: flag-non-background-subtraction
                         #
-                        ssaDct = HasyUtils.ssa( np.array(col.x), np.array(col.y), False)
-                    flagFound = True
+                        ssaDct = calc.ssa( np.array(col.x), np.array(col.y), False)
+                    flagDataFound = True
                     break
 
-        if not flagFound:
+        if not flagDataFound:
             self.output( "Column %s not found in %s" % ( signalCounter, fileName))
             for col in a.columns:
                 self.output( "%s" % col.name)
@@ -148,7 +128,7 @@ class mvsa(Macro):
 
         if mode.lower() == 'show':
             self.output( "mvsa: file name: %s " % fileName)
-            self.output( "mvsa: dataFromSM %s" % repr( flagDataFromSM))
+            self.output( "mvsa: dataFromSM %s" % repr( flagDataFromMonitor))
             self.output( "mvsa: message '%s'" % (message))
             self.output( "mvsa: xpos %g" % (xpos))
             self.output( "mvsa: xpeak %g, cms %g cen  %g" % ( xpeak, xcms, xcen))
@@ -190,14 +170,26 @@ class mvsa(Macro):
         #
         # prompt the user for confirmation, unless we have an uncoditional 'go'
         #
+        posStart = None
         if interactiveFlag == 1:
-            if flagDataFromSM:
+            if flagDataFromMonitor:
                 self.output( "Scan name: %s, data from SM" % fileName)
             else:
                 self.output( "File name: %s " % fileName)
             for elm in motorArr:
                 p = PyTango.DeviceProxy( elm['name'])
+                elm[ 'proxy'] = p
                 self.output( "Move %s from %g to %g" % ( elm[ 'name'], p.Position, elm[ 'targetPos']))
+            posStart = motorArr[0][ 'proxy'].position
+            #
+            # move the red arrow to the target position
+            #
+            if isPysp: 
+                toMonitorFunc( {'command': ['display %s' % signalCounter, 
+                                            'setArrowMisc %s position %g' % \
+                                            ( signalCounter, motorArr[0]['targetPos']), 
+                                            'setArrowMisc %s show' % signalCounter,
+                ]})
             answer = self.input( "Exec move(s) [Y/N], def. 'N': ")
             if not (answer.lower() == "yes" or answer.lower() == "y"):
                 self.output( "Motor(s) not moved!")
@@ -224,7 +216,15 @@ class mvsa(Macro):
                     moving = True
                     break
             time.sleep( 0.1)
+            #if isPysp: 
+            #    toMonitorFunc( {'command': ['setArrowCurrent %s position %g' % \
+            #                                ( signalCounter, motorArr[0][ 'proxy'].position)]})
         result = "status=True"
+        #
+        # hide the misc arrow
+        #
+        if isPysp: 
+            toMonitorFunc( {'command': [ 'setArrowMisc %s hide' % signalCounter]})
         for elm in ( motorArr):
             p = PyTango.DeviceProxy( elm['name'])
             self.output( "Motor %s is now at %g" % ( elm[ 'name'], p.Position))
