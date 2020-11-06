@@ -6,6 +6,7 @@ import time
 import json
 import fnmatch
 import os
+import sys
 import subprocess
 from sardana.macroserver.macro import (
     Macro, Type, macro, ParamRepeat)
@@ -17,6 +18,10 @@ from taurus.console import Alignment
 Left, Right, HCenter = Alignment.Left, Alignment.Right, Alignment.HCenter
 Nothing = '< None >'
 Splitter = ', '
+
+
+if sys.version_info > (3,):
+        unicode = str
 
 
 def device_groups(self):
@@ -372,13 +377,13 @@ class nxsetorder(Macro):
          None, 'List of datasources in the right order'],
     ]
 
-    def run(self, component_list):
+    def run(self, datasource_list):
         set_selector(self)
         cnf = json.loads(self.selector.profileConfiguration)
         dslist = json.loads(cnf["OrderedChannels"])
-        cnf["OrderedChannels"] = str(json.dumps(list(component_list)))
+        cnf["OrderedChannels"] = str(json.dumps(list(datasource_list)))
         self.output("Old channel order: %s" % dslist)
-        self.output("New channel order: %s" % component_list)
+        self.output("New channel order: %s" % datasource_list)
         self.selector.profileConfiguration = str(json.dumps(cnf))
         update_configuration(self)
 
