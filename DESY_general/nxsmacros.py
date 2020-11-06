@@ -21,7 +21,7 @@ Splitter = ', '
 
 
 if sys.version_info > (3,):
-        unicode = str
+    str = str
 
 
 def device_groups(self):
@@ -30,13 +30,13 @@ def device_groups(self):
         return json.loads(self.selector.deviceGroups)
     else:
         return {
-            "counter": ["*exp_c*"],
-            "timer": ["*exp_t*"],
-            "mca": ["*exp_mca*"],
-            "dac": ["*exp_dac*"],
-            "adc": ["*exp_adc*"],
-            "motor": ["*exp_mot*"],
-            }
+                "counter": ["*exp_c*"],
+                "timer": ["*exp_t*"],
+                "mca": ["*exp_mca*"],
+                "dac": ["*exp_dac*"],
+                "adc": ["*exp_adc*"],
+                "motor": ["*exp_mot*"],
+        }
 
 
 @macro([["options_list",
@@ -910,20 +910,20 @@ class nxshow(Macro):
 
 
 def fetchProfile(mcr):
-        configold = getString(mcr, "ConfigDevice")
-        doorold = getString(mcr, "Door")
-        door = mcr.getDoorName()
-        if door and door != doorold:
-            mcr.selector.door = door
-        mcr.selector.fetchProfile()
-        confignew = getString(mcr, "ConfigDevice")
-        doornew = getString(mcr, "Door")
-        if configold and configold != confignew:
-            mcr.selector.configDevice = configold
-        if door and door != doornew:
-            mcr.selector.door = door
-            mcr.info("Profile's door '%s' was changed to '%s'" %
-                     (doornew, door))
+    configold = getString(mcr, "ConfigDevice")
+    doorold = getString(mcr, "Door")
+    door = mcr.getDoorName()
+    if door and door != doorold:
+        mcr.selector.door = door
+    mcr.selector.fetchProfile()
+    confignew = getString(mcr, "ConfigDevice")
+    doornew = getString(mcr, "Door")
+    if configold and configold != confignew:
+        mcr.selector.configDevice = configold
+    if door and door != doornew:
+        mcr.selector.door = door
+        mcr.info("Profile's door '%s' was changed to '%s'" %
+                 (doornew, door))
 
 
 def wait_for_device(proxy, counter=100):
@@ -998,7 +998,7 @@ def printDict(mcr, name, decode=True, label=None, out=None):
             data = {}
         else:
             data = dict(
-                [str(k), (str(v) if isinstance(v, unicode) else v)]
+                [str(k), (str(v) if isinstance(v, str) else v)]
                 for k, v in data.items())
     except Exception:
         pass
@@ -1024,7 +1024,7 @@ def printConfDict(mcr, name, decode=True, label=None, out=None):
             data = {}
         else:
             data = dict(
-                [str(k), (str(v) if isinstance(v, unicode) else v)]
+                [str(k), (str(v) if isinstance(v, str) else v)]
                 for k, v in data.items())
     except Exception:
         pass
@@ -1050,7 +1050,7 @@ def printConfList(mcr, name, decode=True, label=None, out=None):
             data = []
         else:
             data = [
-                (str(v) if isinstance(v, unicode) else v)
+                (str(v) if isinstance(v, str) else v)
                 for v in data]
     except Exception as e:
         mcr.output(str(e))
@@ -1087,7 +1087,7 @@ def printList(mcr, name, decode=True, label=None, command=False, out=None):
             data = []
         else:
             data = [
-                (str(v) if isinstance(v, unicode) else v)
+                (str(v) if isinstance(v, str) else v)
                 for v in data]
     except Exception as e:
         mcr.output(str(e))

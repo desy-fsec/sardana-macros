@@ -2,9 +2,9 @@
 
 """measures the execution time of another macro"""
 
-from sardana.macroserver.macro import *
-from sardana.macroserver.macro import macro
+from sardana.macroserver.macro import Type, Macro
 import time
+
 
 class timedMacro(Macro):
     """
@@ -16,7 +16,7 @@ class timedMacro(Macro):
        ['cmd', Type.String, None, "the command, in parentheses"],
        ['rest', Type.String, "Empty", "must be empty"],
     ]
-    result_def = [["result", Type.Float, None, "the execution time" ]]
+    result_def = [["result", Type.Float, None, "the execution time"]]
 
     def run(self, cmd, rest):
 

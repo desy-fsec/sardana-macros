@@ -30,11 +30,13 @@ __docformat__ = 'restructuredtext'
 
 
 import datetime
-from sardana.macroserver.macro import Type, Macro, macro, ViewOption, iMacro
+# from sardana.macroserver.macro import Type, Macro, macro, ViewOption, iMacro
+from sardana.macroserver.macro import Type, Macro, ViewOption
 
 import PyTango
 
-import numpy as np
+# import numpy as np
+
 
 class wg(Macro):
     """Show motor positions of a list of motors"""
@@ -57,12 +59,17 @@ class wg(Macro):
 
         show_dial = self.getViewOption(ViewOption.ShowDial)
         if show_dial:
-            self.output('Current positions (user, dial) on %s'%datetime.datetime.now().isoformat(' '))
+            self.output(
+                'Current positions (user, dial) on %s'
+                % datetime.datetime.now().isoformat(' '))
         else:
-            self.output('Current positions (user) on %s'%datetime.datetime.now().isoformat(' '))
+            self.output(
+                'Current positions (user) on %s'
+                % datetime.datetime.now().isoformat(' '))
         self.output('')
 
-        self.execMacro('_wm',self.all_motors, **self.table_opts)
+        self.execMacro('_wm', self.all_motors, **self.table_opts)
+
 
 class wm_encoder(Macro):
     """ Show motor position from encoder readout """

@@ -6,21 +6,26 @@ the feature is used in gscan.py, scan.py and macro.py
 14.6.2018: this file is OK for the old and new Sardana version
 """
 
-__all__ = ["gf_status", "gf_list", "gf_head", "gf_enable",
+__all__ = ["gf_status",
+           # "gf_list", "gf_head",
+           "gf_enable",
            "gh_enable", "gh_disable", "gh_isEnabled",
-           "gc_enable", "gc_enable", "gc_isEnabled",
-       ]
+           "gc_enable", "gc_enable", "gc_isEnabled"]
 
-import PyTango, os, sys
-from sardana.macroserver.macro import *
-from sardana.macroserver.macro import macro
+# import PyTango
+# import os
+# import sys
+from sardana.macroserver.macro import Macro, Type
+# from sardana.macroserver.macro import macro
 import HasyUtils
+
 
 #
 # status for all features
 #
 class gf_status(Macro):
-    """display the status of the general features: hooks, conditions, on_stop """
+    """display the status of the general features:
+          hooks, conditions, on_stop """
 
     def run(self):
         self.output("Status general features:")
@@ -46,6 +51,7 @@ class gf_status(Macro):
         #
         self.execMacro("gs_isEnabled")
 
+
 #
 # general feature
 #
@@ -57,6 +63,7 @@ class gf_enable(Macro):
         self.execMacro("gc_enable")
         self.execMacro("gs_enable")
 
+
 class gf_disable(Macro):
     """disable all general features: hooks, conditions, on_stop """
 
@@ -66,6 +73,7 @@ class gf_disable(Macro):
         self.execMacro("gs_disable")
 
         self.info("All general features disabled")
+
 
 #
 # general hooks feature
@@ -82,12 +90,15 @@ class gh_enable(Macro):
 
     hook positions: defaultMacroNames:
         pre-scan: gh_pre_scan, pre-move: gh_pre_move, post-move: gh_post_move,
-        pre-acq: gh_pre_acq, post-acq: gh_post_acq, post-step: gh_post_step, post-scan: gh_post_scan
+        pre-acq: gh_pre_acq, post-acq: gh_post_acq,
+        post-step: gh_post_step, post-scan: gh_post_scan
     """
 
     param_def = [
-        ['macro_name', Type.String, "default", 'Macro name executed at hook_pos, e.g. gh_pre_scan'],
-        ['hook_pos', Type.String, "default", 'Position where the macro_name is executed, e.g. pre-scan'],
+        ['macro_name', Type.String, "default",
+         'Macro name executed at hook_pos, e.g. gh_pre_scan'],
+        ['hook_pos', Type.String, "default",
+         'Position where the macro_name is executed, e.g. pre-scan'],
     ]
 
     def gh_enableD9(self, macro_name, hook_pos):
@@ -111,7 +122,8 @@ class gh_enable(Macro):
                 hook_tuple = (hookDct[hook], [hook])
                 macros_list.append(hook_tuple)
             #
-            # [('gh_pre_scan', ['pre-scan']), ('gh_post_scan', ['post-scan']), ...)]
+            # [('gh_pre_scan', ['pre-scan']),
+            #      ('gh_post_scan', ['post-scan']), ...)]
             #
             self.debug("gh_enable: %s" % repr(macros_list))
             self.setEnv("_GeneralHooks", macros_list)
@@ -126,7 +138,7 @@ class gh_enable(Macro):
         #
         # check, if macro_name exists on the MacroServer
         #
-        if not macro_name in self.getMacroNames():
+        if macro_name not in self.getMacroNames():
             self.error("gh_enable(D9): macro %s does not exist" % macro_name)
             return
 
@@ -158,7 +170,9 @@ class gh_enable(Macro):
         #
         if hook_pos == "default":
             if macro_name != 'default':
-                self.error("gh_enableD8: a macro name (%s) must not be specified without a hook name" % macro_name)
+                self.error(
+                    "gh_enableD8: a macro name (%s) must not be "
+                    "specified without a hook name" % macro_name)
                 return
 
             self.info("Enabling all general hooks with default macro names")
@@ -176,7 +190,7 @@ class gh_enable(Macro):
         #
         # check, if macro_name exists on the MacroServer
         #
-        if not macro_name in self.getMacroNames():
+        if macro_name not in self.getMacroNames():
             self.error("gh_enable(D9): macro %s does not exist" % macro_name)
             return
 
@@ -192,6 +206,7 @@ class gh_enable(Macro):
         self.debug("gh_enableD8: %s" % repr(gh_macros_dict))
         self.setEnv("GeneralHooks", gh_macros_dict)
         return
+
     #
     #
     #
@@ -204,11 +219,13 @@ class gh_enable(Macro):
             self.gh_enableD8(macro_name, hook_pos)
             return
 
+
 class gh_disable(Macro):
     """disable general hooks """
 
     param_def = [
-        ['hook_pos', Type.String, "all", 'Position of the general hook to be disabled'],
+        ['hook_pos', Type.String, "all",
+         'Position of the general hook to be disabled'],
     ]
 
     def gh_disableD9(self, hook_pos):
@@ -232,11 +249,13 @@ class gh_disable(Macro):
             return
 
         if hook_pos not in hookDct.keys():
-            self.error("gh_disable (D9): hook_pos %s not in dictionary" % hook_pos)
+            self.error(
+                "gh_disable (D9): hook_pos %s not in dictionary" % hook_pos)
             return
 
         #
-        # [('gh_pre_scan', ['pre-scan']), ('gh_post_scan', ['post-scan']), ...)]
+        # [('gh_pre_scan', ['pre-scan']),
+        #        ('gh_post_scan', ['post-scan']), ...)]
         #
         macros_list = []
         for elm in gh_macros_list:
@@ -248,7 +267,6 @@ class gh_disable(Macro):
 
         self.debug("gh_disable: %s" % repr(macros_list))
         self.setEnv("_GeneralHooks", macros_list)
-
 
     def gh_disableD8(self, hook_pos):
 
@@ -262,7 +280,8 @@ class gh_disable(Macro):
             self.info("All hooks disabled")
         else:
             if hook_pos not in gh_macros_dict.keys():
-                self.info("gh_disableD8: %s not an allowed hook name" % hook_pos)
+                self.info(
+                    "gh_disableD8: %s not an allowed hook name" % hook_pos)
                 return
 
             try:
@@ -283,6 +302,7 @@ class gh_disable(Macro):
 
         return
 
+
 class gh_isEnabled(Macro):
     """
     return True, if hook_pos enabled
@@ -290,10 +310,12 @@ class gh_isEnabled(Macro):
     """
 
     param_def = [
-        ['hook_pos', Type.String, "any", 'Hook to be checked, e.g. pre-scan, default: any'],
+        ['hook_pos', Type.String, "any",
+         'Hook to be checked, e.g. pre-scan, default: any'],
     ]
 
-    result_def = [["result", Type.Boolean, None, "True, if the general hooks feature is enabled" ]]
+    result_def = [["result", Type.Boolean, None,
+                   "True, if the general hooks feature is enabled"]]
 
     def gh_isEnabledD9(self, hook_pos):
 
@@ -302,7 +324,8 @@ class gh_isEnabled(Macro):
         except Exception:
             return False
         #
-        # _GeneralHooks exists. If hook_poos == 'any': If there is some contents, return True
+        # _GeneralHooks exists. If hook_poos == 'any':
+        #        If there is some contents, return True
         #
         if hook_pos == 'any':
             if len(gh_macros_list) == 0:
@@ -311,9 +334,11 @@ class gh_isEnabled(Macro):
             self.execMacro("lsgh")
             return True
         #
-        # [('gh_pre_scan', ['pre-scan']), ('gh_post_scan', ['post-scan']), ...)]
+        # [('gh_pre_scan', ['pre-scan']),
+        #           ('gh_post_scan', ['post-scan']), ...)]
         #
-        macros_list = []
+
+        # macros_list = []
         for elm in gh_macros_list:
             #
             # ('gh_pre_scan', ['pre-scan'])
@@ -332,7 +357,8 @@ class gh_isEnabled(Macro):
             return False
 
         #
-        # GeneralHooks exists. If hook_poos == 'any' and there is some contents, return True
+        # GeneralHooks exists.
+        # If hook_poos == 'any' and there is some contents, return True
         #
         if hook_pos == 'any':
             if len(general_hooks) == 0:
@@ -360,6 +386,8 @@ class gh_isEnabled(Macro):
             result = self.gh_isEnabledD8(hook_pos)
 
         return result
+
+
 #
 # general condition feature
 #
@@ -386,10 +414,12 @@ class gc_disable(Macro):
         except Exception:
             pass
 
+
 class gc_isEnabled(Macro):
     """return True, if the general conditions feature is enabled """
 
-    result_def = [["result", Type.Boolean, None, "True, if the general condition feature is enabled" ]]
+    result_def = [["result", Type.Boolean, None,
+                   "True, if the general condition feature is enabled"]]
 
     def run(self):
         result = False
@@ -403,6 +433,8 @@ class gc_isEnabled(Macro):
             self.output("No general condition")
 
         return result
+
+
 #
 # on_stop feature
 #
@@ -410,15 +442,16 @@ class gs_enable(Macro):
     """enable on_stop feature """
 
     param_def = [
-        ['function_name', Type.String, "default", 'Function name with module and parameters'],
+        ['function_name', Type.String, "default",
+         'Function name with module and parameters'],
         ]
 
     def run(self, function_name):
         if function_name == "default":
-            self.setEnv("GeneralOnStopFunction", "general_functions.general_on_stop")
+            self.setEnv("GeneralOnStopFunction",
+                        "general_functions.general_on_stop")
         else:
             self.setEnv("GeneralOnStopFunction", function_name)
-
 
 
 class gs_disable(Macro):
@@ -430,10 +463,12 @@ class gs_disable(Macro):
         except Exception:
             pass
 
+
 class gs_isEnabled(Macro):
     """return True, if the general on_stop feature is enabled """
 
-    result_def = [["result", Type.Boolean, None, "True, if the general on_stop feature is enabled" ]]
+    result_def = [["result", Type.Boolean, None,
+                   "True, if the general on_stop feature is enabled"]]
 
     def run(self):
         result = False
