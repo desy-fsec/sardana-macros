@@ -30,7 +30,7 @@ __docformat__ = 'restructuredtext'
 
 
 import datetime
-from sardana.macroserver.macro import Type, Macro, macro, ParamRepeat, ViewOption, iMacro
+from sardana.macroserver.macro import Type, Macro, macro, ViewOption, iMacro
 
 import PyTango
 
@@ -41,7 +41,7 @@ class wg(Macro):
 
     param_def = [
         ['motors',
-            ParamRepeat(['motor', Type.Moveable, None, 'motor']),
+            [['motor', Type.Moveable, None, 'motor']],
             None, 'List of motors'],
         ]
 

@@ -81,11 +81,11 @@ class ascan_regions(Macro):
 
     param_def = [ 
         ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
-        ["scan_regions", ParamRepeat(
-                ['start', Type.Float, None, 'Start position'],
-                ['stop', Type.Float, None, 'Stop position'],
-                ['nbstep', Type.Integer, None, 'Nb of steps'],
-                ['integ_time', Type.Float, None, 'Integration time']),
+        ["scan_regions", [
+            ['start', Type.Float, None, 'Start position'],
+            ['stop', Type.Float, None, 'Stop position'],
+            ['nbstep', Type.Integer, None, 'Nb of steps'],
+            ['integ_time', Type.Float, None, 'Integration time']],
          None, 'List of scan regions']
         ]
     
@@ -107,11 +107,11 @@ class dscan_regions(Macro):
 
     param_def = [ 
         ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
-        ["scan_regions", ParamRepeat(
-                ['start', Type.Float, None, 'Relative start position'],
-                ['stop', Type.Float, None, 'Relative stop position'],
-                ['nbstep', Type.Integer, None, 'Nb of steps'],
-                ['integ_time', Type.Float, None, 'Integration time']),
+        ["scan_regions", [
+            ['start', Type.Float, None, 'Relative start position'],
+            ['stop', Type.Float, None, 'Relative stop position'],
+            ['nbstep', Type.Integer, None, 'Nb of steps'],
+            ['integ_time', Type.Float, None, 'Integration time']],
          None, 'List of scan regions']
         ]
     
@@ -137,11 +137,11 @@ class fscan_regions(Macro):
 
     param_def = [ 
         ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
-        ["scan_regions", ParamRepeat(
-                ['start', Type.Float, None, 'Start position'],
-                ['stop', Type.Float, None, 'Stop position'],
-                ['nbstep', Type.Integer, None, 'Nb of steps'],
-                ['integ_time', Type.Float, None, 'Integration time']),
+        ["scan_regions", [
+            ['start', Type.Float, None, 'Start position'],
+            ['stop', Type.Float, None, 'Stop position'],
+            ['nbstep', Type.Integer, None, 'Nb of steps'],
+            ['integ_time', Type.Float, None, 'Integration time']],
          None, 'List of scan regions']
         ]
     

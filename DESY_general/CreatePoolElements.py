@@ -16,8 +16,8 @@ class _create_controller(Macro):
         ['ctrl_classname',  Type.String, None, 'Name of the controller class'],
         ['ctrl_name',  Type.String, None, 'Name of the controller to create'],
         ["property_pairs", 
-         ParamRepeat(['property_name', Type.String, None, 'controller property name'],
-                     ['property_value', Type.String, None, 'controller property value']),
+         [['property_name', Type.String, None, 'controller property name'],
+          ['property_value', Type.String, None, 'controller property value']],
          "", 'List of property pairs']
         ]
 

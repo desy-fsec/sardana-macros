@@ -9,7 +9,7 @@ import os
 import sys
 import subprocess
 from sardana.macroserver.macro import (
-    Macro, Type, macro, ParamRepeat)
+    Macro, Type, macro)
 from sardana.macroserver.msexception import UnknownEnv
 
 from taurus.console.list import List
@@ -40,8 +40,8 @@ def device_groups(self):
 
 
 @macro([["options_list",
-         ParamRepeat(['option', Type.String, 'None', 'option'],
-                     ['value', Type.String, 'None', 'value']),
+         [['option', Type.String, 'None', 'option'],
+          ['value', Type.String, 'None', 'value']],
          ['None', 'None'],
          "List of options and values"]])
 def nxselector(self, options_list):
@@ -99,8 +99,8 @@ from the linux command-line.
 
 
 @macro([["options_list",
-         ParamRepeat(['option', Type.String, 'None', 'option'],
-                     ['value', Type.String, 'None', 'value']),
+         [['option', Type.String, 'None', 'option'],
+          ['value', Type.String, 'None', 'value']],
          ['None', 'None'],
          "List of options and values"]])
 def nxsmacrogui(self, options_list):
@@ -320,7 +320,7 @@ class nxsettimers(Macro):
 
     param_def = [
         ['timer_list',
-         ParamRepeat(['timer', Type.String, None, 'timer to select']),
+         [['timer', Type.String, None, 'timer to select']],
          None, 'List of profile timers to set'],
     ]
 
@@ -341,8 +341,8 @@ class nxsadd(Macro):
 
     param_def = [
         ['component_list',
-         ParamRepeat(['component', Type.String, None,
-                      'detector component to add']),
+         [['component', Type.String, None,
+           'detector component to add']],
          None, 'List of detector components to add'],
     ]
 
@@ -372,8 +372,8 @@ class nxsetorder(Macro):
 
     param_def = [
         ['datasource_list',
-         ParamRepeat(['datasource', Type.String, None,
-                      'new order of datasources']),
+         [['datasource', Type.String, None,
+           'new order of datasources']],
          None, 'List of datasources in the right order'],
     ]
 
@@ -396,8 +396,8 @@ class nxset(Macro):
 
     param_def = [
         ['component_list',
-         ParamRepeat(['component', Type.String, None,
-                      'detector component to add']),
+         [['component', Type.String, None,
+           'detector component to add']],
          None, 'List of detector components to add'],
     ]
 
@@ -440,8 +440,8 @@ class nxsdel(Macro):
 
     param_def = [
         ['component_list',
-         ParamRepeat(['component', Type.String, None,
-                      'detector component to remove']),
+         [['component', Type.String, None,
+           'detector component to remove']],
          None, 'List of components to show'],
     ]
 
@@ -475,8 +475,7 @@ class nxsrm(Macro):
 
     param_def = [
         ['component_list',
-         ParamRepeat(['component', Type.String, None,
-                      'detector component to remove']),
+         [['component', Type.String, None, 'detector component to remove']],
          None, 'List of components to show'],
     ]
 
@@ -527,8 +526,8 @@ class nxsadddesc(Macro):
 
     param_def = [
         ['component_list',
-         ParamRepeat(['component', Type.String, None,
-                      'description component to add']),
+         [['component', Type.String, None,
+           'description component to add']],
          None, 'List of description components to add'],
     ]
 
@@ -573,8 +572,8 @@ class nxsdeldesc(Macro):
 
     param_def = [
         ['component_list',
-         ParamRepeat(['component', Type.String, None,
-                      'description component to remove']),
+         [['component', Type.String, None,
+           'description component to remove']],
          None, 'List of descpription components to remove'],
     ]
 
@@ -617,8 +616,8 @@ class nxsrmdesc(Macro):
 
     param_def = [
         ['component_list',
-         ParamRepeat(['component', Type.String, None,
-                      'description component to remove']),
+         [['component', Type.String, None,
+           'description component to remove']],
          None, 'List of descpription components to remove'],
     ]
 
@@ -696,7 +695,7 @@ class nxsusetudata(Macro):
 
     param_def = [
         ['name_list',
-         ParamRepeat(['name', Type.String, None, 'user data name to delete']),
+         [['name', Type.String, None, 'user data name to delete']],
          None, 'List of user data names to delete'],
     ]
 

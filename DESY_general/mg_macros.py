@@ -938,8 +938,8 @@ class change_mg(Macro):
     """
     param_def = [ 
         ["options_list",
-         ParamRepeat(['option', Type.String, "None", 'option'],
-                     ['value', Type.String, "None", 'value']),
+         [['option', Type.String, "None", 'option'],
+          ['value', Type.String, "None", 'value']],
          ["None","None"], "List of options and values"
          ]
         ]
