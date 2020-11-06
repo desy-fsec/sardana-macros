@@ -10,8 +10,8 @@ import math
 
 class lup(Macro):
     """Line-up scan:
-    Like dscan, a relative motor scan of one motor.    
-    """ 
+    Like dscan, a relative motor scan of one motor.
+    """
 
     param_def = [
         ['motor',      Type.Moveable,   "None", 'Moveable to move'],
@@ -19,43 +19,43 @@ class lup(Macro):
         ['rel_final_pos',  Type.Float,   -999, 'Scan final position'],
         ['nr_interv',  Type.Integer, -999, 'Number of scan intervals'],
         ['integ_time', Type.Float,   -999, 'Integration time']
-        ]    
+        ]
 
-    
+
     def run(self,motor,rel_start_pos,rel_final_pos,nr_interv,integ_time):
 
         if ((integ_time != -999)):
             motor_pos = motor.getPosition()
-            scan=self.dscan( motor, rel_start_pos, rel_final_pos, nr_interv, integ_time)
+            scan=self.dscan(motor, rel_start_pos, rel_final_pos, nr_interv, integ_time)
         else:
-            self.output( "Usage:   lup motor start end intervals time")
-          
+            self.output("Usage:   lup motor start end intervals time")
+
 class dummyscan(Macro):
     """dummyscan:
-    
-    Scan of dummy motor, just reading out the counters   
-    """ 
+
+    Scan of dummy motor, just reading out the counters
+    """
 
     param_def = [
        ['start_pos',  Type.Float,   -999, 'Scan start position'],
        ['final_pos',  Type.Float,   -999, 'Scan final position'],
        ['nr_interv',  Type.Integer, -999, 'Number of scan intervals'],
        ['integ_time', Type.Float,   -999, 'Integration time']
-       ]    
+       ]
 
-    
+
     def run(self,start_pos,final_pos,nr_interv,integ_time):
-  
-        if ((integ_time != -999)):       
-            scan=self.ascan( "exp_dmy01", start_pos, final_pos, nr_interv, integ_time)
+
+        if ((integ_time != -999)):
+            scan=self.ascan("exp_dmy01", start_pos, final_pos, nr_interv, integ_time)
         else:
-            self.output( "Usage:   dummyscan start stop intervals time")
-            
+            self.output("Usage:   dummyscan start stop intervals time")
+
 
 
 class scan_loop(Macro):
 
- 
+
     param_def = [
        ['motor',      Type.Moveable,   None, 'Moveable to move'],
        ['start_pos',  Type.Float,   None, 'Scan start position'],
@@ -79,7 +79,7 @@ class scan_loop(Macro):
 class ascan_regions(Macro):
     """ Absolute scan in regions """
 
-    param_def = [ 
+    param_def = [
         ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
         ["scan_regions", [
             ['start', Type.Float, None, 'Start position'],
@@ -88,8 +88,8 @@ class ascan_regions(Macro):
             ['integ_time', Type.Float, None, 'Integration time']],
          None, 'List of scan regions']
         ]
-    
-    def run(self, motor, scan_regions):      
+
+    def run(self, motor, scan_regions):
         # calculate number of regions
         nregions = len(scan_regions)
         for i in range(0, nregions):
@@ -101,11 +101,11 @@ class ascan_regions(Macro):
 
             self.runMacro(macro)
 
- 
+
 class dscan_regions(Macro):
     """ Relative scan in regions """
 
-    param_def = [ 
+    param_def = [
         ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
         ["scan_regions", [
             ['start', Type.Float, None, 'Relative start position'],
@@ -114,9 +114,9 @@ class dscan_regions(Macro):
             ['integ_time', Type.Float, None, 'Integration time']],
          None, 'List of scan regions']
         ]
-    
+
     def run(self, motor, scan_regions):
-        
+
         # calculate number of regions
         nregions = len(scan_regions)
         posOld = motor.getPosition()
@@ -128,14 +128,14 @@ class dscan_regions(Macro):
                                           scan_regions[i][3])                # integration time
 
             self.runMacro(macro)
-        self.mv( motor, posOld)  
+        self.mv(motor, posOld)
 
 
 
 class fscan_regions(Macro):
     """ Scan in regions """
 
-    param_def = [ 
+    param_def = [
         ['motor',      Type.Moveable,   None, 'Motor to scan to move'],
         ["scan_regions", [
             ['start', Type.Float, None, 'Start position'],
@@ -144,8 +144,8 @@ class fscan_regions(Macro):
             ['integ_time', Type.Float, None, 'Integration time']],
          None, 'List of scan regions']
         ]
-    
-    def run(self, motor, scan_regions): 
+
+    def run(self, motor, scan_regions):
         nregions = len(scan_regions)
         x_points = []
         time_arr = []
@@ -166,7 +166,7 @@ class fscan_regions(Macro):
             time_str = time_str + str(time_arr[i]) + ", "
         x_str = x_str + "]"
         time_str = time_str + "]"
-        
+
         macro,pars = self.createMacro('fscan', x_str, time_str, motor, "x")
-        
+
         self.runMacro(macro)

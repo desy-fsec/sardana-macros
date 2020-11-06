@@ -1,5 +1,5 @@
 #!/bin/env python
-  
+
 """
 this file contains miscellaneous macros
 
@@ -21,19 +21,16 @@ class smPost(Macro):
 
     """
     param_def = [
-        [ "printer", Type.String, "default",  "the printer name" ],
+        ["printer", Type.String, "default",  "the printer name" ],
         ]
 
     def run(self, printer):
-        if printer.find( 'default') == 0:
-            printer = os.getenv( 'PRINTER')
+        if printer.find('default') == 0:
+            printer = os.getenv('PRINTER')
             if printer is None:
-                self.output( "smPost: shell-environment variable PRINTER not defined and no parameter supplied")
+                self.output("smPost: shell-environment variable PRINTER not defined and no parameter supplied")
                 return
 
-        a = HasyUtils.toSardanaMonitor( { 'gra_command': "post/print/nolog/nocon/lp=%s" % printer})
-        if a[ 'result'] != '1':
-            self.output( "smPost: bad result %s" % repr( a))
-
-
-
+        a = HasyUtils.toSardanaMonitor({ 'gra_command': "post/print/nolog/nocon/lp=%s" % printer})
+        if a['result'] != '1':
+            self.output("smPost: bad result %s" % repr( a))

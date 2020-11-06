@@ -15,18 +15,18 @@ from sardana.macroserver.macro import macro
 
 class set_harmonic(Macro):
     """set new harmonic value"""
-    
+
     param_def = [
         ['harmonic', Type.Integer, None, 'Harmonic value to set'],
         ]
-    
+
     def run(self, harmonic):
         undulator_device_name = "energy_und"
         try:
             undulator_device_name = self.getEnv('UndulatorDevice')
         except:
             pass
-                    
+
         try:
             undulator_device = PyTango.DeviceProxy(undulator_device_name)
         except:
@@ -46,13 +46,13 @@ class set_harmonic(Macro):
 
         lim = undulator_device.UnitLimitMin
         lim = undulator_device.UnitLimitMax
-        
+
         try:
             current_position = undulator_tango_device.read_attribute("Position").value
         except:
             self.error("Unable to read current undulator position")
             return
-        
+
         try:
             undulator_device.write_attribute("Position", current_position)
         except:

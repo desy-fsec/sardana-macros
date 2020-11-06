@@ -21,11 +21,11 @@
 #
 ##############################################################################
 
-""" 
+"""
     Macro library for performing continuous scans taking Lambda images
-    synchronized with analog and digital PiLC readings. 
+    synchronized with analog and digital PiLC readings.
     Synchronization is achieved by a
-    TriggerGenerator PiLC. 
+    TriggerGenerator PiLC.
 """
 
 __all__ = ['cscan_pilc_lambda', 'cscan_pilc_lambda_senv']
@@ -37,14 +37,14 @@ from sardana.macroserver.macro import *
 import time
 
 class cscan_pilc_lambda(Macro):
-    """ Performs a continuous scan taking Lambda images 
+    """ Performs a continuous scan taking Lambda images
         synchronized with analog and digital PiLC readings.
     """
 
     env = ('LambdaDevice', 'PiLCTriggerGeneratorDevice',
            'PiLCDigitalSlaveDevice', 'PiLCAnalogSlaveDevice',
            'ScanDir', 'ScanFile')
-    
+
     param_def = [
         ['nb_frames', Type.Integer, None, 'Number of Lambda frames to be taken'],
         ['exp_time', Type.Float,    None, 'Exposure time (s)']
@@ -68,13 +68,13 @@ class cscan_pilc_lambda(Macro):
 
         msg = ""
         if proxyTG.state() != PyTango.DevState.ON:
-            msg = msg + "\n" + ("%s is in state %s" % ( self.proxyTG.name(), self.proxyTG.state()))
+            msg = msg + "\n" + ("%s is in state %s" % (self.proxyTG.name(), self.proxyTG.state()))
         if proxyAS.state() != PyTango.DevState.ON:
-            msg = msg + "\n" + ("%s is in state %s" % ( self.proxyAS.name(), self.proxyAS.state()))
+            msg = msg + "\n" + ("%s is in state %s" % (self.proxyAS.name(), self.proxyAS.state()))
         if proxyDS.state() != PyTango.DevState.ON:
-            msg = msg + "\n" + ("%s is in state %s" % ( self.proxyDS.name(), self.proxyDS.state()))
+            msg = msg + "\n" + ("%s is in state %s" % (self.proxyDS.name(), self.proxyDS.state()))
         if proxyLambda.state() != PyTango.DevState.ON:
-            msg = msg + "\n" + ("%s is in state %s" % ( self.proxyLambda.name(), self.proxyLambda.state()))
+            msg = msg + "\n" + ("%s is in state %s" % (self.proxyLambda.name(), self.proxyLambda.state()))
         if msg != "":
             self.error(msg)
             return
@@ -91,12 +91,12 @@ class cscan_pilc_lambda(Macro):
             return
 
         ### Configure devices ###
-        
-        scanDir = self.getEnv( 'ScanDir')
-        scanFile = self.getEnv( 'ScanFile')
+
+        scanDir = self.getEnv('ScanDir')
+        scanFile = self.getEnv('ScanFile')
 
         # set trigger generator attributes
-        
+
         proxyTG.FileDir = scanDir
         proxyTG.FilePrefix = "%s_TG" % scanFile
         proxyTG.NbTriggers = nb_frames
@@ -104,29 +104,29 @@ class cscan_pilc_lambda(Macro):
         proxyTG.TimeTriggerStepSize = exp_time
         proxyTG.TriggerPulseLength = exp_time
         proxyTG.TriggerMode = 2 # time
-        
+
         # set analog slave attributes
-        
+
         proxyAS.FileDir = scanDir
         proxyAS.FilePrefix = "%s_AS" % scanFile
         proxyAS.ManualMode = 0
-        
+
         # set digital slave attributes
-        
+
         proxyDS.FileDir = scanDir
         proxyDS.FilePrefix = "%s_DS" % scanFile
         proxyDS.ManualMode = 0
-        
+
         # set Lambda attributes
-        
+
         proxyLambda.SaveFilePath = scanDir
         proxyLambda.FilePrefix = "%s_Lambda" % scanFile
         proxyLambda.AppendData = True
-        proxyLambda.PrecompressEnabled = True 
+        proxyLambda.PrecompressEnabled = True
         proxyLambda.FrameNumbers = nb_frames
         proxyLambda.FramesPerFile = nb_frames
         proxyLambda.OperatingMode = "TwentyFourBit"
-        proxyLambda.ShutterTime = int( exp_time*1000. - 1.)
+        proxyLambda.ShutterTime = int(exp_time*1000. - 1.)
         proxyLambda.TriggerMode = 2 # external trigger
 
         ### Start scan ###
@@ -134,32 +134,32 @@ class cscan_pilc_lambda(Macro):
         proxyLambda.StartAcq()
 
         self.output("Lambda acquisition started")
-        
+
         startTime = time.time()
         while proxyLambda.state() != PyTango.DevState.MOVING:
-            time.sleep( 0.01)
+            time.sleep(0.01)
             if (time.time() - startTime) > LAMBDA_TO_BECOME_MOVING:
                 self.error("Lambda does not become MOVING")
                 return
-            
-        time.sleep( 0.1)
-        proxyTG.write_attribute( "Arm", 1)
+
+        time.sleep(0.1)
+        proxyTG.write_attribute("Arm", 1)
 
         self.output("Triggergenerator armed")
-        
+
         totalTime = nb_frames*exp_time
         updateTime = 1
         if totalTime < 2.0:
             updateTime = 0.1
         startTime = time.time()
         while proxyTG.state() != PyTango.DevState.ON:
-            time.sleep( updateTime)
-            self.output("%.4g/%gs: remaining triggers %d" % ( time.time() - startTime, totalTime, 
+            time.sleep(updateTime)
+            self.output("%.4g/%gs: remaining triggers %d" % (time.time() - startTime, totalTime,
                                                               o.proxyTG.RemainingTriggers))
             if (time.time() - startTime) > (totalTime + 1):
                 self.error("elapsed time exceeds total time")
                 return
-        
+
 
 class cscan_pilc_lambda_senv(Macro):
     """ Sets default environment variables """
@@ -169,4 +169,3 @@ class cscan_pilc_lambda_senv(Macro):
         self.setEnv("PiLCTriggerGeneratorDevice", "hasep23oh:10000/p23/pilctriggergenerator/dev.01")
         self.setEnv("PiLCDigitalSlaveDevice", "hasep23oh:10000/p23/pilcscanslave/exp.03")
         self.setEnv("PiLCAnalogSlaveDevice", "hasep23oh:10000/p23/pilcscanslave/exp.04")
-     

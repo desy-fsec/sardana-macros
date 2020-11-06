@@ -15,17 +15,17 @@ class _create_controller(Macro):
         ['ctrl_filename',  Type.String, None, 'Name of the file with the controller class'],
         ['ctrl_classname',  Type.String, None, 'Name of the controller class'],
         ['ctrl_name',  Type.String, None, 'Name of the controller to create'],
-        ["property_pairs", 
+        ["property_pairs",
          [['property_name', Type.String, None, 'controller property name'],
           ['property_value', Type.String, None, 'controller property value']],
          "", 'List of property pairs']
         ]
 
     def run(self, ctrl_type, ctrl_filename, ctrl_classname, ctrl_name, property_pairs):
-        
+
         pools = self.getPools()
         pool = pools[0]
-        
+
         args = []
         args.append(str(ctrl_type))
         args.append(str(ctrl_filename))
@@ -48,10 +48,10 @@ class _create_element(Macro):
         ]
 
     def run(self, elem_type, ctrl_name, axis_number, elem_name):
-        
+
         pools = self.getPools()
         pool = pools[0]
-        
+
         args = []
         args.append(str(elem_type))
         args.append(str(ctrl_name))
@@ -90,5 +90,3 @@ class create_motor(Macro):
         tmp_macro, pars= self.createMacro("_create_element", "Motor", ctrl_name, str(axis_number), motor_name)
 
         self.runMacro(tmp_macro)
-    
-    

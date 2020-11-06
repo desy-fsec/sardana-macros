@@ -5,26 +5,26 @@
 ## http://www.tango-controls.org/static/sardana/latest/doc/html/index.html
 ##
 ## Copyright 2011 CELLS / ALBA Synchrotron, Bellaterra, Spain
-## 
+##
 ## Sardana is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU Lesser General Public License as published by
 ## the Free Software Foundation, either version 3 of the License, or
 ## (at your option) any later version.
-## 
+##
 ## Sardana is distributed in the hope that it will be useful,
 ## but WITHOUT ANY WARRANTY; without even the implied warranty of
 ## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ## GNU Lesser General Public License for more details.
-## 
+##
 ## You should have received a copy of the GNU Lesser General Public License
 ## along with Sardana.  If not, see <http://www.gnu.org/licenses/>.
 ##
 ##############################################################################
 
 """
-    Macro library containning scan macros reapiting points for the macros server Tango device 
+    Macro library containning scan macros reapiting points for the macros server Tango device
     server as part of the Sardana project.
-   
+
    Available Macros are:
                      ascan_repeat
 """
@@ -60,7 +60,7 @@ def getCallable(repr):
     '''returns a function .
     Ideas: repr could be an URL for a file where the function is contained,
     or be evaluable code, or a pickled function object,...
-    
+
     In any case, the return from it should be a callable of the form:
     f(x1,x2) where x1, x2 are points in the moveable space and the return value
     of f is True if the movement from x1 to x2 is allowed. False otherwise'''
@@ -70,10 +70,10 @@ def getCallable(repr):
         return lambda: None
 
 class aNscanRepeat(Hookable):
-    
+
     hints = { 'scan' : 'aNscanRepeat', 'allowsHooks': ('pre-scan', 'pre-move', 'post-move', 'pre-acq', 'post-acq', 'post-step', 'post-scan') }
     #env = ('ActiveMntGrp',)
-    
+
     """N-dimensional scan. This is **not** meant to be called by the user,
     but as a generic base to construct ascan_repeat, a2scan_repeat, a3scan_repeat,..."""
     def _prepare(self, motorlist, startlist, endlist, scan_length, integ_time, nb_repeat, mode=StepMode, **opts):
@@ -102,22 +102,22 @@ class aNscanRepeat(Hookable):
         #Hooks are not always set at this point. We will call getHooks later on in the scan_loop
         #self.pre_scan_hooks = self.getHooks('pre-scan')
         #self.post_scan_hooks = self.getHooks('post-scan'
-          
+
         if mode == StepMode:
-            self.nr_interv = scan_length 
+            self.nr_interv = scan_length
             self.nr_points = self.nr_interv+1
-            self.interv_sizes = ( self.finals - self.starts) / self.nr_interv
+            self.interv_sizes = (self.finals - self.starts) / self.nr_interv
             self.name = opts.get('name','a%iscan_repeat'%self.N)
             self._gScan = SScan(self, self._stepGenerator, moveables, env, constrains, extrainfodesc)
         elif mode == HybridMode:
             self.nr_interv = scan_length
             self.nr_points = self.nr_interv+1
-            self.interv_sizes = ( self.finals - self.starts) / self.nr_interv
+            self.interv_sizes = (self.finals - self.starts) / self.nr_interv
             self.name = opts.get('name','a%iscanh_repeat'%self.N)
             self._gScan = HScan(self, self._stepGenerator, moveables, env, constrains, extrainfodesc)
         else:
             raise ValueError('invalid value for mode %s' % mode)
-        
+
     def _stepGenerator(self):
         step = {}
         step["integ_time"] =  self.integ_time
@@ -126,7 +126,7 @@ class aNscanRepeat(Hookable):
         step["pre-acq-hooks"] = self.getHooks('pre-acq')
         step["post-acq-hooks"] = self.getHooks('post-acq') + self.getHooks('_NOHINTS_')
         step["post-step-hooks"] = self.getHooks('post-step')
-        
+
         point_id = 0
         for point_no in xrange(self.nr_points):
             for rep in xrange(self.nb_repeat):
@@ -134,15 +134,15 @@ class aNscanRepeat(Hookable):
                 step["point_id"] = point_id
                 point_id = point_id + 1
                 yield step
-    
+
     def run(self,*args):
         for step in self._gScan.step_scan():
             yield step
-    
+
     @property
     def data(self):
         return self._gScan.data
-    
+
     def getTimeEstimation(self):
         gScan = self._gScan
         mode = self.mode
@@ -158,7 +158,7 @@ class aNscanRepeat(Hookable):
             for v_motor, start, stop, length in zip(v_motors, curr_pos, step0['positions'], self.interv_sizes):
                 path0 = MotionPath(v_motor, start, stop)
                 path = MotionPath(v_motor, 0, length)
-                max_step0_time = max(max_step0_time, path0.duration) 
+                max_step0_time = max(max_step0_time, path0.duration)
                 max_step_time = max(max_step_time, path.duration)
             motion_time = max_step0_time + self.nr_interv * max_step_time
             # calculate acquisition time
@@ -169,7 +169,7 @@ class aNscanRepeat(Hookable):
             total_time = gScan.waypoint_estimation()
         #TODO: add time estimation for ContinuousHwTimeMode
         return total_time
-                        
+
     def getIntervalEstimation(self):
         mode = self.mode
         if mode == StepMode:
@@ -186,12 +186,12 @@ class dNscanRepeat(aNscanRepeat):
     hints['scan'] = 'dNscanRepeat'
 
     def _prepare(self, motorlist, startlist, endlist, scan_length, integ_time, nb_repeat, mode=StepMode, **opts):
-        self._motion=self.getMotion( [ m.getName() for m in motorlist] )
+        self._motion=self.getMotion([m.getName() for m in motorlist] )
         self.originalPositions = numpy.array(self._motion.readPosition())
         starts = numpy.array(startlist, dtype='d') + self.originalPositions
         finals = numpy.array(endlist, dtype='d') + self.originalPositions
         aNscanRepeat._prepare(self, motorlist, starts, finals, scan_length, integ_time,  nb_repeat, mode=mode, **opts)
-        
+
     def do_restore(self):
         self.info("Returning to start positions... NOT CALLED")
         #self._motion.move(self.originalPositions)
@@ -199,9 +199,9 @@ class dNscanRepeat(aNscanRepeat):
     def on_stop(self):
         self.info("Returning to start positions...in ONSTOP")
         self._motion.move(self.originalPositions)
-        
 
-class ascan_repeat(aNscanRepeat, Macro): 
+
+class ascan_repeat(aNscanRepeat, Macro):
     """Do an absolute scan of the specified motor.
     ascan scans one motor, as specified by motor. The motor starts at the
     position given by start_pos and ends at the position given by final_pos.
@@ -218,12 +218,12 @@ class ascan_repeat(aNscanRepeat, Macro):
        ['nb_repeat',  Type.Integer, None, 'Number of repetitions per point']
     ]
 
-    def prepare(self, motor, start_pos, final_pos, nr_interv, integ_time, nb_repeat, 
+    def prepare(self, motor, start_pos, final_pos, nr_interv, integ_time, nb_repeat,
                 **opts):
         self._prepare([motor], [start_pos], [final_pos], nr_interv, integ_time, nb_repeat,  **opts)
-       
 
-class a2scan_repeat(aNscanRepeat, Macro): 
+
+class a2scan_repeat(aNscanRepeat, Macro):
     """two-motor scan.
     a2scan scans two motors, as specified by motor1 and motor2.
     Each motor moves the same number of intervals with starting and ending
@@ -249,7 +249,7 @@ class a2scan_repeat(aNscanRepeat, Macro):
         self._prepare([motor1,motor2], [start_pos1,start_pos2], [final_pos1,final_pos2], nr_interv, integ_time, nb_repeat, **opts)
 
 
-class a3scan_repeat(aNscanRepeat, Macro): 
+class a3scan_repeat(aNscanRepeat, Macro):
     """three-motor scan .
     a3scan scans three motors, as specified by motor1, motor2 and motor3.
     Each motor moves the same number of intervals with starting and ending
@@ -279,7 +279,7 @@ class a3scan_repeat(aNscanRepeat, Macro):
         self._prepare([m1,m2,m3], [s1,s2,s3], [f1,f2,f3], nr_interv, integ_time, nb_repeat, **opts)
 
 
-class dscan_repeat(dNscanRepeat, Macro): 
+class dscan_repeat(dNscanRepeat, Macro):
     """motor scan relative to the starting position.
     dscan scans one motor, as specified by motor. If motor motor is at a
     position X before the scan begins, it will be scanned from X+start_pos

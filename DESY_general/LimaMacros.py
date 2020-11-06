@@ -19,16 +19,16 @@ class _lima_create_roi(Macro):
         ['width', Type.Integer,  None, 'width of the RoI'],
         ['height',Type.Integer,  None, 'height of the RoI']
     ]
-    
-    
+
+
     def run(self, tangodevice_name, ctrl_type, poolctrl_name, newroi_name, x, y, width, height):
 
         calculation_device = self.getDevice(tangodevice_name)
 
         roi_ids = calculation_device.addNames([newroi_name])
-        
+
         roi_id = roi_ids[0]
-        
+
         roi = []
         roi.append(int(roi_id))
         roi.append(int(x))
@@ -39,7 +39,7 @@ class _lima_create_roi(Macro):
 
         pools = self.getPools()
         pool = pools[0]
-        
+
         args = []
         args.append(str(ctrl_type))
         args.append(str(poolctrl_name))
@@ -60,7 +60,7 @@ class lima_create_RoI2Counter(Macro):
     ]
 
     def run(self, roi2counter_ctrlname, newroi_name, x, y, width, height):
-        
+
         roi2counter_devicename = self.getEnv('RoI2CounterDeviceName')
 
         tmp_macro, pars= self.createMacro("_lima_create_roi", roi2counter_devicename, "CTExpChannel", roi2counter_ctrlname, newroi_name, x, y, width, height)
@@ -79,10 +79,9 @@ class lima_create_RoI2Spectrum(Macro):
     ]
 
     def run(self, roi2spectrum_ctrlname, newroi_name, x, y, width, height):
-        
+
         roi2spectrum_devicename = self.getEnv('RoI2SpectrumDeviceName')
 
         tmp_macro, pars= self.createMacro("_lima_create_roi", roi2spectrum_devicename, "OneDExpChannel", roi2spectrum_ctrlname, newroi_name, x, y, width, height)
 
         self.runMacro(tmp_macro)
-        

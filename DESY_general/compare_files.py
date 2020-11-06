@@ -7,22 +7,22 @@ REMOTE_DIR = "/usr/lib/python2.7/dist-packages/sardana/sardana-macros/DESY_gener
 HOST_LIST = "/afs/desy.de/group/hasylab/Tango/HostLists/TangoHosts.lis"
 FILE_LIST = "/home/kracht/Tango/Sardana/sardana-macros.git/DESY_general/Files.lis"
 
-def main( hostName, fileName):
+def main(hostName, fileName):
     #
     # if a host is offlines, that's not really bad
     #
-    if not HasyUtils.isHostOnline( hostName):
+    if not HasyUtils.isHostOnline(hostName):
         if not args.quiet:
             print("  %s is offline" % hostName)
         return True
 
-    if os.system( "scp -q %s:%s/%s tempFile" % (hostName, REMOTE_DIR, fileName)):
+    if os.system("scp -q %s:%s/%s tempFile" % (hostName, REMOTE_DIR, fileName)):
         print("Failed to scp %s from %s" % (fileName, hostName))
         return False
 
-    diff = os.popen( "diff %s tempFile" % fileName).read()
+    diff = os.popen("diff %s tempFile" % fileName).read()
 
-    if len( diff) == 0:
+    if len(diff) == 0:
         return True
     else:
         if not args.quiet:
@@ -31,9 +31,9 @@ def main( hostName, fileName):
         return False
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser( 
+    parser = argparse.ArgumentParser(
         formatter_class = argparse.RawDescriptionHelpFormatter,
-        description="compare local and remote files", 
+        description="compare local and remote files",
         epilog='''\
 Examples:
   compare_files.py hostName fileName
@@ -58,9 +58,9 @@ Examples:
     #
     files = []
     if not args.fileName.lower() == 'all':
-        files.append( args.fileName)
+        files.append(args.fileName)
     else:
-        files = HasyUtils.getListFromFile( FILE_LIST)
+        files = HasyUtils.getListFromFile(FILE_LIST)
         if files is None:
             print("%s is empty" % FILE_LIST)
             sys.exit(255)
@@ -69,9 +69,9 @@ Examples:
     #
     hosts = []
     if args.hostName.lower() != 'all':
-        hosts.append( args.hostName)
+        hosts.append(args.hostName)
     else:
-        hosts = HasyUtils.getListFromFile( HOST_LIST)
+        hosts = HasyUtils.getListFromFile(HOST_LIST)
         if hosts is None:
             print("%s is empty" % HOST_LIST)
             sys.exit(255)
@@ -80,13 +80,12 @@ Examples:
     for host in hosts:
         count += 1
         if count % 10 == 0:
-            print("%d/%d" % (count, len( hosts)))
+            print("%d/%d" % (count, len(hosts)))
         if not args.quiet:
             print("%s" % host)
         for fl in files:
-            if not main( host, fl):
+            if not main(host, fl):
                 print("***compare_files: trouble with %s on %s" % (fl, host))
             else:
                 if not args.quiet:
                     print("  %s OK" % (fl))
-

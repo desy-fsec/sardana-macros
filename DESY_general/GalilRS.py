@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# 
+#
 __all__ = ["GalilRS"]
 
 from sardana.macroserver.macro import Macro, Type
@@ -22,7 +22,7 @@ class GalilRS(Macro):
       haspp09: abs(pos) == 5
     """
 
-    def run( self):
+    def run(self):
         #
         # check the opMode parameter
         #
@@ -30,5 +30,3 @@ class GalilRS(Macro):
         # posPowerOn is used to sense that the RS procedure is completed
         #
         pass
-
-
