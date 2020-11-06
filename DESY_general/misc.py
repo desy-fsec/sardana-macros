@@ -33,4 +33,4 @@ class smPost(Macro):
 
         a = HasyUtils.toSardanaMonitor({ 'gra_command': "post/print/nolog/nocon/lp=%s" % printer})
         if a['result'] != '1':
-            self.output("smPost: bad result %s" % repr( a))
+            self.output("smPost: bad result %s" % repr(a))

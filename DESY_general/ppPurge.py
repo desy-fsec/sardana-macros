@@ -99,7 +99,7 @@ class ppPurge(Macro):
         self.iDoubles = []
         x = fioObj.columns[0].x
         self.lenOrig = len(x)
-        for i in range(len( x) - 1):
+        for i in range(len(x) - 1):
             if x[i] == x[i + 1]:
                 self.iDoubles.append(i)
         if len(self.iDoubles) == 0:
@@ -144,7 +144,7 @@ class ppPurge(Macro):
           /<ScanDir>/<scanName>/<scanName>_mca_s<no.>.fio
         """
 
-        if not os.path.isfile("%s/%s_mca_s1.fio" % ( self.imageRootDir, self.scanName)):
+        if not os.path.isfile("%s/%s_mca_s1.fio" % (self.imageRootDir, self.scanName)):
             self._writer("ppPurge: no MCA files found")
             return True
 
@@ -167,7 +167,7 @@ class ppPurge(Macro):
                     self._writer("ppPurge._purgeMCAFiles:error: %s exists" %fNameCount)
                     return False
                 os.rename(fNameI, fNameCount)
-                #self.log.write("renamed %s \n  to %s \n" % ( fNameI, fNameCount))
+                #self.log.write("renamed %s \n  to %s \n" % (fNameI, fNameCount))
             count += 1
         self._writer("ppPurge: MCA files purge DONE")
         return True
@@ -215,7 +215,7 @@ class ppPurge(Macro):
                         self._writer("ppPurge._purgeImageFiles:error: %s exists" %fNameCount)
                         return False
                     os.rename(fNameI, fNameCount)
-                    #self.log.write("renamed  %s \n  to %s \n" % ( fNameI, fNameCount))
+                    #self.log.write("renamed  %s \n  to %s \n" % (fNameI, fNameCount))
                 count += 1
         self._writer("ppPurge: image files purge DONE")
         return True

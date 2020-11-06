@@ -113,7 +113,7 @@ class gh_enable(Macro):
             #
             # [('gh_pre_scan', ['pre-scan']), ('gh_post_scan', ['post-scan']), ...)]
             #
-            self.debug("gh_enable: %s" % repr( macros_list))
+            self.debug("gh_enable: %s" % repr(macros_list))
             self.setEnv("_GeneralHooks", macros_list)
             return
 
@@ -162,7 +162,7 @@ class gh_enable(Macro):
                 return
 
             self.info("Enabling all general hooks with default macro names")
-            self.debug("gh_enableD8: %s" % repr( default_dict))
+            self.debug("gh_enableD8: %s" % repr(default_dict))
             self.setEnv("GeneralHooks", default_dict)
             return
 
@@ -171,7 +171,7 @@ class gh_enable(Macro):
         #
         if hook_pos not in default_dict.keys():
             self.error("gh_enableD8: wrong hook name, possible values:")
-            self.error(str( default_dict.keys()))
+            self.error(str(default_dict.keys()))
             return
         #
         # check, if macro_name exists on the MacroServer
@@ -189,7 +189,7 @@ class gh_enable(Macro):
         gh_macros_dict[hook_pos] = []
         for name in macro_name_split:
             gh_macros_dict[hook_pos].append(name)
-        self.debug("gh_enableD8: %s" % repr( gh_macros_dict))
+        self.debug("gh_enableD8: %s" % repr(gh_macros_dict))
         self.setEnv("GeneralHooks", gh_macros_dict)
         return
     #
@@ -246,7 +246,7 @@ class gh_disable(Macro):
             if hook_pos not in elm[1]:
                 macros_list.append(elm)
 
-        self.debug("gh_disable: %s" % repr( macros_list))
+        self.debug("gh_disable: %s" % repr(macros_list))
         self.setEnv("_GeneralHooks", macros_list)
 
 
@@ -340,7 +340,7 @@ class gh_isEnabled(Macro):
 
             for k in general_hooks.keys():
                 self.output(k)
-                self.output(str( general_hooks[k]))
+                self.output(str(general_hooks[k]))
             return True
         #
         # GeneralHooks:

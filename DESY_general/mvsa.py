@@ -25,8 +25,8 @@ class mvsa(Macro):
       'mvsa show' shows the results, no move
 """
     param_def = [
-        ['mode', Type.String  , 'peak', "Options: 'show','peak','cms','cen','dip','dipm','dipc','slit', 'slitm', 'slitc', 'step','stepm' and 'stepc', 'stepssa', 'stepcssa', 'stepmssa'"],
-        ['interactiveFlag', Type.Integer , 1, " '1' query before move (def.) "],
+        ['mode', Type.String, 'peak', "Options: 'show','peak','cms','cen','dip','dipm','dipc','slit', 'slitm', 'slitc', 'step','stepm' and 'stepc', 'stepssa', 'stepcssa', 'stepmssa'"],
+        ['interactiveFlag', Type.Integer, 1, " '1' query before move (def.) "],
         ]
     result_def = [["result", Type.String, None, "'status=False' or 'status=True,mot1=12,...'" ]]
     interactive = True
@@ -46,7 +46,7 @@ class mvsa(Macro):
         supportedScanTypes = ['ascan', 'dscan', 'a2scan', 'd2scan', 'a3scan', 'd3scan',
                               'hscan', 'kscan', 'lscan', 'hklscan']
         if not scanType.lower()  in supportedScanTypes:
-            self.output("mvsa: scanType %s not in %s" % (scanType, repr( supportedScanTypes)))
+            self.output("mvsa: scanType %s not in %s" % (scanType, repr(supportedScanTypes)))
             return result
 
         self.scanInfo = HasyUtils.createScanInfo()
@@ -92,7 +92,7 @@ class mvsa(Macro):
                 #
                 # par-3: flag-non-background-subtraction
                 #
-                ssaDct = calc.ssa(np.array( hsh['getData'][signalCounter.upper()]['x']),
+                ssaDct = calc.ssa(np.array(hsh['getData'][signalCounter.upper()]['x']),
                                      np.array(hsh['getData'][signalCounter.upper()]['y']), False)
         #
         # data from file
@@ -116,22 +116,22 @@ class mvsa(Macro):
                     break
 
         if not flagDataFound:
-            self.output("Column %s not found in %s" % ( signalCounter, fileName))
+            self.output("Column %s not found in %s" % (signalCounter, fileName))
             for col in a.columns:
                 self.output("%s" % col.name)
             return result
 
         if message != 'success':
-            self.output("mvsa: failed to find the maximum for %s" % ( fileName))
-            self.output("mvsa: reason %s" % ( message))
+            self.output("mvsa: failed to find the maximum for %s" % (fileName))
+            self.output("mvsa: reason %s" % (message))
             return result
 
         if mode.lower() == 'show':
             self.output("mvsa: file name: %s " % fileName)
-            self.output("mvsa: dataFromSM %s" % repr( flagDataFromMonitor))
+            self.output("mvsa: dataFromSM %s" % repr(flagDataFromMonitor))
             self.output("mvsa: message '%s'" % (message))
             self.output("mvsa: xpos %g" % (xpos))
-            self.output("mvsa: xpeak %g, cms %g cen  %g" % ( xpeak, xcms, xcen))
+            self.output("mvsa: xpeak %g, cms %g cen  %g" % (xpeak, xcms, xcen))
             self.output("mvsa: status %d, reason %d" % (ssaDct['status'], ssaDct['reason']))
             self.output("mvsa: xpeak %g, cms %g midp %g" % (ssaDct['peak_x'], ssaDct['cms'], ssaDct['midpoint']))
             self.output("mvsa: l_back %g, r_back %g" % (ssaDct['l_back'], ssaDct['r_back']))
@@ -146,7 +146,7 @@ class mvsa(Macro):
         #
         motorArr = self.scanInfo['motors']
         if len(motorArr) == 0:
-            self.output("mvsa: len( motorArr) == 0, something is wrong")
+            self.output("mvsa: len(motorArr) == 0, something is wrong")
             return result
         #
         # xpos is the peak position w.r.t. the first motor.
@@ -179,7 +179,7 @@ class mvsa(Macro):
             for elm in motorArr:
                 p = PyTango.DeviceProxy(elm['name'])
                 elm['proxy'] = p
-                self.output("Move %s from %g to %g" % ( elm['name'], p.Position, elm['targetPos']))
+                self.output("Move %s from %g to %g" % (elm['name'], p.Position, elm['targetPos']))
             posStart = motorArr[0]['proxy'].position
             #
             # move the red arrow to the target position
@@ -200,7 +200,7 @@ class mvsa(Macro):
         # they are coupled.
         #
         if self.scanInfo['title'].find('hklscan') == 0:
-            self.execMacro("br %g %g %g" % ( motorArr[0]['targetPos'],
+            self.execMacro("br %g %g %g" % (motorArr[0]['targetPos'],
                                               motorArr[1]['targetPos'],
                                               motorArr[2]['targetPos']))
         else:
@@ -227,7 +227,7 @@ class mvsa(Macro):
             toMonitorFunc({'command': ['setArrowMisc %s hide' % signalCounter]})
         for elm in (motorArr):
             p = PyTango.DeviceProxy(elm['name'])
-            self.output("Motor %s is now at %g" % ( elm['name'], p.Position))
+            self.output("Motor %s is now at %g" % (elm['name'], p.Position))
             result = result + ",%s=%s" % (elm['name'], str(p.Position))
 
         # self.output("mvsa returns %s" % result)
