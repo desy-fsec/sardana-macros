@@ -9,7 +9,7 @@ the feature is used in gscan.py, scan.py and macro.py
 __all__ = ["gf_status", "gf_list", "gf_head", "gf_enable",
            "gh_enable", "gh_disable", "gh_isEnabled",
            "gc_enable", "gc_enable", "gc_isEnabled",
-	   ]
+       ]
 
 import PyTango, os, sys
 from sardana.macroserver.macro import *
@@ -182,7 +182,7 @@ class gh_enable(Macro):
 
         try:
             gh_macros_dict = self.getEnv("GeneralHooks")
-        except:
+        except Exception:
             gh_macros_dict = {}
 
         macro_name_split = macro_name.split(",")
@@ -223,7 +223,7 @@ class gh_disable(Macro):
 
         try:
             gh_macros_list = self.getEnv("_GeneralHooks")
-        except:
+        except Exception:
             return
 
         if hook_pos == 'all':
@@ -254,7 +254,7 @@ class gh_disable(Macro):
 
         try:
             gh_macros_dict = self.getEnv("GeneralHooks")
-        except:
+        except Exception:
             return
 
         if hook_pos == "all":
@@ -268,7 +268,7 @@ class gh_disable(Macro):
             try:
                 del gh_macros_dict[hook_pos]
                 self.info("Hook %s disabled" % hook_pos)
-            except:
+            except Exception:
                 self.info("gh_disableD8: failed to delete %s" % hook_pos)
                 return
 
@@ -299,7 +299,7 @@ class gh_isEnabled(Macro):
 
         try:
             gh_macros_list = self.getEnv("_GeneralHooks")
-        except:
+        except Exception:
             return False
         #
         # _GeneralHooks exists. If hook_poos == 'any': If there is some contents, return True
@@ -327,7 +327,7 @@ class gh_isEnabled(Macro):
 
         try:
             general_hooks = self.getEnv("GeneralHooks")
-        except:
+        except Exception:
             self.output("No general hooks")
             return False
 
@@ -383,7 +383,7 @@ class gc_disable(Macro):
     def run(self):
         try:
             self.unsetEnv("GeneralCondition")
-        except:
+        except Exception:
             pass
 
 class gc_isEnabled(Macro):
@@ -399,7 +399,7 @@ class gc_isEnabled(Macro):
             self.output("Selected general condition:")
             self.output(general_condition)
             return True
-        except:
+        except Exception:
             self.output("No general condition")
 
         return result
@@ -427,7 +427,7 @@ class gs_disable(Macro):
     def run(self):
         try:
             self.unsetEnv("GeneralOnStopFunction")
-        except:
+        except Exception:
             pass
 
 class gs_isEnabled(Macro):
@@ -443,7 +443,7 @@ class gs_isEnabled(Macro):
             self.output("Selected general on_stop:")
             self.output(general_on_stop)
             return True
-        except:
+        except Exception:
             self.output("No general on_stop")
 
         return result

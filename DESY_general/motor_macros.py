@@ -1,25 +1,25 @@
-##############################################################################
-##
-## This file is part of Sardana
-##
-## http://www.tango-controls.org/static/sardana/latest/doc/html/index.html
-##
-## Copyright 2011 CELLS / ALBA Synchrotron, Bellaterra, Spain
-##
-## Sardana is free software: you can redistribute it and/or modify
-## it under the terms of the GNU Lesser General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-##
-## Sardana is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU Lesser General Public License for more details.
-##
-## You should have received a copy of the GNU Lesser General Public License
-## along with Sardana.  If not, see <http://www.gnu.org/licenses/>.
-##
-##############################################################################
+# #############################################################################
+# #
+# # This file is part of Sardana
+# #
+# # http://www.tango-controls.org/static/sardana/latest/doc/html/index.html
+# #
+# # Copyright 2011 CELLS / ALBA Synchrotron, Bellaterra, Spain
+# #
+# # Sardana is free software: you can redistribute it and/or modify
+# # it under the terms of the GNU Lesser General Public License as published by
+# # the Free Software Foundation, either version 3 of the License, or
+# # (at your option) any later version.
+# #
+# # Sardana is distributed in the hope that it will be useful,
+# # but WITHOUT ANY WARRANTY; without even the implied warranty of
+# # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# # GNU Lesser General Public License for more details.
+# #
+# # You should have received a copy of the GNU Lesser General Public License
+# # along with Sardana.  If not, see <http://www.gnu.org/licenses/>.
+# #
+# #############################################################################
 
 """Additional macros for motors"""
 
@@ -74,7 +74,7 @@ class wm_encoder(Macro):
     def run(self, motor):
         try:
             motor_td = PyTango.DeviceProxy(motor.TangoDevice)
-        except:
+        except Exception:
             self.output("Not tango device outside Pool")
             return
         try:
@@ -82,5 +82,5 @@ class wm_encoder(Macro):
             self.execMacro('_wm', [motor], **self.table_opts)
             encoder_pos = motor_td.PositionEncoder
             self.output("Encoder " + str(encoder_pos))
-        except:
+        except Exception:
             self.output("Not posible to read encoder position")

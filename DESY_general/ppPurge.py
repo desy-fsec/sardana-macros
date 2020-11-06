@@ -4,7 +4,9 @@ __all__ = ["ppPurge"]
 
 from sardana.macroserver.macro import Macro, Type
 import HasyUtils
-import os, shutil
+import os
+# import os, shutil
+
 
 class ppPurge(Macro):
     """
@@ -43,7 +45,8 @@ class ppPurge(Macro):
     """
 
     result_def = [['result', Type.Boolean, None, 'ppPurge return status']]
-    param_def = [['scanID', Type.Integer,  -1, 'Overrides the env-variable ScanID (optional)']]
+    param_def = [['scanID', Type.Integer,  -1,
+                  'Overrides the env-variable ScanID (optional)']]
 
     def _prepareFileNames(self, scanID):
 
@@ -58,7 +61,9 @@ class ppPurge(Macro):
 
         prefix, ext = self.scanFile.split('.')
         if ext != 'fio':
-            self.output("ppPurge._prepareFileNames: scanFile %s has the wrong extension (NOT fio)")
+            self.output(
+                "ppPurge._prepareFileNames: scanFile %s "
+                "has the wrong extension (NOT fio)")
             return False
 
         self.scanName = "%s_%05d" % (prefix, scanID)
@@ -72,7 +77,8 @@ class ppPurge(Macro):
         self.imageRootDir = self.scanDir + "/" + self.scanName
         self.detectorDirs = []
         filesTemp = []
-        for rootDir, subDirs, files in HasyUtils.walkLevel(self.imageRootDir, level=0):
+        for rootDir, subDirs, files in HasyUtils.walkLevel(
+                self.imageRootDir, level=0):
             filesTemp.extend(files)
             for sDir in subDirs:
                 self.detectorDirs.append(rootDir + "/" + sDir)
@@ -108,7 +114,8 @@ class ppPurge(Macro):
             self._writer("\nppPurge: nothing to purge in %s\n" % fioFile)
             return False
 
-        self._writer("ppPurge: Doubles %s (index starts at 0)" % str(self.iDoubles))
+        self._writer("ppPurge: Doubles %s (index starts at 0)" %
+                     str(self.iDoubles))
         return True
 
     def _purgeFioFile(self):
@@ -144,30 +151,37 @@ class ppPurge(Macro):
           /<ScanDir>/<scanName>/<scanName>_mca_s<no.>.fio
         """
 
-        if not os.path.isfile("%s/%s_mca_s1.fio" % (self.imageRootDir, self.scanName)):
+        if not os.path.isfile("%s/%s_mca_s1.fio" %
+                              (self.imageRootDir, self.scanName)):
             self._writer("ppPurge: no MCA files found")
             return True
 
         countRemove = 0
         for i in self.iDoubles:
-            fNameI = "%s/%s_mca_s%d.fio" % (self.imageRootDir, self.scanName, i + 1)
+            fNameI = "%s/%s_mca_s%d.fio" % (
+                self.imageRootDir, self.scanName, i + 1)
             os.remove(fNameI)
             self.log.write("removed %s\n" % fNameI)
             countRemove += 1
-        self._writer("ppPurge: removed %d MCA files in %s" % (countRemove, self.imageRootDir))
+        self._writer("ppPurge: removed %d MCA files in %s" %
+                     (countRemove, self.imageRootDir))
 
         count = 1
         for i in range(1, self.lenOrig + 1):
-            fNameCount = "%s/%s_mca_s%d.fio" % (self.imageRootDir, self.scanName, count)
-            fNameI = "%s/%s_mca_s%d.fio" % (self.imageRootDir, self.scanName, i)
+            fNameCount = "%s/%s_mca_s%d.fio" % (
+                self.imageRootDir, self.scanName, count)
+            fNameI = "%s/%s_mca_s%d.fio" % (
+                self.imageRootDir, self.scanName, i)
             if not os.path.exists(fNameI):
                 continue
             if fNameI != fNameCount:
                 if os.path.exists(fNameCount):
-                    self._writer("ppPurge._purgeMCAFiles:error: %s exists" %fNameCount)
+                    self._writer(
+                        "ppPurge._purgeMCAFiles:error: %s exists" % fNameCount)
                     return False
                 os.rename(fNameI, fNameCount)
-                #self.log.write("renamed %s \n  to %s \n" % (fNameI, fNameCount))
+                # self.log.write("renamed %s \n  to %s \n" % (fNameI,
+                # fNameCount))
             count += 1
         self._writer("ppPurge: MCA files purge DONE")
         return True
@@ -190,7 +204,8 @@ class ppPurge(Macro):
             elif imageDir.find('pilatus') >= 0:
                 extension = 'cbf'
             else:
-                self.output("ppPurge: failed to identify detector %s " % (imageDir))
+                self.output("ppPurge: failed to identify detector %s " %
+                            (imageDir))
                 return False
             #
             # remove the images that belong to the superfluous points
@@ -198,24 +213,31 @@ class ppPurge(Macro):
             #
             countRemove = 0
             for i in self.iDoubles:
-                fNameI = "%s/%s_%05d.%s" % (imageDir, self.scanName, i + 1, extension)
+                fNameI = "%s/%s_%05d.%s" % (
+                    imageDir, self.scanName, i + 1, extension)
                 os.remove(fNameI)
                 self.log.write("removed %s\n" % fNameI)
                 countRemove += 1
-            self._writer("ppPurge: removed %d files in %s" % (countRemove, imageDir))
+            self._writer("ppPurge: removed %d files in %s" %
+                         (countRemove, imageDir))
 
             count = 1
             for i in range(1, self.lenOrig + 1):
-                fNameCount = "%s/%s_%05d.%s" % (imageDir, self.scanName, count, extension)
-                fNameI = "%s/%s_%05d.%s" % (imageDir, self.scanName, i, extension)
+                fNameCount = "%s/%s_%05d.%s" % (
+                    imageDir, self.scanName, count, extension)
+                fNameI = "%s/%s_%05d.%s" % (
+                    imageDir, self.scanName, i, extension)
                 if not os.path.exists(fNameI):
                     continue
                 if fNameI != fNameCount:
                     if os.path.exists(fNameCount):
-                        self._writer("ppPurge._purgeImageFiles:error: %s exists" %fNameCount)
+                        self._writer(
+                            "ppPurge._purgeImageFiles:error: %s exists"
+                            % fNameCount)
                         return False
                     os.rename(fNameI, fNameCount)
-                    #self.log.write("renamed  %s \n  to %s \n" % (fNameI, fNameCount))
+                    # self.log.write("renamed  %s \n  to %s \n" %
+                    # (fNameI, fNameCount))
                 count += 1
         self._writer("ppPurge: image files purge DONE")
         return True
@@ -237,7 +259,7 @@ class ppPurge(Macro):
                 self.log = open(logFile, 'w')
 
         self.writer(msg)
-        if not self.log is None:
+        if self.log is not None:
             self.log.write(msg + "\n")
 
     def run(self, scanID):
@@ -251,26 +273,26 @@ class ppPurge(Macro):
             return False
 
         if not self._findDoubles():
-            if not self.log is None:
+            if self.log is not None:
                 self.log.close()
             return False
 
         if not self._purgeFioFile():
-            if not self.log is None:
+            if self.log is not None:
                 self.log.close()
             return False
 
         if not self._purgeMCAFiles():
-            if not self.log is None:
+            if self.log is not None:
                 self.log.close()
             return False
 
         if not self._purgeImageFiles():
-            if not self.log is None:
+            if self.log is not None:
                 self.log.close()
             return False
 
-        if not self.log is None:
+        if self.log is not None:
             self.log.close()
 
         return True

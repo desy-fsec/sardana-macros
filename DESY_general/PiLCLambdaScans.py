@@ -1,4 +1,4 @@
-##############################################################################
+# #############################################################################
 #
 # This file is part of Sardana
 #
@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Sardana.  If not, see <http://www.gnu.org/licenses/>.
 #
-##############################################################################
+# #############################################################################
 
 """
     Macro library for performing continuous scans taking Lambda images
@@ -90,7 +90,7 @@ class cscan_pilc_lambda(Macro):
             self.error(msg)
             return
 
-        ### Configure devices ###
+        # ## Configure devices ###
 
         scanDir = self.getEnv('ScanDir')
         scanFile = self.getEnv('ScanFile')
@@ -129,7 +129,7 @@ class cscan_pilc_lambda(Macro):
         proxyLambda.ShutterTime = int(exp_time*1000. - 1.)
         proxyLambda.TriggerMode = 2 # external trigger
 
-        ### Start scan ###
+        # ## Start scan ###
 
         proxyLambda.StartAcq()
 

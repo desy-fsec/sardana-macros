@@ -28,5 +28,5 @@ class resaco(Macro):
             try:
                 counter_td.Reset()
                 self.info("Counter %s reseted"  % counter['name'])
-            except:
+            except Exception:
                 self.warning("Counter %s cannot be reseted" % counter['name'])

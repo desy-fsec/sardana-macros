@@ -1,11 +1,15 @@
 #!/usr/bin/env python
-import sys, os
+import sys
+import os
 import argparse
 import HasyUtils
 
-REMOTE_DIR = "/usr/lib/python2.7/dist-packages/sardana/sardana-macros/DESY_general"
+REMOTE_DIR = "/usr/lib/python2.7/dist-packages/sardana/sardana-macros" \
+    "/DESY_general"
 HOST_LIST = "/afs/desy.de/group/hasylab/Tango/HostLists/TangoHosts.lis"
-FILE_LIST = "/home/kracht/Tango/Sardana/sardana-macros.git/DESY_general/Files.lis"
+FILE_LIST = "/home/kracht/Tango/Sardana/sardana-macros.git/DESY_general" \
+    "/Files.lis"
+
 
 def main(hostName, fileName):
     #
@@ -16,7 +20,8 @@ def main(hostName, fileName):
             print("  %s is offline" % hostName)
         return True
 
-    if os.system("scp -q %s:%s/%s tempFile" % (hostName, REMOTE_DIR, fileName)):
+    if os.system(
+            "scp -q %s:%s/%s tempFile" % (hostName, REMOTE_DIR, fileName)):
         print("Failed to scp %s from %s" % (fileName, hostName))
         return False
 
@@ -26,13 +31,15 @@ def main(hostName, fileName):
         return True
     else:
         if not args.quiet:
-            print("*** compare_files: differences host %s file %s " % (hostName, fileName))
+            print("*** compare_files: differences host %s file %s "
+                  % (hostName, fileName))
             print(diff)
         return False
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        formatter_class = argparse.RawDescriptionHelpFormatter,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         description="compare local and remote files",
         epilog='''\
 Examples:
@@ -50,7 +57,9 @@ Examples:
     #
     parser.add_argument('hostName', help='host name')
     parser.add_argument('fileName', help='file name')
-    parser.add_argument('-q', dest="quiet", action="store_true", help='report differences only')
+    parser.add_argument(
+        '-q', dest="quiet", action="store_true",
+        help='report differences only')
 
     args = parser.parse_args()
     #

@@ -31,7 +31,7 @@ class MgConf:
         #
         try:
             self.poolMg = DeviceProxy(poolName)
-        except:
+        except Exception:
             Except.print_exception(e)
             print("failed to get proxy to ", poolName)
             sys.exit(255)
@@ -40,7 +40,7 @@ class MgConf:
         #
         try:
             self.mg = DeviceProxy(mntgrpName)
-        except:
+        except Exception:
             lst = [mntgrpName, 'exp_t01', 'exp_c01', 'exp_c02']
             self.poolMg.command_inout('CreateMeasurementGroup', lst)
             self.mg = DeviceProxy(mntgrpName)

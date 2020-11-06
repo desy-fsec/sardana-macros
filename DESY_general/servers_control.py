@@ -4,13 +4,12 @@
 Macros for restarting servers
 """
 
-__all__ = ["restart_server",
-	   ]
+__all__ = ["restart_server"]
 
-import PyTango, os, sys
+import PyTango
 import time
-from sardana.macroserver.macro import *
-from sardana.macroserver.macro import macro
+from sardana.macroserver.macro import Macro, Type
+
 
 class restart_server(Macro):
     """ restart servers """
@@ -28,7 +27,7 @@ class restart_server(Macro):
             self.output(" Server already stopped ")
         else:
             self.output("Stopping server %s " % server_name)
-            #starter_dev.command_inout("HardKillServer", server_name)
+            # starter_dev.command_inout("HardKillServer", server_name)
             starter_dev.command_inout("DevStop", server_name)
         list_dev = starter_dev.command_inout("DevGetStopServers", True)
         while server_name not in list_dev:
