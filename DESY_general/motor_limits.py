@@ -4,7 +4,8 @@
 __all__ = ["hasy_set_lim", "hasy_adjust_limits"]
 
 import PyTango
-from sardana.macroserver.macro import Macro, Type, Except, ViewOption
+from PyTango import Except
+from sardana.macroserver.macro import Macro, Type, ViewOption
 # from sardana.macroserver.macro import macro
 
 

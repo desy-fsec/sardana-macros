@@ -12,9 +12,9 @@ __all__ = ["delete_mg", "change_mg", "check_mg"]
 
 import os
 import sys
-from sardana.macroserver.macro import Macro, Type, Except
+from sardana.macroserver.macro import Macro, Type
 # import time
-from PyTango import DeviceProxy, DevFailed, Database
+from PyTango import DeviceProxy, DevFailed, Database, Except
 import json
 import HasyUtils
 
