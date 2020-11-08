@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import os
-import imp
+# import os
+# import imp
 from setuptools import setup
 from datetime import datetime
 

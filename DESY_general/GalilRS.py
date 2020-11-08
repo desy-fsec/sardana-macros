@@ -1,11 +1,13 @@
 #!/usr/bin/env python
-# 
+#
 __all__ = ["GalilRS"]
 
-from sardana.macroserver.macro import Macro, Type
-import HasyUtils
-import PyTango
-import time, math
+# from sardana.macroserver.macro import Macro, Type
+from sardana.macroserver.macro import Macro
+# import HasyUtils
+# import PyTango
+# import time, math
+
 
 class GalilRS(Macro):
     """
@@ -22,7 +24,7 @@ class GalilRS(Macro):
       haspp09: abs(pos) == 5
     """
 
-    def run( self):
+    def run(self):
         #
         # check the opMode parameter
         #
@@ -30,5 +32,3 @@ class GalilRS(Macro):
         # posPowerOn is used to sense that the RS procedure is completed
         #
         pass
-
-
