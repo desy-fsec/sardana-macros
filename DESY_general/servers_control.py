@@ -4,11 +4,11 @@
 Macros for restarting servers
 """
 
-__all__ = ["restart_server"]
-
 import PyTango
 import time
 from sardana.macroserver.macro import Macro, Type
+
+__all__ = ["restart_server"]
 
 
 class restart_server(Macro):
@@ -16,8 +16,7 @@ class restart_server(Macro):
 
     param_def = [
         ['starter_devname', Type.String, None, 'Name of the Starter device'],
-        ['server_name', Type.String, None, 'Name of the server'],
-        ]
+        ['server_name', Type.String, None, 'Name of the server']]
 
     def run(self, starter_devname, server_name):
         starter_dev = PyTango.DeviceProxy(starter_devname)

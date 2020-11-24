@@ -29,14 +29,12 @@ def device_groups(self):
     if hasattr(self.selector, "deviceGroups"):
         return json.loads(self.selector.deviceGroups)
     else:
-        return {
-                "counter": ["*exp_c*"],
-                "timer": ["*exp_t*"],
-                "mca": ["*exp_mca*"],
-                "dac": ["*exp_dac*"],
-                "adc": ["*exp_adc*"],
-                "motor": ["*exp_mot*"],
-        }
+        return { "counter": ["*exp_c*"],
+                 "timer": ["*exp_t*"],
+                 "mca": ["*exp_mca*"],
+                 "dac": ["*exp_dac*"],
+                 "adc": ["*exp_adc*"],
+                 "motor": ["*exp_mot*"]}
 
 
 @macro([["options_list",
@@ -285,8 +283,7 @@ class nxsrmprof(Macro):
  """
 
     param_def = [
-        ['name', Type.String, None, 'profile name'],
-        ]
+        ['name', Type.String, None, 'profile name']]
 
     def run(self, name):
         set_selector(self)
@@ -299,8 +296,7 @@ class nxsrmallprof(Macro):
  """
 
     param_def = [
-        ['execute', Type.Boolean, False, 'remove all profiles'],
-        ]
+        ['execute', Type.Boolean, False, 'remove all profiles']]
 
     def run(self, execute):
         set_selector(self)
@@ -321,8 +317,7 @@ class nxsettimers(Macro):
     param_def = [
         ['timer_list',
          [['timer', Type.String, None, 'timer to select']],
-         None, 'List of profile timers to set'],
-    ]
+         None, 'List of profile timers to set']]
 
     def run(self, timer_list):
         set_selector(self)
@@ -343,8 +338,7 @@ class nxsadd(Macro):
         ['component_list',
          [['component', Type.String, None,
            'detector component to add']],
-         None, 'List of detector components to add'],
-    ]
+         None, 'List of detector components to add']]
 
     def run(self, component_list):
         set_selector(self)
@@ -655,8 +649,7 @@ class nxsetappentry(Macro):
     """
 
     param_def = [
-        ['append_flag', Type.Boolean, '', 'append entry flag'],
-        ]
+        ['append_flag', Type.Boolean, '', 'append entry flag']]
 
     def run(self, append_flag):
         set_selector(self)
@@ -755,8 +748,7 @@ class nxsave(Macro):
     """
 
     param_def = [
-        ['fname', Type.String, '', 'file name'],
-        ]
+        ['fname', Type.String, '', 'file name']]
 
     def run(self, fname):
         set_selector(self)
@@ -773,8 +765,7 @@ class nxsload(Macro):
  """
 
     param_def = [
-        ['fname', Type.String, '', 'file name'],
-        ]
+        ['fname', Type.String, '', 'file name']]
 
     def run(self, fname):
         set_selector(self)
@@ -795,8 +786,7 @@ class nxsls(Macro):
     """
 
     param_def = [
-        ['dev_type', Type.String, '', 'device type or name pattern'],
-        ]
+        ['dev_type', Type.String, '', 'device type or name pattern']]
 
     def run(self, dev_type):
         set_selector(self)
@@ -846,8 +836,7 @@ class nxshow(Macro):
     """
 
     param_def = [
-        ['name', Type.String, '', 'component name'],
-        ]
+        ['name', Type.String, '', 'component name']]
 
     def run(self, name):
         set_selector(self)

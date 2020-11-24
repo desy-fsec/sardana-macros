@@ -28,10 +28,6 @@
                      ascan_repeat_example
 """
 
-__all__ = ["ascan_repeat_example"]
-
-__docformat__ = 'restructuredtext'
-
 # import os
 # import copy
 # import datetime
@@ -43,6 +39,11 @@ __docformat__ = 'restructuredtext'
 from sardana.macroserver.macro import Type, Macro
 # from sardana.macroserver.scan import *
 # from sardana.util.motion import Motor, MotionPath
+
+
+__all__ = ["ascan_repeat_example"]
+
+__docformat__ = 'restructuredtext'
 
 rep_counter = 0
 

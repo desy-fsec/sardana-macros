@@ -2,12 +2,10 @@
 
 from __future__ import print_function
 
-__all__ = ["resaco"]
-
 import PyTango
 from sardana.macroserver.macro import Macro, Type
-# from sardana.macroserver.macro import macro
 
+__all__ = ["resaco"]
 
 class resaco(Macro):
     """Reset counters in the Active MG"""

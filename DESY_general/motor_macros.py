@@ -23,20 +23,12 @@
 
 """Additional macros for motors"""
 
-
-__all__ = ["wg"]
-
-__docformat__ = 'restructuredtext'
-
-
 import datetime
-# from sardana.macroserver.macro import Type, Macro, macro, ViewOption, iMacro
 from sardana.macroserver.macro import Type, Macro, ViewOption
-
 import PyTango
 
-# import numpy as np
-
+__all__ = ["wg"]
+__docformat__ = 'restructuredtext'
 
 class wg(Macro):
     """Show motor positions of a list of motors"""
@@ -44,8 +36,7 @@ class wg(Macro):
     param_def = [
         ['motors',
             [['motor', Type.Moveable, None, 'motor']],
-            None, 'List of motors'],
-        ]
+            None, 'List of motors']]
 
     def prepare(self, motors, **opts):
         self.all_motors = motors[0:]

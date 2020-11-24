@@ -1,11 +1,11 @@
 """Macros for interacting with Lima devices"""
 
 from __future__ import print_function
+from sardana.macroserver.macro import Macro, Type
 
 __all__ = ["lima_create_RoI2Counter", "lima_create_RoI2Spectrum"]
 
 # import PyTango
-from sardana.macroserver.macro import Macro, Type
 
 
 class _lima_create_roi(Macro):
@@ -16,10 +16,10 @@ class _lima_create_roi(Macro):
         ['ctrl_type', Type.String, None, 'Type of element to create'],
         ['poolctrl_name', Type.String, None, 'Name of the Pool Controller'],
         ['newroi_name', Type.String, None, 'Name of the new RoI'],
-        ['x',     Type.Integer,  None, 'x coord. of the RoI origin'],
-        ['y',     Type.Integer,  None, 'y coord. of the RoI origin'],
-        ['width', Type.Integer,  None, 'width of the RoI'],
-        ['height', Type.Integer,  None, 'height of the RoI']
+        ['x', Type.Integer, None, 'x coord. of the RoI origin'],
+        ['y', Type.Integer, None, 'y coord. of the RoI origin'],
+        ['width', Type.Integer, None, 'width of the RoI'],
+        ['height', Type.Integer, None, 'height of the RoI']
     ]
 
     def run(self, tangodevice_name, ctrl_type, poolctrl_name, newroi_name,
@@ -57,10 +57,10 @@ class lima_create_RoI2Counter(Macro):
         ['roi2counter_ctrlname', Type.String, None,
          'Name of the Pool Controller'],
         ['newroi_name', Type.String, None, 'Name of the new RoI'],
-        ['x',     Type.Integer,  None, 'x coord. of the RoI origin'],
-        ['y',     Type.Integer,  None, 'y coord. of the RoI origin'],
-        ['width', Type.Integer,  None, 'width of the RoI'],
-        ['height', Type.Integer,  None, 'height of the RoI']
+        ['x', Type.Integer, None, 'x coord. of the RoI origin'],
+        ['y', Type.Integer, None, 'y coord. of the RoI origin'],
+        ['width', Type.Integer, None, 'width of the RoI'],
+        ['height', Type.Integer, None, 'height of the RoI']
     ]
 
     def run(self, roi2counter_ctrlname, newroi_name, x, y, width, height):
@@ -81,10 +81,10 @@ class lima_create_RoI2Spectrum(Macro):
         ['roi2spectrum_ctrlname', Type.String, None,
          'Name of the Pool Controller'],
         ['newroi_name', Type.String, None, 'Name of the new RoI'],
-        ['x',     Type.Integer,  None, 'x coord. of the RoI origin'],
-        ['y',     Type.Integer,  None, 'y coord. of the RoI origin'],
-        ['width', Type.Integer,  None, 'width of the RoI'],
-        ['height', Type.Integer,  None, 'height of the RoI']
+        ['x', Type.Integer, None, 'x coord. of the RoI origin'],
+        ['y', Type.Integer, None, 'y coord. of the RoI origin'],
+        ['width', Type.Integer, None, 'width of the RoI'],
+        ['height', Type.Integer, None, 'height of the RoI']
     ]
 
     def run(self, roi2spectrum_ctrlname, newroi_name, x, y, width, height):

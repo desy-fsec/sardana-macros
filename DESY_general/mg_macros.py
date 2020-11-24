@@ -7,9 +7,6 @@ Change active mg
 """
 
 from __future__ import print_function
-
-__all__ = ["delete_mg", "change_mg", "check_mg"]
-
 import os
 import sys
 from sardana.macroserver.macro import Macro, Type
@@ -17,10 +14,11 @@ from sardana.macroserver.macro import Macro, Type
 from PyTango import DeviceProxy, DevFailed, Database, Except
 import json
 import HasyUtils
+from taurus.console import Alignment
 
+__all__ = ["delete_mg", "change_mg", "check_mg"]
 
 # from taurus.console.list import List
-from taurus.console import Alignment
 Left, Right, HCenter = Alignment.Left, Alignment.Right, Alignment.HCenter
 
 
@@ -653,11 +651,7 @@ class MgConf:
         try:
             proxy = DeviceProxy(mcaSardanaDeviceAlias)
         except DevFailed as e:
-            Except.re_throw_exception(
-                    e,
-                    "MgUtils",
-                    "failed to create proxy to %s " % mcaSardanaDeviceAlias,
-                    "MgUtils._gHeMcaName")
+            Except.re_throw_exception( e, "MgUtils", "failed to create proxy to %s " % mcaSardanaDeviceAlias, "MgUtils._gHeMcaName")
         return proxy.TangoDevice
 
     def _addSca(self, device):
@@ -907,8 +901,7 @@ class create_delete_mgOBSOLETE(Macro):
     """Change the active measurement group"""
 
     param_def = [
-        ['list_of_elements', Type.String, None, '0 -> close, 1 -> open']
-        ]
+        ['list_of_elements', Type.String, None, '0 -> close, 1 -> open']]
 
     def run(self, list_of_elements):
 
@@ -944,8 +937,7 @@ class delete_mg(Macro):
     """
 
     param_def = [
-        ['mgName', Type.String, None, 'MG to be deleted']
-        ]
+        ['mgName', Type.String, None, 'MG to be deleted']]
 
     def run(self, mgName):
 
@@ -999,9 +991,7 @@ class change_mg(Macro):
         ["options_list",
          [['option', Type.String, "None", 'option'],
           ['value', Type.String, "None", 'value']],
-         ["None", "None"], "List of options and values"
-         ]
-        ]
+         ["None", "None"], "List of options and values"]]
 
     def run(self, options_list):
 

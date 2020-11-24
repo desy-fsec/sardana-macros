@@ -5,20 +5,14 @@ the feature is used in gscan.py, scan.py and macro.py
 
 14.6.2018: this file is OK for the old and new Sardana version
 """
+from sardana.macroserver.macro import Macro, Type
+import HasyUtils
 
 __all__ = ["gf_status",
            # "gf_list", "gf_head",
            "gf_enable",
            "gh_enable", "gh_disable", "gh_isEnabled",
            "gc_enable", "gc_enable", "gc_isEnabled"]
-
-# import PyTango
-# import os
-# import sys
-from sardana.macroserver.macro import Macro, Type
-# from sardana.macroserver.macro import macro
-import HasyUtils
-
 
 #
 # status for all features
@@ -395,8 +389,7 @@ class gc_enable(Macro):
     """enable general conditions """
 
     param_def = [
-        ['macro_name', Type.String, "default", 'Macro name with parameters'],
-        ]
+        ['macro_name', Type.String, "default", 'Macro name with parameters']]
 
     def run(self, macro_name):
         if macro_name == "default":
@@ -443,8 +436,7 @@ class gs_enable(Macro):
 
     param_def = [
         ['function_name', Type.String, "default",
-         'Function name with module and parameters'],
-        ]
+         'Function name with module and parameters']]
 
     def run(self, function_name):
         if function_name == "default":

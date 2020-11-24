@@ -1,12 +1,10 @@
 """Macros for creating Pool elements"""
 
 from __future__ import print_function
+import os
+from sardana.macroserver.macro import Macro, Type
 
 __all__ = ["create_motor_controller", "create_motor"]
-
-import os
-# import PyTango
-from sardana.macroserver.macro import Macro, Type
 
 
 class _create_controller(Macro):
@@ -25,8 +23,7 @@ class _create_controller(Macro):
            'controller property name'],
           ['property_value', Type.String, None,
            'controller property value']],
-         "", 'List of property pairs']
-        ]
+         "", 'List of property pairs']]
 
     def run(self, ctrl_type, ctrl_filename, ctrl_classname, ctrl_name,
             property_pairs):
@@ -54,8 +51,7 @@ class _create_element(Macro):
         ['ctrl_name', Type.String, None,
          'Name of the controller for the element'],
         ['axis_number', Type.Integer, None, 'Axis number of the element'],
-        ['elem_name', Type.String, None, 'Name of the element to create']
-        ]
+        ['elem_name', Type.String, None, 'Name of the element to create']]
 
     def run(self, elem_type, ctrl_name, axis_number, elem_name):
 

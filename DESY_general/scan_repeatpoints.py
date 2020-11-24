@@ -29,14 +29,7 @@
                      ascan_repeat
 """
 
-__all__ = ["ascan_repeat", "dscan_repeat", "a2scan_repeat", "a3scan_repeat"]
-
-__docformat__ = 'restructuredtext'
-
-# import os
 import copy
-# import datetime
-
 import numpy
 
 # from taurus.console import Alignment
@@ -49,6 +42,10 @@ from sardana.macroserver.scan import HScan, SScan, MoveableDesc
 from sardana.util.motion import MotionPath
 # from sardana.util.motion import Motor, MotionPath
 # from sardana.util.tree import BranchNode, LeafNode, Tree
+
+
+__all__ = ["ascan_repeat", "dscan_repeat", "a2scan_repeat", "a3scan_repeat"]
+__docformat__ = 'restructuredtext'
 
 UNCONSTRAINED = "unconstrained"
 

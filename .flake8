@@ -7,3 +7,4 @@ exclude=
     build
 # max-complexity = 10
 # ignore = F401, F403, E722, C901
+ignore = E121, E201, E202, E203, E226, E241, E302, E501

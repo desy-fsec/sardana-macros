@@ -1,15 +1,12 @@
 """Energy scan """
 
 from __future__ import print_function
-
-__all__ = ["escan", "me"]
-
-# import os
 from sardana.macroserver.macro import Macro, Type
 import time
 import math
-
 from PyTango import DeviceProxy, DevState
+
+__all__ = ["escan", "me"]
 
 flag_no_first = 0
 
@@ -17,22 +14,20 @@ flag_no_first = 0
 class e2lambda(Macro):
     """ returns the wavelength [Angstr.]: 12398.424/energy"""
     param_def = [
-        ['energy', Type.Float,  None, 'Energy[eV]'],
-        ]
+        ['energy', Type.Float, None, 'Energy[eV]']]
 
-    def run(self,  energy):
-        wavelength = 12398.424/energy
+    def run(self, energy):
+        wavelength = 12398.424 / energy
         self.output("Lambda: %g" % wavelength)
 
 
 class lambda2e(Macro):
     """ returns the energy [eV]: 12398.424/wavelength"""
     param_def = [
-        ['wavelength', Type.Float,  None, 'Wavelength[Angstr.]'],
-        ]
+        ['wavelength', Type.Float, None, 'Wavelength[Angstr.]']]
 
-    def run(self,  wavelength):
-        energy = 12398.424/wavelength
+    def run(self, wavelength):
+        energy = 12398.424 / wavelength
         self.output("Energy: %g" % energy)
 
 
@@ -70,7 +65,7 @@ class escan(Macro):
             + flag_no_first * self.step
         flag_no_first = 1
 
-        wavelength = self.lambda_to_e/pos_to_set
+        wavelength = self.lambda_to_e / pos_to_set
 
         self.diffrac.write_attribute("wavelength", wavelength)
 
@@ -207,7 +202,7 @@ class escan(Macro):
             "ascan", energy_device, start_energy, end_energy, nr_interv,
             integ_time)
 
-        self.step = abs(end_energy - start_energy)/nr_interv
+        self.step = abs(end_energy - start_energy) / nr_interv
 
         self.fixq = fixq
         if fixq == "fixq":
@@ -233,7 +228,7 @@ class escan(Macro):
             self.energy_device.write_attribute(
                 "Position", saved_initial_position)
             if fixq == "fixq":
-                wavelength = self.lambda_to_e/saved_initial_position
+                wavelength = self.lambda_to_e / saved_initial_position
 
                 self.diffrac.write_attribute("wavelength", wavelength)
                 macro_hkl, pars = self.createMacro(
@@ -251,10 +246,10 @@ class me(Macro):
     """Move energy. Diffractometer wavelength is set"""
 
     param_def = [
-        ['energy', Type.Float,  -999, 'Energy to set']
+        ['energy', Type.Float, -999, 'Energy to set']
     ]
 
-    def run(self,  energy):
+    def run(self, energy):
 
         if energy == -999:
             self.output("Usage:")
@@ -343,18 +338,16 @@ class escanexafs_general(Macro):
             ['estart', Type.Float, None, 'Start energy region'],
             ['estop', Type.Float, None, 'Stop energy region'],
             ['estep', Type.Float, None, 'Energy step in region']],
-         None, 'List of scan regions']
-        ]
+         None, 'List of scan regions']]
 
-    def run(self,  integ_time, scan_regions):
+    def run(self, integ_time, scan_regions):
 
         # calculate number of regions
         nregions = len(scan_regions)
 
         for i in range(0, nregions):
             nenergies = int(
-                math.fabs(scan_regions[i][1] - scan_regions[i][0])
-                / scan_regions[i][2])
+                math.fabs(scan_regions[i][1] - scan_regions[i][0]) / scan_regions[i][2])
             if nenergies < 1:
                 nenergies = 1
             macro, pars = self.createMacro(
@@ -381,8 +374,7 @@ class escanexafs(Macro):
         ['estart3', Type.Float, -999, 'Start energy region 3'],
         ['estop3', Type.Float, -999, 'Stop energy region 3'],
         ['estep3', Type.Float, -999, 'Energy step in region 3'],
-        ['integ_time', Type.Float, -999, 'Integration time']
-        ]
+        ['integ_time', Type.Float, -999, 'Integration time']]
 
     def run(self, estart1, estop1, estep1, estart2, estop2, estep2, estart3,
             estop3, estep3, integ_time):
@@ -409,14 +401,14 @@ class escanxmcd(Macro):
         self.debug("\tCalling move energy hook")
 
         current_energy = self.energy_device.read_attribute("Position").value
-        estep = (1./3.)*math.sqrt(math.fabs(current_energy-self.middle_energy))
+        estep = (1. / 3.) * math.sqrt(math.fabs(current_energy - self.middle_energy))
 
         if estep < self.estep_min:
             estep = self.estep_min
         self.execMacro("mv %s %f" % (
             self.energy_device_name, current_energy + estep))
 
-    def run(self,  start_energy, end_energy, integ_time, estep_min):
+    def run(self, start_energy, end_energy, integ_time, estep_min):
 
         self.energy_device = self.getObj("mnchrmtr")
         self.energy_device_name = "mnchrmtr"

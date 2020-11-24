@@ -1,12 +1,10 @@
 """Change motor limits for Hasy motors"""
 
-
-__all__ = ["hasy_set_lim", "hasy_adjust_limits"]
-
 import PyTango
 from PyTango import Except
 from sardana.macroserver.macro import Macro, Type, ViewOption
-# from sardana.macroserver.macro import macro
+
+__all__ = ["hasy_set_lim", "hasy_adjust_limits"]
 
 
 class hasy_set_lim(Macro):

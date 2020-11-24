@@ -3,22 +3,18 @@
 """
 Macros related to the petra current
 """
-
-__all__ = ["wait_for_petra"]
-
 import PyTango
-# import PyTango, os, sys
 import time
 from sardana.macroserver.macro import Macro, Type
-# from sardana.macroserver.macro import macro
+
+__all__ = ["wait_for_petra"]
 
 
 class wait_for_petracurrent(Macro):
     """wait for beam current above a limit """
 
     param_def = [
-        ['current_limit', Type.Float, 1, 'Limit for checking petra current'],
-        ]
+        ['current_limit', Type.Float, 1, 'Limit for checking petra current']]
 
     def run(self, current_limit):
         try:

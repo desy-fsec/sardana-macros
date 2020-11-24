@@ -1,13 +1,7 @@
 """
     Macro library containning scan related macros
 """
-
-# import time
-
 from sardana.macroserver.macro import Macro, Type
-
-# import math
-
 
 class lup(Macro):
     """Line-up scan:
@@ -41,11 +35,10 @@ class dummyscan(Macro):
     """
 
     param_def = [
-       ['start_pos', Type.Float, -999, 'Scan start position'],
-       ['final_pos', Type.Float, -999, 'Scan final position'],
-       ['nr_interv', Type.Integer, -999, 'Number of scan intervals'],
-       ['integ_time', Type.Float, -999, 'Integration time']
-    ]
+        ['start_pos', Type.Float, -999, 'Scan start position'],
+        ['final_pos', Type.Float, -999, 'Scan final position'],
+        ['nr_interv', Type.Integer, -999, 'Number of scan intervals'],
+        ['integ_time', Type.Float, -999, 'Integration time']]
 
     def run(self, start_pos, final_pos, nr_interv, integ_time):
 
@@ -60,13 +53,12 @@ class dummyscan(Macro):
 class scan_loop(Macro):
 
     param_def = [
-       ['motor',      Type.Moveable,   None, 'Moveable to move'],
-       ['start_pos', Type.Float,   None, 'Scan start position'],
-       ['final_pos', Type.Float,   None, 'Scan final position'],
-       ['nr_interv', Type.Integer, None, 'Number of scan intervals'],
-       ['integ_time', Type.Float,   None, 'Integration time'],
-       ['nb_loops', Type.Integer, -1, 'Nb of loops (optional)']
-    ]
+        ['motor',      Type.Moveable,   None, 'Moveable to move'],
+        ['start_pos', Type.Float,   None, 'Scan start position'],
+        ['final_pos', Type.Float,   None, 'Scan final position'],
+        ['nr_interv', Type.Integer, None, 'Number of scan intervals'],
+        ['integ_time', Type.Float,   None, 'Integration time'],
+        ['nb_loops', Type.Integer, -1, 'Nb of loops (optional)']]
 
     def run(self, motor, start_pos, final_pos, nr_interv, integ_time,
             nb_loops):
@@ -94,8 +86,7 @@ class ascan_regions(Macro):
             ['stop', Type.Float, None, 'Stop position'],
             ['nbstep', Type.Integer, None, 'Nb of steps'],
             ['integ_time', Type.Float, None, 'Integration time']],
-         None, 'List of scan regions']
-        ]
+         None, 'List of scan regions']]
 
     def run(self, motor, scan_regions):
         # calculate number of regions
@@ -121,8 +112,7 @@ class dscan_regions(Macro):
             ['stop', Type.Float, None, 'Relative stop position'],
             ['nbstep', Type.Integer, None, 'Nb of steps'],
             ['integ_time', Type.Float, None, 'Integration time']],
-         None, 'List of scan regions']
-        ]
+         None, 'List of scan regions']]
 
     def run(self, motor, scan_regions):
 
@@ -151,8 +141,7 @@ class fscan_regions(Macro):
             ['stop', Type.Float, None, 'Stop position'],
             ['nbstep', Type.Integer, None, 'Nb of steps'],
             ['integ_time', Type.Float, None, 'Integration time']],
-         None, 'List of scan regions']
-        ]
+         None, 'List of scan regions']]
 
     def run(self, motor, scan_regions):
         nregions = len(scan_regions)

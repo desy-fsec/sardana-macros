@@ -23,22 +23,18 @@
 
 """MCA related macros"""
 
+from sardana.macroserver.macro import Macro, Type
+import PyTango
+
 __docformat__ = 'restructuredtext'
 
 __all__ = ["mca_desy_start"]
-
-from sardana.macroserver.macro import Macro, Type
-
-# import array
-import PyTango
 
 
 class mca_desy_start(Macro):
     """Starts a mca"""
 
-    param_def = [
-       ['mca', Type.ExpChannel, None, 'mca']
-    ]
+    param_def = [ ['mca', Type.ExpChannel, None, 'mca']]
 
     def run(self, mca):
         name = mca.getName()
@@ -52,9 +48,7 @@ class mca_desy_start(Macro):
 class mca_desy_clear(Macro):
     """Clears a mca"""
 
-    param_def = [
-       ['mca', Type.ExpChannel, None, 'mca']
-    ]
+    param_def = [ ['mca', Type.ExpChannel, None, 'mca']]
 
     def run(self, mca):
         name = mca.getName()

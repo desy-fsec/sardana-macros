@@ -3,21 +3,17 @@
 """
 Macros related to petra3undulator
 """
+import PyTango
+from sardana.macroserver.macro import Macro, Type
 
 __all__ = ["set_harmonic"]
-
-import PyTango
-# import time
-from sardana.macroserver.macro import Macro, Type
-# from sardana.macroserver.macro import macro
 
 
 class set_harmonic(Macro):
     """set new harmonic value"""
 
     param_def = [
-        ['harmonic', Type.Integer, None, 'Harmonic value to set'],
-        ]
+        ['harmonic', Type.Integer, None, 'Harmonic value to set']]
 
     def run(self, harmonic):
         undulator_device_name = "energy_und"

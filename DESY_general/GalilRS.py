@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 #
-__all__ = ["GalilRS"]
 
-# from sardana.macroserver.macro import Macro, Type
 from sardana.macroserver.macro import Macro
-# import HasyUtils
-# import PyTango
-# import time, math
 
+__all__ = ["GalilRS"]
 
 class GalilRS(Macro):
     """

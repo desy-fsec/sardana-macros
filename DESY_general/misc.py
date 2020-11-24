@@ -6,12 +6,11 @@ this file contains miscellaneous macros
   - smPost: sends a command to the SardanaMonitor to create
             a postscript file and print it
 """
-
-__all__ = ["smPost"]
-
 from sardana.macroserver.macro import Macro, Type
 import HasyUtils
 import os
+
+__all__ = ["smPost"]
 
 
 #
@@ -22,8 +21,7 @@ class smPost(Macro):
     Sends a postscript command, 'post/print/nocon', to the SardanaMonitor
     """
     param_def = [
-        ["printer", Type.String, "default",  "the printer name"],
-    ]
+        ["printer", Type.String, "default", "the printer name"]]
 
     def run(self, printer):
         if printer.find('default') == 0:

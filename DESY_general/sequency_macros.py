@@ -24,14 +24,11 @@
 """Examples of macro to execute sequencies in a file"""
 
 from __future__ import print_function
+from sardana.macroserver.macro import Type, Macro
 
 __all__ = ["run_seq"]
 
 __docformat__ = 'restructuredtext'
-
-from sardana.macroserver.macro import Type, Macro
-# import PyTango
-# import time
 
 
 class run_seq(Macro):
@@ -52,8 +49,7 @@ class run_seq(Macro):
     '''
     param_def = [
         ['seq_file', Type.String, None,
-         'Name of the file with the sequency of macros']
-        ]
+         'Name of the file with the sequency of macros']]
 
     def run(self, seq_file):
         self.output("Running sequency %s", seq_file)

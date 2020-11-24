@@ -27,14 +27,13 @@
     Synchronization is achieved by a
     TriggerGenerator PiLC.
 """
+import PyTango
+from sardana.macroserver.macro import Macro, Type
+import time
 
 __all__ = ['cscan_pilc_lambda', 'cscan_pilc_lambda_senv']
 
 __docformat__ = 'restructuredtext'
-
-import PyTango
-from sardana.macroserver.macro import Macro, Type
-import time
 
 
 class cscan_pilc_lambda(Macro):
@@ -138,7 +137,7 @@ class cscan_pilc_lambda(Macro):
         proxyLambda.FrameNumbers = nb_frames
         proxyLambda.FramesPerFile = nb_frames
         proxyLambda.OperatingMode = "TwentyFourBit"
-        proxyLambda.ShutterTime = int(exp_time*1000. - 1.)
+        proxyLambda.ShutterTime = int(exp_time * 1000. - 1.)
         proxyLambda.TriggerMode = 2   # external trigger
 
         # ## Start scan ###
