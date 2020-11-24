@@ -92,7 +92,7 @@ class mvsa(Macro):
                 message, xpos, xpeak, xcms, xcen, npSig = HasyUtils.fastscananalysis( hsh[ 'getData'][ signalCounter.upper()][ 'x'],
                                                                                       hsh[ 'getData'][ signalCounter.upper()][ 'y'],
                                                                                       mode)
-            except Exception as e:
+            except:
                 npSig = 0
             if mode.lower() == 'show':
                 #
@@ -117,7 +117,7 @@ class mvsa(Macro):
                     #
                     try:
                         message, xpos, xpeak, xcms, xcen, npSig = HasyUtils.fastscananalysis( col.x, col.y, mode)
-                    except Exception as e:
+                    except:
                         pass
                     if mode.lower() == 'show':
                         #
