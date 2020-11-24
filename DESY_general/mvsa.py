@@ -92,7 +92,7 @@ class mvsa(Macro):
                 message, xpos, xpeak, xcms, xcen, npSig = HasyUtils.fastscananalysis( hsh[ 'getData'][ signalCounter.upper()][ 'x'],
                                                                                       hsh[ 'getData'][ signalCounter.upper()][ 'y'],
                                                                                       mode)
-            except:
+            except Exception as e:
                 npSig = 0
             if mode.lower() == 'show':
                 #
@@ -117,7 +117,7 @@ class mvsa(Macro):
                     #
                     try:
                         message, xpos, xpeak, xcms, xcen, npSig = HasyUtils.fastscananalysis( col.x, col.y, mode)
-                    except:
+                    except Exception as e:
                         pass
                     if mode.lower() == 'show':
                         #
@@ -301,7 +301,7 @@ class createSaDct(Macro):
 
         supportedScanTypes = ['ascan', 'dscan', 'a2scan', 'd2scan', 'a3scan', 'd3scan',
                               'hscan', 'kscan', 'lscan', 'hklscan']
-        if not scanType.lower()in supportedScanTypes:
+        if not scanType.lower() in supportedScanTypes:
             self.output( "createSaDct: scanType %s not in %s" % (scanType, repr( supportedScanTypes)))
             saDct = { 'message': "createSaDct: scanType %s not in %s" % (scanType, repr( supportedScanTypes))}
             self.setEnv( "saDct", saDct)
