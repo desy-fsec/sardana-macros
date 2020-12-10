@@ -11,7 +11,8 @@ my ($node, $flag_new) = @ARGV;
 print " --- scripts/Update_files.pl: updating $node \n"; 
 
 my $dir_local = "."; 
-my $dir_remote = "/usr/share/pyshared/sardana/sardana-macros/DESY_general"; 
+my $dir_remote = "/usr/lib/python2.7/dist-packages/sardana/sardana-macros/DESY_general"; 
+my $dir_remote3 = "/usr/lib/python3/dist-packages/sardana/sardana-macros/DESY_general"; 
 
 my ($dev, $ino, $mode, $nlink, $uid, $gid, 
     $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks);
@@ -44,17 +45,30 @@ if( !(tie %f, "DB_File", "$filename", O_RDWR, 0777, $DB_HASH))
         goto finish;
     }
 }
-#
-# see, if the target directory exists on the remote host
-#
-my $ret = `ssh root\@$node "test -d $dir_remote || echo notexist"`;
-if( $ret =~ /notexist/)
+
+my $p2Exists = 0;
+my $p3Exists = 0;
+my $ret = `ssh -x root\@${host} test -d ${dir_remote} && echo exists`; 
+chomp $ret; 
+if( $ret =~ /exists/)
 {
-    print " $dir_remote does not exist on $node \n"; 
+    $p2Exists = 1; 
+}
+$ret = `ssh -x root\@${host} test -d ${dir_remote3} && echo exists`; 
+chomp $ret; 
+if( $ret =~ /exists/)
+{
+    $p3Exists = 1; 
+}
+
+if( !$p2Exists && !$p3Exists)
+{
+    print "***\n*** error: neither ${dir_remote} nor ${dir_remote3} exists on ${host}\n***\n";
     $status = 0;
     goto finish;
 }
 
+#
 my $flag_upToDate = 1; 
 foreach my $file (@files)
 {
@@ -81,13 +95,26 @@ foreach my $file (@files)
     }
 
     $flag_upToDate = 0;
-    print " copying ${dir_local}/${file} to ${node}:${dir_remote} \n";
-    $status = !system( "scp ${dir_local}/${file} root\@${node}:${dir_remote} >/dev/null");
-    if( !$status)
+    if( $p2Exists)
     {
-        goto finish;
+        print " copying ${dir_local}/${file} to ${node}:${dir_remote} \n";
+        $status = !system( "scp ${dir_local}/${file} root\@${node}:${dir_remote} >/dev/null");
+        if( !$status)
+        {
+            goto finish;
+        }
+        $f{ "${node}_${file}_mtime"} =  $mtime;
     }
-    $f{ "${node}_${file}_mtime"} =  $mtime;
+    if( $p3Exists)
+    {
+        print " copying ${dir_local}/${file} to ${node}:${dir_remote3} \n";
+        $status = !system( "scp ${dir_local}/${file} root\@${node}:${dir_remote3} >/dev/null");
+        if( !$status)
+        {
+            goto finish;
+        }
+        $f{ "${node}_${file}_mtime"} =  $mtime;
+    }
 }
 
  finish:
