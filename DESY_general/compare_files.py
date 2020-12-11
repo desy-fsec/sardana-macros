@@ -1,24 +1,46 @@
 #!/usr/bin/env python
+'''
+compare_files compares the files of the default directory with
+files on the remote host.
+compare_file.py is identical for the Sardana2 and Sardana3 directory
+'''
 import sys
 import os
 import argparse
 import HasyUtils
 
-REMOTE_DIR = "/usr/lib/python2.7/dist-packages/sardana/sardana-macros" \
-    "/DESY_general"
+REMOTE_DIR2 = "/usr/lib/python2.7/dist-packages/sardana/sardana-macros/DESY_general"
+REMOTE_DIR3 = "/usr/lib/python3/dist-packages/sardana/sardana-macros/DESY_general"
 HOST_LIST = "/afs/desy.de/group/hasylab/Tango/HostLists/TangoHosts.lis"
-FILE_LIST = "/home/kracht/Tango/Sardana/sardana-macros.git/DESY_general" \
-    "/Files.lis"
+FILE_LIST2 = "/home/kracht/Tango/Sardana2/macros/DESY_general/Files.lis"
+FILE_LIST3 = "/home/kracht/Tango/Sardana3/sardana-macros/DESY_general/Files.lis"
 
 
 def main(hostName, fileName):
+
     #
     # if a host is offlines, that's not really bad
     #
-    if not HasyUtils.isHostOnline(hostName):
+    if not HasyUtils.checkHostOnline(hostName):
         if not args.quiet:
             print("  %s is offline" % hostName)
         return True
+
+    if os.path.abspath( __file__).find( 'Sardana2') > 0:
+        REMOTE_DIR = REMOTE_DIR2
+        FILE_LIST = FILE_LIST2
+        #
+        if not HasyUtils.checkHostDebian9( hostName): 
+            print( "compare_files: %s not Debian9" % hostName)
+            return 
+    else: 
+        REMOTE_DIR = REMOTE_DIR3
+        FILE_LIST = FILE_LIST3
+        #
+        if not HasyUtils.checkHostDebian10( hostName): 
+            print( "compare_files: %s not Debian10" % hostName)
+            return 
+
 
     if os.system(
             "scp -q %s:%s/%s tempFile" % (hostName, REMOTE_DIR, fileName)):

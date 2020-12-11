@@ -2,8 +2,6 @@
 #
 # version 30.9.2020
 #
-# from sardana.macroserver.macro import *
-# from sardana.macroserver.macro import macro
 from sardana.macroserver.macro import Macro
 from sardana.macroserver.macro import Type
 import PyTango

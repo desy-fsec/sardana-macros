@@ -1,11 +1,10 @@
 
+compare_files.py
+  compared local files with files on remote PCs
+  
 Update_files.pl <hostName> 
   updates the relevant files (Files.lis) on hostName, 
   used for a single host or from DoAll.pl 
-
-Update_haso107d1.pl <hostName> 
-  updates the relevant files (Files.lis) on haso107d1 and
-  reloads them into the MacroServer
 
 DoAll.pl 
   invokes Update_files.pl for all hosts in
