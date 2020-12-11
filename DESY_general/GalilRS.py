@@ -50,9 +50,9 @@ class GalilRS(Macro):
         try:
             galilCtrlProxy = PyTango.DeviceProxy(galilCtrl[0])
         except:
-                self.output("GalilRS failed to create proxy to %s" %
-                            galilCtrl[0])
-                return False
+            self.output("GalilRS failed to create proxy to %s" %
+                        galilCtrl[0])
+            return False
 
         galilMotors = HasyUtils.getDeviceNamesByClass('GalilDMCMotor')
 
