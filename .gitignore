@@ -6,3 +6,10 @@
 # Compiled C files
 *.o
 Files.db
+Files.lis
+DoAll.pl
+README
+Update_files.pl
+compare_files.py
+
+

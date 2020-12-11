@@ -128,8 +128,8 @@ position %d times, failed" % elm)
                     pos = dct[elm]['proxy'].Position
                     self.output("GalilRS: %s is at %g (target: %g) " %
                                 (elm, pos, dct[elm]['position']))
-                    if math.fabs(math.fabs(dct[elm]['position']) -
-                                 math.fabs(pos)) < 0.1:
+                    if math.fabs(math.fabs(
+                            dct[elm]['position']) - math.fabs(pos)) < 0.1:
                         break
                     time.sleep(1)
 
