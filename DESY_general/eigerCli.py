@@ -3,9 +3,7 @@
 command line interface to the Eiger2 detectors
 """
 import HasyUtils
-import PyTango
-from sardana.macroserver.macro import *
-import sardana.macroserver.macro as ms
+from sardana.macroserver.macro import Macro, Type
 
 class eigerCli(Macro):
     """
@@ -24,7 +22,7 @@ class eigerCli(Macro):
     eigerCli name --write        write parameters from EigerPars_<name> to detector
 
     set EigerPars_<name> and write to detector
-      eigerCli name --ct <value>  CountTime 
+      eigerCli name --ct <value>  CountTime
       eigerCli name --et <value>  EnergyThreshold
       eigerCli name --ipf <value> ImagesPerFile
       eigerCli name --nbi <value> NbImages
@@ -32,7 +30,7 @@ class eigerCli(Macro):
       eigerCli name --pf <value>  Prefix
       eigerCli name --tm <value>  TriggerMode: 'ints' or 'exts'
 
-    name: p07e2x4m p08e1m p08e2x1m p10e4m p62e2x4m p62e2x9m 
+    names: p07e2x4m p08e2x1m p10e4m p62e2x4m p62e2x9m
     """
     param_def = [
         [ 'name', Type.String, None, 'Detector name'],
@@ -45,37 +43,37 @@ class eigerCli(Macro):
 
         if selector == 'default':
             self.eiger.setDefaults()
-            return 
+            return
         #
         # DCU actions
         #
         if selector == '--delete':
-            self.eiger.crawler( self.eiger.dataURL, self.eiger.deleteFunc) 
-            self.eiger.crawler( self.eiger.dataURL, self.eiger.deleteDirFunc) 
-            return 
+            self.eiger.crawler( self.eiger.dataURL, self.eiger.deleteFunc)
+            self.eiger.crawler( self.eiger.dataURL, self.eiger.deleteDirFunc)
+            return
         if selector == '--download':
-            self.eiger.crawler( self.eiger.dataURL, self.eiger.downloadFunc) 
-            return 
+            self.eiger.crawler( self.eiger.dataURL, self.eiger.downloadFunc)
+            return
         if selector == '--list':
-            self.eiger.crawler( self.eiger.dataURL, self.eiger.listFunc) 
-            return 
+            self.eiger.crawler( self.eiger.dataURL, self.eiger.listFunc)
+            return
 
         if selector == '--display':
             self.eiger.displayEigerPars()
-            return 
+            return
         #
         # detector actions
         #
         if selector == '--init':
             self.eiger.initDetector()
-            return 
+            return
         if selector == '--read':
             self.eiger.readDetector()
-            return 
+            return
         if selector == '--write':
             self.eiger.writeAttrs()
             self.eiger.readDetector()
-            return 
+            return
 
         #
         # runs
@@ -89,7 +87,6 @@ class eigerCli(Macro):
         if selector == '--extssim':
             self.eiger.runExts( False)
             return
-        
         #
         # detector and filewrite atttributes
         #
@@ -114,8 +111,8 @@ class eigerCli(Macro):
             self.output( "eigerCli: failed to identify %s" % selector)
             flag = False
 
-        if flag: 
+        if flag:
             self.eiger.writeAttrs()
             self.eiger.readDetector()
-            
-        return 
+
+        return
