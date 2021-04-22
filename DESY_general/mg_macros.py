@@ -512,7 +512,7 @@ class MgConf:
     #
     def addMCAD9(self, device):
         ctrl = self.findDeviceController(device)
-        if ctrl is not self.hsh[u'controllers'].keys():
+        if ctrl not in self.hsh[u'controllers'].keys():
             print("MgUtils.addMCA adding controller ", ctrl)
             self.hsh[u'controllers'][ctrl] = {}
             self.hsh[u'controllers'][ctrl][u'synchronizer'] = "software"
