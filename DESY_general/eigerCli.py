@@ -30,7 +30,7 @@ class eigerCli(Macro):
       eigerCli name --pf <value>  Prefix
       eigerCli name --tm <value>  TriggerMode: 'ints' or 'exts'
 
-    names: p07e2x4m p08e2x1m p10e4m p62e2x4m p62e2x9m
+    names: p07e2x4m p08e2x1m p10e4m p11e2x16m p62e2x4m p62e2x9m
     """
     param_def = [
         [ 'name', Type.String, None, 'Detector name'],

@@ -7,10 +7,9 @@
 *.o
 Files.db
 Files.lis
-CheckAll.py
 DoAll.pl
 README
 Update_files.pl
-compare_files.py
+Compare_files.py
 
 
