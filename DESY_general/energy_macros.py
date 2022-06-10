@@ -94,7 +94,7 @@ class escan(Macro):
         except Exception:
             pass
 
-        if self.fixq == 'fixq':
+        if self.fixq.lower() == 'fixq':
             self.h_device.Stop()
             self.k_device.Stop()
             self.l_device.Stop()
@@ -163,7 +163,7 @@ class escan(Macro):
         except Exception:
             self.debug("DiffracDevice not defined or not found")
 
-        if fixq == "fixq":
+        if fixq.lower() == "fixq":
             # Repeat it here for getting an error if fixq mode
             diffrac_name = self.getEnv('DiffracDevice')
             self.diffrac = self.getDevice(diffrac_name)
@@ -205,7 +205,7 @@ class escan(Macro):
         self.step = abs(end_energy - start_energy) / nr_interv
 
         self.fixq = fixq
-        if fixq == "fixq":
+        if fixq.lower() == "fixq":
 
             macro_hkl, pars = self.createMacro(
                 "br", self.h_fix, self.k_fix, self.l_fix, -1)
@@ -227,7 +227,7 @@ class escan(Macro):
                 "Returning the energy to the value before the scan ...")
             self.energy_device.write_attribute(
                 "Position", saved_initial_position)
-            if fixq == "fixq":
+            if fixq.lower() == "fixq":
                 wavelength = self.lambda_to_e / saved_initial_position
 
                 self.diffrac.write_attribute("wavelength", wavelength)
