@@ -4,7 +4,7 @@
 # import imp
 from setuptools import setup
 
-release = "1.0.3"
+release = "1.0.4"
 
 package_dir = {"sardana.sardana-macros.DESY_general": "DESY_general"}
 
