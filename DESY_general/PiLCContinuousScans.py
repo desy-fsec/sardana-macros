@@ -129,7 +129,7 @@ class cscan_pilc_sis3820mcs(Macro):
             # Check when the motor is in the start_position
             #  for starting the trigger
 
-            while(motor_device.Position < start_pos):
+            while motor_device.Position < start_pos:
                 time.sleep(0.001)
 
             # Store starttime
@@ -437,7 +437,7 @@ class cscan_pilc_xia(Macro):
             # Check when the motor is in the start_position for starting
             # the trigger
 
-            while(motor_device.Position < start_pos):
+            while motor_device.Position < start_pos:
                 time.sleep(0.001)
 
             # Store starttime
