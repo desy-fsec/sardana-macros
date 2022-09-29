@@ -1235,11 +1235,11 @@ def _wait(proxy, counter=100):
 
 def update_configuration(mcr):
     """ Synchonize profile with mntgrp """
-    if hasattr(mcr.selector, "updateProfile"):
-        _long_command(mcr.selector, "updateProfile")
-    else:
-        _long_command(mcr.selector, "updateMntGrp")
-        _long_command(mcr.selector, "importMntGrp")
+    # if hasattr(mcr.selector, "updateProfile"):
+    #     _long_command(mcr.selector, "updateProfile")
+    # else:
+    _long_command(mcr.selector, "updateMntGrp")
+    _long_command(mcr.selector, "importMntGrp")
     if not isinstance(mcr.selector, PyTango.DeviceProxy):
         mcr.selector.exportEnvProfile()
 
